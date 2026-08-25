@@ -21,3 +21,16 @@
 - [x] Verify the owner-only product platform and save the completed revision.
 - [x] Add an owner-side shop preview so the owner can view the live public product catalogue from the dashboard.
 - [x] Verify the owner shop preview and save the revised checkpoint.
+- [x] Rework the homepage into the requested high-impact Digital Junction technology-company landing-page flow.
+- [x] Expand the public services, projects, products, about, contact, and footer information architecture to match the supplied brief.
+- [x] Add polished responsive interactions, accessible navigation, and no-dead-end conversion paths across the public experience.
+- [x] Align the About, Contact, Projects, and Digital Products pages with the supplied company information architecture.
+- [x] Complete the footer with company, products, client, legal, contact, and social placeholder sections using valid routes or clear labels.
+- [x] Audit and refine sticky navigation, mobile drawer behavior, keyboard focus, hover states, and all public CTAs for accessible conversion paths.
+- [x] Add explicit public footer placeholders for official contact details and social channels.
+- [x] Complete and verify keyboard-focus, hover-state, and CTA destination audit across all public routes.
+- [x] Re-verify every public route and CTA destination, including Home, Services, About, Projects, Digital Products, Contact, Privacy, Terms, and Refunds.
+- [x] Record full-site keyboard-focus and hover-interaction verification before saving the landing-page revision.
+- [x] Capture concrete focus-visible and hover-state verification evidence for key public navigation, form, card, button, and footer interactions.
+- [x] Add and run automated interaction checks for public form fields and footer links before final checkpointing.
+- [x] Validate the revised public experience and save the completed landing-page checkpoint.

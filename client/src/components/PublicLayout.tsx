@@ -1,20 +1,30 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ArrowUpRight, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { startLogin } from "@/const";
 
 const navLinks = [
+  ["Home", "/"],
   ["Services", "/services"],
-  ["Work", "/work"],
-  ["Products", "/shop"],
+  ["Digital Products", "/shop"],
+  ["Projects", "/work"],
   ["About", "/about"],
+  ["Contact", "/contact"],
 ] as const;
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    const updateScroll = () => setScrolled(window.scrollY > 12);
+    updateScroll();
+    window.addEventListener("scroll", updateScroll, { passive: true });
+    return () => window.removeEventListener("scroll", updateScroll);
+  }, []);
 
   const closeMenu = () => setMenuOpen(false);
   const portalAction = () => {
@@ -24,7 +34,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="site-shell">
-      <header className="site-nav sticky top-0 z-40">
+      <header className={`site-nav sticky top-0 z-40 transition-[box-shadow,background-color] duration-200 ${scrolled ? "bg-[#FFF4E1]/95 shadow-[0_10px_30px_rgba(26,49,44,0.1)] backdrop-blur" : ""}`}>
         <div className="site-container flex min-h-[4.75rem] items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" onClick={closeMenu} aria-label="Digital Junction home">
             <img src="/manus-storage/djdc-logo_bb40eabf.png" alt="DJDC logo" className="size-10 rounded-lg object-contain" />
@@ -44,19 +54,20 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           <div className="hidden items-center gap-2 md:flex">
             <button type="button" className="button-primary !min-h-10 !px-3.5" onClick={portalAction}>
-              {isAuthenticated ? "Client portal" : "Portal sign in"}
+              {isAuthenticated ? "Client portal" : "Client login"}
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </button>
+            <Link href="/contact" className="button-quiet buttonlike !min-h-10 !px-3.5">Get started</Link>
           </div>
 
           <div className="flex items-center gap-1.5 md:hidden">
-            <button type="button" className="button-quiet !min-h-10 !px-2.5" onClick={() => setMenuOpen(value => !value)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
+            <button type="button" className="button-quiet !min-h-10 !px-2.5" onClick={() => setMenuOpen(value => !value)} aria-label="Toggle navigation" aria-expanded={menuOpen} aria-controls="mobile-site-navigation">
               {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
             </button>
           </div>
         </div>
         {menuOpen && (
-          <nav className="border-t border-[#1A312C]/10 bg-[#FFF4E1] px-3 py-3 md:hidden" aria-label="Mobile navigation">
+          <nav id="mobile-site-navigation" className="animate-in slide-in-from-top-2 border-t border-[#1A312C]/10 bg-[#FFF4E1] px-3 py-3 duration-200 md:hidden" aria-label="Mobile navigation">
             <div className="site-container grid gap-1">
               {navLinks.map(([label, href]) => (
                 <Link key={href} href={href} onClick={closeMenu} className="rounded-xl px-3 py-3 text-sm font-semibold text-[#1A312C] hover:bg-[#1A312C]/5">
@@ -64,8 +75,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 </Link>
               ))}
               <button type="button" className="button-primary mt-2 w-full" onClick={portalAction}>
-                {isAuthenticated ? "Open client portal" : "Sign in to portal"}
+                {isAuthenticated ? "Open client portal" : "Client login"}
               </button>
+              <Link href="/contact" onClick={closeMenu} className="button-quiet buttonlike mt-1 w-full">Get started</Link>
             </div>
           </nav>
         )}
@@ -74,7 +86,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {children}
 
       <footer className="bg-[#1A312C] py-12 text-[#FFF4E1]">
-        <div className="site-container grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="site-container grid gap-10 md:grid-cols-[1.25fr_.8fr_.8fr_1fr]">
           <div>
             <div className="flex items-center gap-2.5">
               <img src="/manus-storage/djdc-logo_bb40eabf.png" alt="DJDC logo" className="size-10 rounded-lg object-contain" />
@@ -82,16 +94,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </div>
             <p className="mt-5 max-w-sm text-sm leading-6 text-[#FFF4E1]/70">Connecting ideas with practical, thoughtful digital experiences—built for the work ahead.</p>
           </div>
-          <div>
-            <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Explore</p>
-            <div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76">
-              {navLinks.map(([label, href]) => <Link key={href} href={href} className="hover:text-[#89D7B7]">{label}</Link>)}
-            </div>
-          </div>
+          <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Company</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/about" className="hover:text-[#89D7B7]">About</Link><Link href="/services" className="hover:text-[#89D7B7]">Services</Link><Link href="/work" className="hover:text-[#89D7B7]">Projects</Link><Link href="/contact" className="hover:text-[#89D7B7]">Contact</Link></div></div>
+          <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Digital products</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/shop" className="hover:text-[#89D7B7]">All products</Link><Link href="/shop" className="hover:text-[#89D7B7]">UI kits</Link><Link href="/shop" className="hover:text-[#89D7B7]">Business resources</Link><button type="button" onClick={portalAction} className="text-left hover:text-[#89D7B7]">Client login</button></div><p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Client</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><button type="button" onClick={portalAction} className="text-left hover:text-[#89D7B7]">My projects</button><button type="button" onClick={portalAction} className="text-left hover:text-[#89D7B7]">Orders & requests</button><Link href="/contact" className="hover:text-[#89D7B7]">Support</Link></div></div>
           <div>
             <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Start a conversation</p>
             <p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">Tell us what you are building, where you are stuck, and what success needs to look like.</p>
             <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#89D7B7] hover:text-[#FFF4E1]">Start a project <ArrowUpRight className="size-3.5" /></Link>
+            <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Contact</p><div className="mt-4 grid gap-2 text-sm text-[#FFF4E1]/76"><span>Email: official address to be confirmed</span><span>Phone: official number to be confirmed</span></div>
+            <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Social</p><p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">Official social links will appear here when the company channels are ready.</p>
+            <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Legal</p><div className="mt-4 grid gap-2 text-sm text-[#FFF4E1]/76"><Link href="/privacy" className="hover:text-[#89D7B7]">Privacy policy</Link><Link href="/terms" className="hover:text-[#89D7B7]">Terms & conditions</Link><Link href="/refunds" className="hover:text-[#89D7B7]">Refund policy</Link></div>
           </div>
         </div>
         <div className="site-container mt-10 border-t border-[#FFF4E1]/15 pt-5 font-mono text-[0.63rem] uppercase tracking-[0.12em] text-[#FFF4E1]/45">© {new Date().getFullYear()} Digital Junction Development Co.</div>

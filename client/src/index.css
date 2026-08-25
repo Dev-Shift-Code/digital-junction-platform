@@ -59,6 +59,7 @@ body { margin: 0; background: var(--background); color: var(--foreground); font-
 button, a, input, textarea, select { font: inherit; }
 button:not(:disabled), a[href] { cursor: pointer; }
 button:not(:disabled):active, a[href].buttonlike:active { transform: scale(0.97); }
+:where(a[href], button:not(:disabled), input, textarea, select):focus-visible { outline: 3px solid #89D7B7; outline-offset: 3px; }
 ::selection { background: oklch(0.814 0.106 158 / 0.5); color: #1A312C; }
 
 .site-shell { min-height: 100vh; overflow: hidden; background: #FFF4E1; }
@@ -88,4 +89,5 @@ button:not(:disabled):active, a[href].buttonlike:active { transform: scale(0.97)
 .form-field { width: 100%; border: 1px solid rgba(26, 49, 44, 0.18); border-radius: 0.68rem; padding: 0.78rem 0.9rem; background: rgba(255, 251, 241, 0.9); color: #1A312C; outline: none; transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 .form-field:focus { border-color: #428475; box-shadow: 0 0 0 3px rgba(137, 215, 183, 0.36); }
 .cart-panel { box-shadow: -20px 0 55px rgba(26, 49, 44, 0.22); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 @media (max-width: 720px) { .site-container { width: min(100% - 1.5rem, 1180px); } .nav-link.active::after { display: none; } }

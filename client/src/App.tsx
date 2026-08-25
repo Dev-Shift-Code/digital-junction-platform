@@ -8,6 +8,7 @@ import OwnerDashboard from "@/pages/OwnerDashboard";
 import OwnerContentManager from "@/pages/OwnerContentManager";
 import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
+import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import Portal from "@/pages/Portal";
 import Services from "@/pages/Services";
 import Shop from "@/pages/Shop";
@@ -33,6 +34,9 @@ function Router() {
       <Route path={"/owner/manage"} component={OwnerContentManager} />
       <Route path={"/owner/products"} component={OwnerProducts} />
       <Route path={"/owner/shop-preview"} component={OwnerShopPreview} />
+      <Route path={"/privacy"} component={PrivacyPage} />
+      <Route path={"/terms"} component={TermsPage} />
+      <Route path={"/refunds"} component={RefundsPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
