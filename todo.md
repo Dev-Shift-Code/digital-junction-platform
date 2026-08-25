@@ -103,3 +103,5 @@
 - [x] Add a dedicated Owner sign-in entry and owner-session guard while preserving direct customer login.
 - [ ] Verify independent Customer and Owner Dashboard access and logout behavior.
 - [x] Save the independent-session revision checkpoint.
+- [x] Preserve a safe legacy-owner bootstrap path until the administrator has established a dedicated owner session.
+- [x] Save the legacy-owner bootstrap safeguard checkpoint.

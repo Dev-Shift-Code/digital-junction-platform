@@ -29,6 +29,13 @@ export async function createContext(
     ownerUser = null;
   }
 
+  // Preserve access for the existing administrator while they move from the
+  // legacy single-session login to the new dedicated owner sign-in. New owner
+  // sessions still take precedence and customer accounts can never use this.
+  if (!ownerUser && user?.role === "admin") {
+    ownerUser = user;
+  }
+
   return {
     req: opts.req,
     res: opts.res,
