@@ -1,10 +1,10 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Check, FileText, LayoutDashboard, Loader2, Megaphone, PackageOpen, PanelTop, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { Check, FileText, LayoutDashboard, Loader2, Megaphone, PackageOpen, PanelTop, ShieldAlert, SlidersHorizontal, Store } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 
-const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }];
+const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }, { icon: Store, label: "Shop preview", path: "/owner/shop-preview" }];
 const milestoneStatuses = ["upcoming", "in_progress", "completed"] as const;
 
 function shortStatus(value: string) { return value.replaceAll("_", " "); }

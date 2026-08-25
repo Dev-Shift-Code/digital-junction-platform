@@ -1,10 +1,10 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Check, FileUp, FolderKanban, LayoutDashboard, Loader2, Megaphone, PackageOpen, Plus, ShieldAlert, SlidersHorizontal, UsersRound } from "lucide-react";
+import { Check, FileUp, FolderKanban, LayoutDashboard, Loader2, Megaphone, PackageOpen, Plus, ShieldAlert, SlidersHorizontal, Store, UsersRound } from "lucide-react";
 import { FormEvent, useState } from "react";
 
-const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }];
+const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }, { icon: Store, label: "Shop preview", path: "/owner/shop-preview" }];
 const statuses = ["discovery", "in_progress", "review", "complete", "on_hold"] as const;
 
 function humanize(value: string) { return value.replaceAll("_", " "); }

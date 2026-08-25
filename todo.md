@@ -19,3 +19,5 @@
 - [x] Expand owner-only product management so only the Digital Junction owner can create, publish, and manage listings.
 - [x] Add editing controls for saved digital-product fields and archive controls for the owner-managed product lifecycle.
 - [x] Verify the owner-only product platform and save the completed revision.
+- [x] Add an owner-side shop preview so the owner can view the live public product catalogue from the dashboard.
+- [x] Verify the owner shop preview and save the revised checkpoint.
