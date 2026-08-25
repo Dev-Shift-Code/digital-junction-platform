@@ -12,3 +12,6 @@
 - [x] Integrate the supplied DJDC logo across public and internal navigation and footer branding.
 - [x] Add a data-backed selected-work and case-study collection that the owner can publish to the public Work page.
 - [x] Extend owner workflows to review and edit existing milestones, deliverables, and portal-visible content.
+- [x] Remove Shopify storefront behavior, cart, checkout, and commerce API use from the application.
+- [x] Build a native Digital Junction digital-products catalogue with internal product enquiries.
+- [x] Re-test the internal-only product experience and save a revised checkpoint.

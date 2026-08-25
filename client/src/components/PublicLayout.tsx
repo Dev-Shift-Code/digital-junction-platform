@@ -1,22 +1,19 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowUpRight, Menu, ShoppingBag, X } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { startLogin } from "@/const";
-import { useCart } from "@/contexts/CartContext";
-import CartDrawer from "./CartDrawer";
 
 const navLinks = [
   ["Services", "/services"],
   ["Work", "/work"],
-  ["Shop", "/shop"],
+  ["Products", "/shop"],
   ["About", "/about"],
 ] as const;
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { itemCount, openCart } = useCart();
   const { isAuthenticated } = useAuth();
 
   const closeMenu = () => setMenuOpen(false);
@@ -46,10 +43,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            <button type="button" className="button-quiet !min-h-10 !border-0 !px-2.5" onClick={openCart} aria-label={`Open basket, ${itemCount} items`}>
-              <ShoppingBag className="size-4" aria-hidden="true" />
-              <span className="font-mono text-[0.7rem]">{String(itemCount).padStart(2, "0")}</span>
-            </button>
             <button type="button" className="button-primary !min-h-10 !px-3.5" onClick={portalAction}>
               {isAuthenticated ? "Client portal" : "Portal sign in"}
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
@@ -57,10 +50,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-1.5 md:hidden">
-            <button type="button" className="button-quiet !min-h-10 !border-0 !px-2.5" onClick={openCart} aria-label={`Open basket, ${itemCount} items`}>
-              <ShoppingBag className="size-4" aria-hidden="true" />
-              <span className="font-mono text-[0.68rem]">{itemCount}</span>
-            </button>
             <button type="button" className="button-quiet !min-h-10 !px-2.5" onClick={() => setMenuOpen(value => !value)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
               {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
             </button>
@@ -107,7 +96,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </div>
         <div className="site-container mt-10 border-t border-[#FFF4E1]/15 pt-5 font-mono text-[0.63rem] uppercase tracking-[0.12em] text-[#FFF4E1]/45">© {new Date().getFullYear()} Digital Junction Development Co.</div>
       </footer>
-      <CartDrawer />
     </div>
   );
 }

@@ -10,3 +10,5 @@
 - The owner management route exposes project-resource review and editing, portal-content review and editing, and the form required to publish selected work.
 - The public home page maintains a readable, single-column hierarchy with accessible compact navigation at a 375px viewport.
 - The owner content-management workspace reflows its project-resource and case-study controls into a legible single-column mobile layout.
+- The public Products page now presents an internal Digital Junction catalogue with no cart or checkout controls and a clear empty state until products are published.
+- The owner Digital Products workspace provides native catalogue creation and publishing controls, explicitly without an external storefront dependency.

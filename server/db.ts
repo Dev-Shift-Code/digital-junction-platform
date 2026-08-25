@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, InsertUser, inquiries, milestones, portalContents, projectClients, projects, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, InsertUser, inquiries, milestones, portalContents, productInquiries, projectClients, projects, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -245,5 +245,40 @@ export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, cas
   }
   const result = await db.insert(caseStudies).values(values);
   const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function getPublishedDigitalProducts() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(digitalProducts).where(eq(digitalProducts.isPublished, true)).orderBy(asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
+}
+
+export async function getDigitalProductBySlug(slug: string) {
+  const db = requireDatabase(await getDb());
+  const product = await db.select().from(digitalProducts).where(and(eq(digitalProducts.slug, slug), eq(digitalProducts.isPublished, true))).limit(1);
+  return product[0] ?? null;
+}
+
+export async function getAllDigitalProducts() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(digitalProducts).orderBy(asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
+}
+
+export async function saveDigitalProduct(values: typeof digitalProducts.$inferInsert, productId?: number) {
+  const db = requireDatabase(await getDb());
+  if (productId) {
+    await db.update(digitalProducts).set(values).where(eq(digitalProducts.id, productId));
+    const updated = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+    return updated[0];
+  }
+  const result = await db.insert(digitalProducts).values(values);
+  const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function createProductInquiry(values: typeof productInquiries.$inferInsert) {
+  const db = requireDatabase(await getDb());
+  const result = await db.insert(productInquiries).values(values);
+  const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result[0].insertId))).limit(1);
   return created[0];
 }

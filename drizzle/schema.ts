@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -143,4 +143,37 @@ export const caseStudies = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [index("case_studies_public_idx").on(table.isPublished, table.category)],
+);
+
+export const digitalProducts = mysqlTable(
+  "digitalProducts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    title: varchar("title", { length: 180 }).notNull(),
+    slug: varchar("slug", { length: 180 }).notNull().unique(),
+    category: varchar("category", { length: 100 }).notNull(),
+    summary: text("summary").notNull(),
+    description: text("description"),
+    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+    coverImageUrl: text("coverImageUrl"),
+    isPublished: boolean("isPublished").default(false).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("digital_products_public_idx").on(table.isPublished, table.category)],
+);
+
+export const productInquiries = mysqlTable(
+  "productInquiries",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    productId: int("productId").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    message: text("message").notNull(),
+    status: mysqlEnum("status", ["new", "contacted", "closed"]).default("new").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("product_inquiries_product_idx").on(table.productId), index("product_inquiries_status_idx").on(table.status)],
 );

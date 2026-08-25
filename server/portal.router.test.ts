@@ -41,4 +41,14 @@ describe("portal router access control", () => {
     const caller = appRouter.createCaller(createContext());
     await expect(caller.portal.inquiries.create({ name: "A", email: "not-an-email", message: "too short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("protects native product management from non-admin users", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+    await expect(caller.portal.admin.products.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("validates a product enquiry before any database operation", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.portal.products.inquire({ productId: 0, name: "A", email: "bad-email", message: "short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

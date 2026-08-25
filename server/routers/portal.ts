@@ -5,6 +5,7 @@ import {
   createDeliverable,
   createInquiry,
   createMilestone,
+  createProductInquiry,
   createProject,
   getAdminProjectDetail,
   getAllCaseStudies,
@@ -13,9 +14,13 @@ import {
   getClientProjectDetail,
   getClientProjects,
   getClientUsers,
+  getAllDigitalProducts,
+  getDigitalProductBySlug,
   getPublishedCaseStudies,
+  getPublishedDigitalProducts,
   getPublishedPortalContent,
   saveCaseStudy,
+  saveDigitalProduct,
   savePortalContent,
   updateDeliverable,
   updateMilestone,
@@ -70,6 +75,34 @@ export const portalRouter = router({
         return unavailable(error);
       }
     }),
+  }),
+  products: router({
+    listPublished: publicProcedure.query(async () => {
+      try {
+        return getPublishedDigitalProducts();
+      } catch (error) {
+        return unavailable(error);
+      }
+    }),
+    bySlug: publicProcedure.input(z.object({ slug: z.string().min(1) })).query(async ({ input }) => {
+      try {
+        const product = await getDigitalProductBySlug(input.slug);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
+        return product;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
+    inquire: publicProcedure
+      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), message: z.string().trim().min(10).max(5000) }))
+      .mutation(async ({ input }) => {
+        try {
+          return createProductInquiry(input);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
   }),
   inquiries: router({
     create: publicProcedure
@@ -302,6 +335,25 @@ export const portalRouter = router({
           try {
             const { caseStudyId, ...caseStudy } = input;
             return saveCaseStudy(caseStudy, caseStudyId);
+          } catch (error) {
+            return unavailable(error);
+          }
+      }),
+    }),
+    products: router({
+      list: adminProcedure.query(async () => {
+        try {
+          return getAllDigitalProducts();
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      save: adminProcedure
+        .input(z.object({ productId: z.number().int().positive().optional(), title: z.string().trim().min(2).max(180), slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180), category: z.string().trim().min(2).max(100), summary: z.string().trim().min(10).max(5000), description: z.string().trim().max(10000).optional().nullable(), price: z.coerce.number().min(0).max(1000000), coverImageUrl: z.string().url().max(5000).optional().nullable(), isPublished: z.boolean().default(false), sortOrder: z.number().int().min(0).default(0) }))
+        .mutation(async ({ input }) => {
+          try {
+            const { productId, price, ...product } = input;
+            return saveDigitalProduct({ ...product, price: price.toFixed(2) }, productId);
           } catch (error) {
             return unavailable(error);
           }

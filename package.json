@@ -107,7 +107,6 @@
     "db:push": "drizzle-kit generate \u0026\u0026 drizzle-kit migrate",
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "format": "prettier --write .",
-    "shopify:probe": "tsx scripts/shopify-probe.runner.ts",
     "start": "NODE_ENV=production node dist/index.js",
     "test": "vitest run"
   },
