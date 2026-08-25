@@ -98,3 +98,8 @@
 - [x] Verify adjacent Billing & Invoices row actions at desktop and mobile widths.
 - [x] Add a real Billing & Invoices filter that changes visible table records.
 - [ ] Observe Billing & Invoices and invoice detail in a real authenticated customer browser session at desktop and mobile widths.
+- [x] Audit customer and owner session cookie handling, route guards, and logout behavior.
+- [x] Implement independent customer and owner session cookies so logging into one area does not displace the other.
+- [x] Add a dedicated Owner sign-in entry and owner-session guard while preserving direct customer login.
+- [ ] Verify independent Customer and Owner Dashboard access and logout behavior.
+- [x] Save the independent-session revision checkpoint.

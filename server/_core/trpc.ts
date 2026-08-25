@@ -31,14 +31,14 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    if (!ctx.ownerUser || ctx.ownerUser.role !== 'admin') {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 
     return next({
       ctx: {
         ...ctx,
-        user: ctx.user,
+        user: ctx.ownerUser,
       },
     });
   }),

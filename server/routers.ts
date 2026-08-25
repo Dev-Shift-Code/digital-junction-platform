@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, OWNER_SESSION_COOKIE } from "@shared/const";
 import * as db from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
@@ -14,15 +14,16 @@ const credentialsInput = z.object({
   password: z.string().min(8).max(128),
 });
 
-async function issueLocalSession(ctx: { req: any; res: any }, user: { openId: string; name: string | null; email: string | null }) {
+async function issueLocalSession(ctx: { req: any; res: any }, user: { openId: string; name: string | null; email: string | null }, scope: "customer" | "owner" = "customer") {
   const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "Digital Junction customer" });
-  ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+  ctx.res.cookie(scope === "owner" ? OWNER_SESSION_COOKIE : COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
 }
 
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    ownerMe: publicProcedure.query(opts => opts.ctx.ownerUser ?? null),
     register: publicProcedure.input(credentialsInput).mutation(async ({ ctx, input }) => {
       const email = normalizeEmail(input.email);
       const existing = await db.getUserByEmail(email);
@@ -38,6 +39,13 @@ export const appRouter = router({
       await issueLocalSession(ctx, user);
       return { success: true } as const;
     }),
+    ownerLogin: publicProcedure.input(credentialsInput).mutation(async ({ ctx, input }) => {
+      const user = await db.getUserByEmail(normalizeEmail(input.email));
+      if (!user || user.role !== "admin" || !await verifyPassword(input.password, user.passwordHash)) throw new Error("Incorrect owner email or password.");
+      await db.recordUserSignIn(user.openId);
+      await issueLocalSession(ctx, user, "owner");
+      return { success: true } as const;
+    }),
     setPassword: adminProcedure.input(z.object({ password: z.string().min(8).max(128) })).mutation(async ({ ctx, input }) => {
       await db.setUserPassword(ctx.user.id, await hashPassword(input.password));
       return { success: true } as const;
@@ -45,6 +53,11 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return { success: true } as const;
+    }),
+    ownerLogout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(OWNER_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
   }),

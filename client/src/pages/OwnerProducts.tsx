@@ -14,7 +14,7 @@ function ProductFields({ product }: { product?: ProductValues }) {
 }
 
 export default function OwnerProducts() {
-  const { user } = useAuth();
+  const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const products = trpc.portal.admin.products.list.useQuery(undefined, { enabled: isOwner });
   const usingSamples = !products.isLoading && !products.data?.length;

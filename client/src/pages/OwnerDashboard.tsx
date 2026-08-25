@@ -11,13 +11,13 @@ const statuses = ["discovery", "in_progress", "review", "complete", "on_hold"] a
 function humanize(value: string) { return value.replaceAll("_", " "); }
 
 export default function OwnerDashboard() {
-  const { user } = useAuth();
+  const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const utils = trpc.useUtils();
   const projects = trpc.portal.admin.projects.useQuery(undefined, { enabled: isOwner });
   const clients = trpc.portal.admin.clients.useQuery(undefined, { enabled: isOwner });
   const portalContent = trpc.portal.admin.portalContent.list.useQuery(undefined, { enabled: isOwner });
-  const setOwnerPassword = trpc.auth.setPassword.useMutation({ onSuccess: async () => { setNotice("Direct owner password saved. You can now use the DJDC Log in form without the account chooser."); await utils.auth.me.invalidate(); } });
+  const setOwnerPassword = trpc.auth.setPassword.useMutation({ onSuccess: async () => { setNotice("Direct owner password saved. You can now use the DJDC Owner sign-in form without the account chooser."); await utils.auth.ownerMe.invalidate(); } });
   const usingSampleProjects = !projects.isLoading && !projects.data?.length;
   const [notice, setNotice] = useState("");
   const refresh = async () => { await Promise.all([utils.portal.admin.projects.invalidate(), utils.portal.admin.portalContent.list.invalidate(), utils.portal.projects.listMine.invalidate()]); };

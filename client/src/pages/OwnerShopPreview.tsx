@@ -9,7 +9,7 @@ const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "
 function money(value: string | number) { return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(Number(value)); }
 
 export default function OwnerShopPreview() {
-  const { user } = useAuth();
+  const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const products = trpc.portal.products.listPublished.useQuery(undefined, { enabled: isOwner });
   const usingSamples = !products.isLoading && !products.data?.length;

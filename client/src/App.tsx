@@ -18,6 +18,7 @@ import ClientAccount from "@/pages/ClientAccount";
 import ClientSupport from "@/pages/ClientSupport";
 import ClientResources from "@/pages/ClientResources";
 import { LoginEntry, SignUpEntry } from "@/pages/AuthEntry";
+import { OwnerLoginEntry } from "@/pages/AuthEntry";
 import Services from "@/pages/Services";
 import Shop from "@/pages/Shop";
 import Work from "@/pages/Work";
@@ -39,6 +40,7 @@ function Router() {
       <Route path={"/contact"} component={Contact} />
       <Route path={"/login"} component={LoginEntry} />
       <Route path={"/signup"} component={SignUpEntry} />
+      <Route path={"/owner/login"} component={OwnerLoginEntry} />
       <Route path={"/client"} component={ClientSide} />
       <Route path={"/client/projects"} component={ClientSide} />
       <Route path={"/client/purchases"} component={ClientPurchases} />

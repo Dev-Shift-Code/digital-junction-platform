@@ -27,6 +27,7 @@ describe("authentication entry styling", () => {
     expect(publicLayout).toContain('href="/login"');
     expect(publicLayout).toContain('href="/signup"');
     expect(shopPage).not.toContain("startLogin(");
-    expect(authHook).toContain('window.location.href = "/login"');
+    expect(authHook).toContain('scope === "owner" ? "/owner/login" : "/login"');
+    expect(appRoutes).toContain('path={"/owner/login"}');
   });
 });

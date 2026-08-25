@@ -51,7 +51,8 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const authScope: "customer" | "owner" = navigation.some(item => item.path.startsWith("/owner")) ? "owner" : "customer";
+  const { loading, user } = useAuth({ scope: authScope });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -70,15 +71,15 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this area requires a Digital Junction customer account.
+              {authScope === "owner" ? "Access to this area requires a Digital Junction owner account." : "Access to this area requires a Digital Junction customer account."}
             </p>
           </div>
           <Button
-            onClick={() => window.location.assign("/login")}
+            onClick={() => window.location.assign(authScope === "owner" ? "/owner/login" : "/login")}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Sign in
+            {authScope === "owner" ? "Owner sign in" : "Sign in"}
           </Button>
         </div>
       </div>
@@ -93,7 +94,7 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} navigation={navigation} title={title}>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} navigation={navigation} title={title} authScope={authScope}>
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -105,6 +106,7 @@ type DashboardLayoutContentProps = {
   setSidebarWidth: (width: number) => void;
   navigation: DashboardNavigationItem[];
   title: string;
+  authScope: "customer" | "owner";
 };
 
 function DashboardLayoutContent({
@@ -112,8 +114,9 @@ function DashboardLayoutContent({
   setSidebarWidth,
   navigation,
   title,
+  authScope,
 }: DashboardLayoutContentProps) {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth({ scope: authScope });
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";

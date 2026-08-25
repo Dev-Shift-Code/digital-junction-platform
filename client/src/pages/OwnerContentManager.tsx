@@ -12,7 +12,7 @@ const milestoneStatuses = ["upcoming", "in_progress", "completed"] as const;
 function shortStatus(value: string) { return value.replaceAll("_", " "); }
 
 export default function OwnerContentManager() {
-  const { user } = useAuth();
+  const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const utils = trpc.useUtils();
   const [projectId, setProjectId] = useState<number | null>(null);

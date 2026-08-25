@@ -12,8 +12,7 @@ vi.mock("./db", () => dbMock);
 import { appRouter } from "./routers";
 
 function context(role: "admin" | "user"): TrpcContext {
-  return {
-    user: {
+  const user = {
       id: role === "admin" ? 1 : 2,
       openId: role,
       name: role,
@@ -24,7 +23,10 @@ function context(role: "admin" | "user"): TrpcContext {
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
-    },
+    };
+  return {
+    user,
+    ownerUser: role === "admin" ? user : null,
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
     res: {} as TrpcContext["res"],
   };

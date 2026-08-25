@@ -13,7 +13,7 @@ const navigation: DashboardNavigationItem[] = [
 ];
 
 export default function OwnerProductAccess() {
-  const { user } = useAuth();
+  const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const products = trpc.portal.admin.products.list.useQuery(undefined, { enabled: isOwner });
   const clients = trpc.portal.admin.clients.useQuery(undefined, { enabled: isOwner });

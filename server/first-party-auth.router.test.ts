@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { COOKIE_NAME } from "../shared/const";
+import { COOKIE_NAME, OWNER_SESSION_COOKIE } from "../shared/const";
 import { hashPassword } from "./localAuth";
 import { sdk } from "./_core/sdk";
 
@@ -23,6 +23,7 @@ function context(user: any = null) {
     cookies,
     ctx: {
       user,
+      ownerUser: user?.role === "admin" ? user : null,
       req: { protocol: "https", headers: {} },
       res: {
         cookie: (name: string, value: string, options: Record<string, unknown>) => cookies.push({ name, value, options }),
@@ -83,5 +84,28 @@ describe("first-party Digital Junction account router", () => {
 
     await expect(caller.auth.setPassword({ password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
     expect(dbMock.setUserPassword).toHaveBeenCalledWith(1, expect.not.stringContaining("Digital-Junction-Owner-2026"));
+  });
+
+  it("issues a separate owner cookie without replacing the customer-session cookie contract", async () => {
+    const owner = { ...localUser, id: 1, openId: "local-owner-1", email: "owner@example.com", role: "admin" as const, passwordHash: await hashPassword("Digital-Junction-Owner-2026") };
+    const { ctx, cookies } = context();
+    dbMock.getUserByEmail.mockResolvedValue(owner);
+    dbMock.recordUserSignIn.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerLogin({ email: "owner@example.com", password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+    expect(cookies[0]?.name).not.toBe(COOKIE_NAME);
+    await expect(sdk.verifySession(cookies[0]?.value)).resolves.toMatchObject({ openId: "local-owner-1" });
+  });
+
+  it("clears only the owner session cookie when the owner signs out", async () => {
+    const owner = { ...localUser, id: 1, role: "admin" as const };
+    const clearCookie = vi.fn();
+    const caller = appRouter.createCaller({ user: null, ownerUser: owner, req: { protocol: "https", headers: {} }, res: { clearCookie } } as any);
+
+    await expect(caller.auth.ownerLogout()).resolves.toEqual({ success: true });
+    expect(clearCookie).toHaveBeenCalledWith(OWNER_SESSION_COOKIE, expect.objectContaining({ maxAge: -1 }));
+    expect(clearCookie).not.toHaveBeenCalledWith(COOKIE_NAME, expect.anything());
   });
 });
