@@ -28,3 +28,6 @@
 - The redesigned Digital Products page now mirrors the requested marketplace hierarchy with a product heading, category tabs, search, filter panel, sorting controls, card grid, and account conversion panel.
 - Desktop and mobile verification confirm that filters and account prompts reflow cleanly while retaining the owner-only catalogue messaging.
 - Verified ten clearly labelled sample product concepts in the Digital Products catalogue and ten clearly labelled sample project concepts on the Projects page. The previews use explicit sample/concept notices and do not claim real clients, reviews, or outcomes.
+- Verified the new Client Side overview, purchases, billing, account, support, and resources routes at desktop size, plus the overview and support pages on mobile. The separate Portal route is no longer registered; client navigation now uses `/client` routes exclusively.
+- The unified client area preserves project status and shared-deliverable access while using explicit no-record and not-configured states for purchases, billing, payments, recovery, reviews, and other unavailable integrations.
+- Verified Client Purchases, Billing, Account, and Resources at the mobile breakpoint. All route-specific cards, headings, empty states, and actions retain readable hierarchy and avoid horizontal overflow at 375px width.

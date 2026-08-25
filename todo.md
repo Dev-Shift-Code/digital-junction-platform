@@ -43,3 +43,10 @@
 - [x] Verify the simplified Digital Products header and save the revision checkpoint.
 - [x] Add clearly labelled sample preview content for at least 10 digital products and 10 project concepts.
 - [x] Verify the populated Digital Products and Projects layouts and save the preview checkpoint.
+- [x] Extract client-side functions from the uploaded reference screens while preserving the existing Digital Junction design system.
+- [x] Complete reference mapping for authentication, recovery, payment, support, resources, reviews, and error-state flows; classify each as live or placeholder.
+- [x] Build client-facing dashboard, account settings, purchase library, billing placeholders, support, and resource routes with protected access.
+- [x] Verify the client-side experience across desktop and mobile and save the completed checkpoint.
+- [x] Verify Client Purchases, Billing, Account, and Resources at the mobile breakpoint and record the final responsive findings.
+- [x] Save the completed unified Client Side checkpoint after full responsive verification.
+- [x] Replace the separate Portal navigation and route with the unified authenticated Client Side area.
