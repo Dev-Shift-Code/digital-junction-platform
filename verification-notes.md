@@ -25,3 +25,5 @@
 - Global focus-visible styling, existing card/button hover affordances, sticky navigation refinement, mobile-drawer controls, and reduced-motion handling were reviewed as part of the public interaction audit.
 - Automated interaction checks now verify the global focus-visible treatment, reduced-motion fallback, navigation/card/button hover affordances, and the labelled mobile-navigation control; all three checks pass.
 - Expanded interaction coverage also verifies form focus styling and footer legal-link destinations, bringing the public accessibility suite to four passing checks.
+- The redesigned Digital Products page now mirrors the requested marketplace hierarchy with a product heading, category tabs, search, filter panel, sorting controls, card grid, and account conversion panel.
+- Desktop and mobile verification confirm that filters and account prompts reflow cleanly while retaining the owner-only catalogue messaging.

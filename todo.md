@@ -36,3 +36,6 @@
 - [x] Validate the revised public experience and save the completed landing-page checkpoint.
 - [x] Replace public navigation Client portal and Get started labels with Log in and Sign up.
 - [x] Verify the revised public navigation actions and save the checkpoint.
+- [x] Redesign Digital Products into the requested marketplace-style catalogue with category tabs, search, filters, sorting, and product cards.
+- [x] Add account conversion prompts to the product catalogue while preserving the owner-only product model.
+- [x] Verify the responsive marketplace-style catalogue and save the revision checkpoint.
