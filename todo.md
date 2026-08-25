@@ -105,3 +105,7 @@
 - [x] Save the independent-session revision checkpoint.
 - [x] Preserve a safe legacy-owner bootstrap path until the administrator has established a dedicated owner session.
 - [x] Save the legacy-owner bootstrap safeguard checkpoint.
+- [x] Add a clear one-time owner password setup entry that works from the existing administrator session without requiring a prior direct password.
+- [x] Improve owner-login messaging when a direct owner password has not yet been configured.
+- [ ] Verify owner password setup followed by separate owner sign-in.
+- [x] Save the owner password-setup correction checkpoint.

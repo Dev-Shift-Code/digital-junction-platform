@@ -29,5 +29,7 @@ describe("authentication entry styling", () => {
     expect(shopPage).not.toContain("startLogin(");
     expect(authHook).toContain('scope === "owner" ? "/owner/login" : "/login"');
     expect(appRoutes).toContain('path={"/owner/login"}');
+    expect(appRoutes).toContain('path={"/owner/setup"}');
+    expect(authRouter).toContain("Owner password has not been set yet");
   });
 });

@@ -9,6 +9,7 @@ import OwnerContentManager from "@/pages/OwnerContentManager";
 import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
 import OwnerProductAccess from "@/pages/OwnerProductAccess";
+import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import ClientSide from "@/pages/ClientSide";
 import ClientPurchases from "@/pages/ClientPurchases";
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/login"} component={LoginEntry} />
       <Route path={"/signup"} component={SignUpEntry} />
       <Route path={"/owner/login"} component={OwnerLoginEntry} />
+      <Route path={"/owner/setup"} component={OwnerPasswordSetup} />
       <Route path={"/client"} component={ClientSide} />
       <Route path={"/client/projects"} component={ClientSide} />
       <Route path={"/client/purchases"} component={ClientPurchases} />

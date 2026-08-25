@@ -41,7 +41,9 @@ export const appRouter = router({
     }),
     ownerLogin: publicProcedure.input(credentialsInput).mutation(async ({ ctx, input }) => {
       const user = await db.getUserByEmail(normalizeEmail(input.email));
-      if (!user || user.role !== "admin" || !await verifyPassword(input.password, user.passwordHash)) throw new Error("Incorrect owner email or password.");
+      if (!user || user.role !== "admin") throw new Error("Incorrect owner email or password.");
+      if (!user.passwordHash) throw new Error("Owner password has not been set yet. Open /owner/setup from your existing administrator access first.");
+      if (!await verifyPassword(input.password, user.passwordHash)) throw new Error("Incorrect owner email or password.");
       await db.recordUserSignIn(user.openId);
       await issueLocalSession(ctx, user, "owner");
       return { success: true } as const;

@@ -99,6 +99,14 @@ describe("first-party Digital Junction account router", () => {
     await expect(sdk.verifySession(cookies[0]?.value)).resolves.toMatchObject({ openId: "local-owner-1" });
   });
 
+  it("explains when an existing owner must set a direct password before separate owner login", async () => {
+    const { ctx } = context();
+    dbMock.getUserByEmail.mockResolvedValue({ ...localUser, id: 1, role: "admin" as const, passwordHash: null });
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerLogin({ email: "owner@example.com", password: "Digital-Junction-Owner-2026" })).rejects.toThrow("Owner password has not been set yet");
+  });
+
   it("clears only the owner session cookie when the owner signs out", async () => {
     const owner = { ...localUser, id: 1, role: "admin" as const };
     const clearCookie = vi.fn();
