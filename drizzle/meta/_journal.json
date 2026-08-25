@@ -43,6 +43,13 @@
       "when": 1787639081082,
       "tag": "0005_magical_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787647594271,
+      "tag": "0006_public_cloak",
+      "breakpoints": true
     }
   ]
 }

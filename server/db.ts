@@ -89,6 +89,39 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(input: { openId: string; email: string; passwordHash: string }) {
+  const db = requireDatabase(await getDb());
+  await db.insert(users).values({
+    openId: input.openId,
+    email: input.email,
+    name: input.email.split("@")[0] ?? "Digital Junction customer",
+    passwordHash: input.passwordHash,
+    loginMethod: "digital-junction",
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+  const user = await getUserByOpenId(input.openId);
+  if (!user) throw new Error("Unable to create account");
+  return user;
+}
+
+export async function recordUserSignIn(openId: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.openId, openId));
+}
+
+export async function setUserPassword(userId: number, passwordHash: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(users).set({ passwordHash, loginMethod: "digital-junction" }).where(eq(users.id, userId));
+}
+
 function requireDatabase<T>(database: T | null): T {
   if (!database) throw new Error("Database is not available");
   return database;

@@ -63,3 +63,10 @@
 - [x] Verify responsive authentication-entry screens and save the revision checkpoint.
 - [x] Replace the non-functional local credential forms with an honest managed-account handoff while preserving the DJDC authentication layout.
 - [x] Verify that the Log in and Sign up routes visibly match the available managed authentication behavior.
+- [x] Audit existing user records, protected routes, and session compatibility for first-party Digital Junction accounts.
+- [x] Add secure first-party customer registration, login, password hashing, session issuance, and logout without showing the Manus account chooser.
+- [x] Connect the existing DJDC Log in and Sign up forms to real account creation and authentication with clear validation states.
+- [x] Verify direct customer registration, login, logout, and protected Client Side access at desktop and mobile widths.
+- [x] Save the first-party authentication revision checkpoint.
+- [x] Add automated first-party registration and login session tests, including protected Client Side procedure access.
+- [x] Add a protected owner password-setup flow so the existing administrator can move from the legacy session to direct DJDC login safely.
