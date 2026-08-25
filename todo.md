@@ -74,7 +74,7 @@
 - [x] Rebuild the Client Side Overview around the requested customer dashboard functions: profile header, product library, search, activity, support, and account navigation.
 - [x] Verify logout routing and Client Side Overview behavior at desktop and mobile widths.
 - [x] Save the revised Client Side checkpoint.
-- [ ] Observe an end-to-end Client Side sign-out returning to the public homepage in an authenticated browser session.
+- [x] Observe an end-to-end Client Side sign-out returning to the public homepage in an authenticated browser session.
 - [x] Remove the Service Workspace section from the Client Overview.
 - [x] Reduce Client Side sidebar navigation to Overview only and top tabs to Dashboard, My Purchases, and Billing & Invoices.
 - [x] Rebuild My Purchases as a DJDC-styled product library with search, filter, sort, product selection, and clearly labelled preview download details.
@@ -101,23 +101,28 @@
 - [x] Audit customer and owner session cookie handling, route guards, and logout behavior.
 - [x] Implement independent customer and owner session cookies so logging into one area does not displace the other.
 - [x] Add a dedicated Owner sign-in entry and owner-session guard while preserving direct customer login.
-- [ ] Verify independent Customer and Owner Dashboard access and logout behavior.
+- [x] Verify independent Customer and Owner Dashboard access and logout behavior.
 - [x] Save the independent-session revision checkpoint.
 - [x] Preserve a safe legacy-owner bootstrap path until the administrator has established a dedicated owner session.
 - [x] Save the legacy-owner bootstrap safeguard checkpoint.
 - [x] Add a clear one-time owner password setup entry that works from the existing administrator session without requiring a prior direct password.
 - [x] Improve owner-login messaging when a direct owner password has not yet been configured.
-- [ ] Verify owner password setup followed by separate owner sign-in.
+- [x] Verify owner password setup followed by separate owner sign-in.
 - [x] Save the owner password-setup correction checkpoint.
 - [x] Replace the legacy-session-only owner setup with an accessible one-time token-protected owner password setup flow.
 - [x] Add secure owner setup-token validation and one-time password creation for the configured administrator email.
-- [ ] Verify protected owner setup and separate owner sign-in without needing the active Client Side session.
-- [ ] Save the accessible owner-setup revision checkpoint.
+- [x] Verify protected owner setup and separate owner sign-in without needing the active Client Side session.
+- [x] Save the accessible owner-setup revision checkpoint.
 - [x] Audit the existing owner routes, source data, and safe clearly labelled dashboard metric states.
 - [x] Build the DJDC Owner Side shell with Dashboard, Inventory, Sales, Customers, Content, Vouchers, Settings, and Support navigation.
 - [x] Rework owner inventory, content, product access, and shop controls into the requested operations workspace.
 - [x] Add safe clearly labelled preview states for sales, customer, voucher, settings, and support views without fabricating business transactions or results.
 - [ ] Verify Owner Side responsive views and owner-only access controls.
-- [ ] Save the Owner Side redesign checkpoint.
+- [x] Save the Owner Side redesign checkpoint.
 - [x] Observe the unauthenticated `/owner` route guard and direct token-protected `/owner/setup` form in a browser without a Client Side session.
-- [ ] Observe the authenticated Owner Dashboard, Inventory, Sales, and Customers views in a browser using the new dedicated owner session, then mark responsive Owner Side verification complete.
+- [x] Observe the authenticated Owner Dashboard, Inventory, Sales, and Customers views in a browser using the new dedicated owner session, then mark responsive Owner Side verification complete.
+- [x] Inspect the authenticated Owner Dashboard and Inventory routes in the user’s browser after direct setup.
+- [x] Inspect authenticated Sales and Customers routes in the user’s browser using the dedicated owner session.
+- [x] Capture inspectable direct `/owner/login` form-submission evidence after setup, without a Client Side session, before marking the separate sign-in verification complete.
+- [x] Observe authenticated Client Side logout returning to `/` while the separate owner session remains active.
+- [ ] Capture inspectable mobile browser evidence for Owner Dashboard, Inventory, Sales, and Customers before completing responsive Owner Side verification.
