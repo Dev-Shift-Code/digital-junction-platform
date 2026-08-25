@@ -39,3 +39,5 @@
 - [x] Redesign Digital Products into the requested marketplace-style catalogue with category tabs, search, filters, sorting, and product cards.
 - [x] Add account conversion prompts to the product catalogue while preserving the owner-only product model.
 - [x] Verify the responsive marketplace-style catalogue and save the revision checkpoint.
+- [x] Remove the Home > Digital Products breadcrumb from the Digital Products page.
+- [x] Verify the simplified Digital Products header and save the revision checkpoint.
