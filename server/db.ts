@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, digitalProducts, InsertUser, inquiries, milestones, portalContents, productInquiries, projectClients, projects, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, InsertUser, inquiries, milestones, portalContents, productAccess, productInquiries, projectClients, projects, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -307,6 +307,51 @@ export async function saveDigitalProduct(values: typeof digitalProducts.$inferIn
   const result = await db.insert(digitalProducts).values(values);
   const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result[0].insertId))).limit(1);
   return created[0];
+}
+
+export async function getUserProductAccess(userId: number) {
+  const db = requireDatabase(await getDb());
+  return db
+    .select({ access: productAccess, product: digitalProducts })
+    .from(productAccess)
+    .innerJoin(digitalProducts, eq(productAccess.productId, digitalProducts.id))
+    .where(eq(productAccess.userId, userId))
+    .orderBy(desc(productAccess.updatedAt));
+}
+
+export async function getAuthorizedProductDownload(userId: number, accessId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db
+    .select({ access: productAccess, product: digitalProducts })
+    .from(productAccess)
+    .innerJoin(digitalProducts, eq(productAccess.productId, digitalProducts.id))
+    .where(and(eq(productAccess.id, accessId), eq(productAccess.userId, userId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getAllProductAccess() {
+  const db = requireDatabase(await getDb());
+  return db
+    .select({ access: productAccess, product: digitalProducts, user: users })
+    .from(productAccess)
+    .innerJoin(digitalProducts, eq(productAccess.productId, digitalProducts.id))
+    .innerJoin(users, eq(productAccess.userId, users.id))
+    .orderBy(desc(productAccess.updatedAt));
+}
+
+export async function grantProductAccess(input: { productId: number; userId: number; deliveryUrl: string; deliveryFileName: string; grantedByUserId: number }) {
+  const db = requireDatabase(await getDb());
+  await db.insert(productAccess).values(input).onDuplicateKeyUpdate({
+    set: {
+      deliveryUrl: input.deliveryUrl,
+      deliveryFileName: input.deliveryFileName,
+      grantedByUserId: input.grantedByUserId,
+      updatedAt: new Date(),
+    },
+  });
+  const rows = await db.select().from(productAccess).where(and(eq(productAccess.productId, input.productId), eq(productAccess.userId, input.userId))).limit(1);
+  return rows[0];
 }
 
 export async function createProductInquiry(values: typeof productInquiries.$inferInsert) {

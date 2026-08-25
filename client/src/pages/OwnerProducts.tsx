@@ -2,10 +2,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
 import { sampleProducts } from "@/data/samplePreview";
 import { trpc } from "@/lib/trpc";
-import { Archive, Check, Eye, LayoutDashboard, Loader2, PackageOpen, Pencil, Plus, ShieldAlert, SlidersHorizontal, Sparkles, Store } from "lucide-react";
+import { Archive, Check, Eye, KeyRound, LayoutDashboard, Loader2, PackageOpen, Pencil, Plus, ShieldAlert, SlidersHorizontal, Sparkles, Store } from "lucide-react";
 import { FormEvent, useState } from "react";
 
-const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }, { icon: Store, label: "Shop preview", path: "/owner/shop-preview" }];
+const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }, { icon: KeyRound, label: "Product access", path: "/owner/product-access" }, { icon: Store, label: "Shop preview", path: "/owner/shop-preview" }];
 
 type ProductValues = { id: number; title: string; slug: string; category: string; summary: string; description: string | null; deliveryNotes: string | null; price: string; coverImageUrl: string | null; isPublished: boolean; isFeatured: boolean; isArchived: boolean; sortOrder: number };
 

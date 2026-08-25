@@ -70,3 +70,31 @@
 - [x] Save the first-party authentication revision checkpoint.
 - [x] Add automated first-party registration and login session tests, including protected Client Side procedure access.
 - [x] Add a protected owner password-setup flow so the existing administrator can move from the legacy session to direct DJDC login safely.
+- [x] Redirect clients to the public homepage immediately after logout.
+- [x] Rebuild the Client Side Overview around the requested customer dashboard functions: profile header, product library, search, activity, support, and account navigation.
+- [x] Verify logout routing and Client Side Overview behavior at desktop and mobile widths.
+- [x] Save the revised Client Side checkpoint.
+- [ ] Observe an end-to-end Client Side sign-out returning to the public homepage in an authenticated browser session.
+- [x] Remove the Service Workspace section from the Client Overview.
+- [x] Reduce Client Side sidebar navigation to Overview only and top tabs to Dashboard, My Purchases, and Billing & Invoices.
+- [x] Rebuild My Purchases as a DJDC-styled product library with search, filter, sort, product selection, and clearly labelled preview download details.
+- [x] Verify simplified Client Side navigation and My Purchases at desktop and mobile widths.
+- [x] Save the simplified Client Side checkpoint.
+- [x] Add a real My Purchases filter that changes the visible product-library results.
+- [x] Reconfirm the simplified Client Side and My Purchases screens with an authenticated customer session at desktop and mobile widths.
+- [ ] Observe the simplified Client Side and My Purchases in a real authenticated customer browser session at desktop and mobile widths.
+- [x] Audit existing native product data and owner controls for real customer product-access grants.
+- [x] Add secure owner-granted product access records and authorized client download delivery.
+- [x] Change My Purchases actions so genuine access records show Download while static sample records remain clearly non-downloadable.
+- [ ] Verify owner grants and authenticated customer download authorization.
+- [x] Add automated successful owner-grant, client-list, and authorized-download integration coverage.
+- [ ] Execute and observe one real owner-granted product access flow with an authenticated client Download action once genuine product and customer records are available.
+- [x] Save the product-access revision checkpoint.
+- [x] Create safe clearly labelled sample billing records and invoice-detail content without payment or tax claims.
+- [x] Build a Billing & Invoices table with summary, search, filter, sort, and eye-triggered detail view.
+- [x] Verify Billing & Invoices and the invoice-detail page at desktop and mobile widths.
+- [x] Save the Billing & Invoices revision checkpoint.
+- [x] Add a visible invoice-document Download action beside the eye action, with sample records clearly non-downloadable until real documents exist.
+- [x] Verify adjacent Billing & Invoices row actions at desktop and mobile widths.
+- [x] Add a real Billing & Invoices filter that changes visible table records.
+- [ ] Observe Billing & Invoices and invoice detail in a real authenticated customer browser session at desktop and mobile widths.

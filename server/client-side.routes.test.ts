@@ -3,19 +3,36 @@ import { describe, expect, it } from "vitest";
 
 const appRoutes = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const clientNavigation = readFileSync(new URL("../client/src/components/ClientAreaLayout.tsx", import.meta.url), "utf8");
-const publicLayout = readFileSync(new URL("../client/src/components/PublicLayout.tsx", import.meta.url), "utf8");
+const dashboardLayout = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+const clientOverview = readFileSync(new URL("../client/src/components/ClientOverviewDashboard.tsx", import.meta.url), "utf8");
+const purchases = readFileSync(new URL("../client/src/pages/ClientPurchases.tsx", import.meta.url), "utf8");
+const billing = readFileSync(new URL("../client/src/pages/ClientBilling.tsx", import.meta.url), "utf8");
+const invoiceDetail = readFileSync(new URL("../client/src/pages/ClientInvoiceDetail.tsx", import.meta.url), "utf8");
+const ownerProductAccess = readFileSync(new URL("../client/src/pages/OwnerProductAccess.tsx", import.meta.url), "utf8");
 
 describe("unified client side", () => {
   it("registers the client-side routes without exposing the old portal path", () => {
     expect(appRoutes).toContain('path={"/client"}');
     expect(appRoutes).toContain('path={"/client/purchases"}');
     expect(appRoutes).toContain('path={"/client/billing"}');
+    expect(appRoutes).toContain('path={"/client/billing/:invoiceId"}');
     expect(appRoutes).toContain('path={"/client/account"}');
     expect(appRoutes).not.toContain('path={"/portal"}');
   });
 
-  it("offers customer navigation for service projects, product orders, billing, account, support, and resources", () => {
-    ["Service projects", "Orders & downloads", "Billing & invoices", "Account", "Support", "Resources"].forEach(label => expect(clientNavigation).toContain(`label: "${label}"`));
-    expect(publicLayout).toContain('window.location.assign("/client")');
+  it("limits navigation to Overview in the sidebar and Dashboard, My Purchases, and Billing & Invoices in customer tabs", () => {
+    expect(clientNavigation).toContain('label: "Overview"');
+    ["Service projects", "Orders & downloads", "Account", "Support", "Resources"].forEach(label => expect(clientNavigation).not.toContain(`label: "${label}"`));
+    ["Dashboard", "My Purchases", "Billing & Invoices"].forEach(label => expect(clientNavigation).toContain(label));
+  });
+
+  it("returns signed-out customers to the public site and retains the requested customer dashboard functions", () => {
+    expect(dashboardLayout).toContain('window.location.assign("/")');
+    ["Purchased products", "Recent activity", "Product help", "Search product library"].forEach(copy => expect(clientOverview).toContain(copy));
+    expect(clientOverview).not.toContain("Your service projects");
+    ["Your Product Library", "Selected product", "Preview access details", "Search your product library", "Download access", "setTagFilter", "tagFilter === \"All\""].forEach(copy => expect(purchases).toContain(copy));
+    ["Billing & Invoices", "Sample billing records", "View sample invoice detail", "Sample invoice document unavailable", "Preview only", "setRecordType", "recordType === \"All\""].forEach(copy => expect(billing).toContain(copy));
+    ["Sample invoice detail", "not an issued invoice", "Preview total"].forEach(copy => expect(invoiceDetail).toContain(copy));
+    ["Grant download access", "Grant Download", "Granted downloads"].forEach(copy => expect(ownerProductAccess).toContain(copy));
   });
 });

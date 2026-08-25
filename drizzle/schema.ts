@@ -168,6 +168,25 @@ export const digitalProducts = mysqlTable(
   table => [index("digital_products_public_idx").on(table.isPublished, table.isArchived, table.isFeatured, table.category)],
 );
 
+export const productAccess = mysqlTable(
+  "productAccess",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    productId: int("productId").notNull(),
+    userId: int("userId").notNull(),
+    deliveryUrl: text("deliveryUrl").notNull(),
+    deliveryFileName: varchar("deliveryFileName", { length: 255 }).notNull(),
+    grantedByUserId: int("grantedByUserId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("product_access_user_product_unique").on(table.productId, table.userId),
+    index("product_access_user_idx").on(table.userId),
+    index("product_access_product_idx").on(table.productId),
+  ],
+);
+
 export const productInquiries = mysqlTable(
   "productInquiries",
   {

@@ -8,10 +8,12 @@ import OwnerDashboard from "@/pages/OwnerDashboard";
 import OwnerContentManager from "@/pages/OwnerContentManager";
 import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
+import OwnerProductAccess from "@/pages/OwnerProductAccess";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import ClientSide from "@/pages/ClientSide";
 import ClientPurchases from "@/pages/ClientPurchases";
 import ClientBilling from "@/pages/ClientBilling";
+import ClientInvoiceDetail from "@/pages/ClientInvoiceDetail";
 import ClientAccount from "@/pages/ClientAccount";
 import ClientSupport from "@/pages/ClientSupport";
 import ClientResources from "@/pages/ClientResources";
@@ -40,6 +42,7 @@ function Router() {
       <Route path={"/client"} component={ClientSide} />
       <Route path={"/client/projects"} component={ClientSide} />
       <Route path={"/client/purchases"} component={ClientPurchases} />
+      <Route path={"/client/billing/:invoiceId"} component={ClientInvoiceDetail} />
       <Route path={"/client/billing"} component={ClientBilling} />
       <Route path={"/client/account"} component={ClientAccount} />
       <Route path={"/client/support"} component={ClientSupport} />
@@ -47,6 +50,7 @@ function Router() {
       <Route path={"/owner"} component={OwnerDashboard} />
       <Route path={"/owner/manage"} component={OwnerContentManager} />
       <Route path={"/owner/products"} component={OwnerProducts} />
+      <Route path={"/owner/product-access"} component={OwnerProductAccess} />
       <Route path={"/owner/shop-preview"} component={OwnerShopPreview} />
       <Route path={"/privacy"} component={PrivacyPage} />
       <Route path={"/terms"} component={TermsPage} />

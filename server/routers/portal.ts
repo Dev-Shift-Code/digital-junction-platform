@@ -14,11 +14,15 @@ import {
   getClientProjectDetail,
   getClientProjects,
   getClientUsers,
+  getAllProductAccess,
+  getAuthorizedProductDownload,
   getAllDigitalProducts,
   getDigitalProductBySlug,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
   getPublishedPortalContent,
+  getUserProductAccess,
+  grantProductAccess,
   saveCaseStudy,
   saveDigitalProduct,
   savePortalContent,
@@ -103,6 +107,32 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
+  }),
+  productAccess: router({
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        const rows = await getUserProductAccess(ctx.user.id);
+        return rows.map(({ access, product }) => ({
+          accessId: access.id,
+          deliveryFileName: access.deliveryFileName,
+          grantedAt: access.createdAt,
+          product: {
+            id: product.id,
+            title: product.title,
+            category: product.category,
+            summary: product.summary,
+            version: product.updatedAt,
+          },
+        }));
+      } catch (error) {
+        return unavailable(error);
+      }
+    }),
+    download: protectedProcedure.input(z.object({ accessId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const result = await getAuthorizedProductDownload(ctx.user.id, input.accessId);
+      if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Download access was not found for this account." });
+      return { fileUrl: result.access.deliveryUrl, fileName: result.access.deliveryFileName, productTitle: result.product.title };
+    }),
   }),
   inquiries: router({
     create: publicProcedure
@@ -354,6 +384,24 @@ export const portalRouter = router({
           try {
             const { productId, price, ...product } = input;
             return saveDigitalProduct({ ...product, price: price.toFixed(2) }, productId);
+          } catch (error) {
+            return unavailable(error);
+          }
+      }),
+    }),
+    productAccess: router({
+      list: adminProcedure.query(async () => {
+        try {
+          return getAllProductAccess();
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      grant: adminProcedure
+        .input(z.object({ productId: z.number().int().positive(), userId: z.number().int().positive(), deliveryUrl: z.string().url().max(5000), deliveryFileName: z.string().trim().min(1).max(255) }))
+        .mutation(async ({ ctx, input }) => {
+          try {
+            return grantProductAccess({ ...input, grantedByUserId: ctx.user.id });
           } catch (error) {
             return unavailable(error);
           }
