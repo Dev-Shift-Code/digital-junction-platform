@@ -41,3 +41,5 @@
 - [x] Verify the responsive marketplace-style catalogue and save the revision checkpoint.
 - [x] Remove the Home > Digital Products breadcrumb from the Digital Products page.
 - [x] Verify the simplified Digital Products header and save the revision checkpoint.
+- [x] Add clearly labelled sample preview content for at least 10 digital products and 10 project concepts.
+- [x] Verify the populated Digital Products and Projects layouts and save the preview checkpoint.

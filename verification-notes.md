@@ -27,3 +27,4 @@
 - Expanded interaction coverage also verifies form focus styling and footer legal-link destinations, bringing the public accessibility suite to four passing checks.
 - The redesigned Digital Products page now mirrors the requested marketplace hierarchy with a product heading, category tabs, search, filter panel, sorting controls, card grid, and account conversion panel.
 - Desktop and mobile verification confirm that filters and account prompts reflow cleanly while retaining the owner-only catalogue messaging.
+- Verified ten clearly labelled sample product concepts in the Digital Products catalogue and ten clearly labelled sample project concepts on the Projects page. The previews use explicit sample/concept notices and do not claim real clients, reviews, or outcomes.
