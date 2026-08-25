@@ -34,3 +34,5 @@
 - [x] Capture concrete focus-visible and hover-state verification evidence for key public navigation, form, card, button, and footer interactions.
 - [x] Add and run automated interaction checks for public form fields and footer links before final checkpointing.
 - [x] Validate the revised public experience and save the completed landing-page checkpoint.
+- [x] Replace public navigation Client portal and Get started labels with Log in and Sign up.
+- [x] Verify the revised public navigation actions and save the checkpoint.

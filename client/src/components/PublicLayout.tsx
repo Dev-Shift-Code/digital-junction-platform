@@ -53,11 +53,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            <button type="button" className="button-primary !min-h-10 !px-3.5" onClick={portalAction}>
-              {isAuthenticated ? "Client portal" : "Client login"}
+            <button type="button" className="button-primary !min-h-10 !px-3.5" onClick={() => startLogin()}>
+              Log in
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </button>
-            <Link href="/contact" className="button-quiet buttonlike !min-h-10 !px-3.5">Get started</Link>
+            <button type="button" className="button-quiet !min-h-10 !px-3.5" onClick={() => startLogin()}>Sign up</button>
           </div>
 
           <div className="flex items-center gap-1.5 md:hidden">
@@ -74,10 +74,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   {label}
                 </Link>
               ))}
-              <button type="button" className="button-primary mt-2 w-full" onClick={portalAction}>
-                {isAuthenticated ? "Open client portal" : "Client login"}
+              <button type="button" className="button-primary mt-2 w-full" onClick={() => startLogin()}>
+                Log in
               </button>
-              <Link href="/contact" onClick={closeMenu} className="button-quiet buttonlike mt-1 w-full">Get started</Link>
+              <button type="button" onClick={() => startLogin()} className="button-quiet mt-1 w-full">Sign up</button>
             </div>
           </nav>
         )}
