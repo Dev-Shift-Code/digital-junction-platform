@@ -1,11 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import { ownerNavigation } from "@/data/ownerNavigation";
 import { sampleProducts } from "@/data/samplePreview";
 import { trpc } from "@/lib/trpc";
 import { ArrowUpRight, Eye, LayoutDashboard, Loader2, PackageOpen, ShieldAlert, SlidersHorizontal, Store } from "lucide-react";
 import { Link } from "wouter";
 
-const navigation: DashboardNavigationItem[] = [{ icon: LayoutDashboard, label: "Overview", path: "/owner" }, { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" }, { icon: PackageOpen, label: "Digital products", path: "/owner/products" }, { icon: Store, label: "Shop preview", path: "/owner/shop-preview" }];
+const navigation = ownerNavigation;
 function money(value: string | number) { return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(Number(value)); }
 
 export default function OwnerShopPreview() {

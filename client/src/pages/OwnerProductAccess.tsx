@@ -1,16 +1,11 @@
 import { FormEvent, useMemo, useState } from "react";
-import DashboardLayout, { type DashboardNavigationItem } from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import { ownerNavigation } from "@/data/ownerNavigation";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Check, KeyRound, LayoutDashboard, Loader2, PackageOpen, ShieldAlert, SlidersHorizontal, Store, UserRound } from "lucide-react";
 
-const navigation: DashboardNavigationItem[] = [
-  { icon: LayoutDashboard, label: "Overview", path: "/owner" },
-  { icon: SlidersHorizontal, label: "Manage content", path: "/owner/manage" },
-  { icon: PackageOpen, label: "Digital products", path: "/owner/products" },
-  { icon: KeyRound, label: "Product access", path: "/owner/product-access" },
-  { icon: Store, label: "Shop preview", path: "/owner/shop-preview" },
-];
+const navigation = ownerNavigation;
 
 export default function OwnerProductAccess() {
   const { user } = useAuth({ scope: "owner" });

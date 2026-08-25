@@ -4,6 +4,7 @@ import { COOKIE_NAME, ONE_YEAR_MS, OWNER_SESSION_COOKIE } from "@shared/const";
 import * as db from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { hashPassword, normalizeEmail, verifyPassword } from "./localAuth";
@@ -13,6 +14,7 @@ const credentialsInput = z.object({
   email: z.string().email().max(320),
   password: z.string().min(8).max(128),
 });
+const ownerSetupInput = credentialsInput.extend({ setupToken: z.string().min(1).max(256) });
 
 async function issueLocalSession(ctx: { req: any; res: any }, user: { openId: string; name: string | null; email: string | null }, scope: "customer" | "owner" = "customer") {
   const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "Digital Junction customer" });
@@ -42,8 +44,18 @@ export const appRouter = router({
     ownerLogin: publicProcedure.input(credentialsInput).mutation(async ({ ctx, input }) => {
       const user = await db.getUserByEmail(normalizeEmail(input.email));
       if (!user || user.role !== "admin") throw new Error("Incorrect owner email or password.");
-      if (!user.passwordHash) throw new Error("Owner password has not been set yet. Open /owner/setup from your existing administrator access first.");
+      if (!user.passwordHash) throw new Error("Owner password has not been set yet. Open /owner/setup with your private setup token first.");
       if (!await verifyPassword(input.password, user.passwordHash)) throw new Error("Incorrect owner email or password.");
+      await db.recordUserSignIn(user.openId);
+      await issueLocalSession(ctx, user, "owner");
+      return { success: true } as const;
+    }),
+    ownerSetup: publicProcedure.input(ownerSetupInput).mutation(async ({ ctx, input }) => {
+      if (!ENV.ownerSetupToken || input.setupToken !== ENV.ownerSetupToken) throw new Error("Invalid owner setup token.");
+      const user = await db.getUserByEmail(normalizeEmail(input.email));
+      if (!user || user.role !== "admin") throw new Error("This email is not the configured owner account.");
+      if (user.passwordHash) throw new Error("A direct owner password is already configured. Use Owner sign in.");
+      await db.setUserPassword(user.id, await hashPassword(input.password));
       await db.recordUserSignIn(user.openId);
       await issueLocalSession(ctx, user, "owner");
       return { success: true } as const;

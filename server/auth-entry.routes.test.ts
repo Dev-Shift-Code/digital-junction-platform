@@ -31,5 +31,6 @@ describe("authentication entry styling", () => {
     expect(appRoutes).toContain('path={"/owner/login"}');
     expect(appRoutes).toContain('path={"/owner/setup"}');
     expect(authRouter).toContain("Owner password has not been set yet");
+    expect(authRouter).toContain("ownerSetup: publicProcedure");
   });
 });

@@ -10,6 +10,7 @@ import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
 import OwnerProductAccess from "@/pages/OwnerProductAccess";
 import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
+import { OwnerCustomers, OwnerSales, OwnerSettings, OwnerSupport, OwnerVouchers } from "@/pages/OwnerWorkspaceViews";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import ClientSide from "@/pages/ClientSide";
 import ClientPurchases from "@/pages/ClientPurchases";
@@ -43,6 +44,13 @@ function Router() {
       <Route path={"/signup"} component={SignUpEntry} />
       <Route path={"/owner/login"} component={OwnerLoginEntry} />
       <Route path={"/owner/setup"} component={OwnerPasswordSetup} />
+      <Route path={"/owner/inventory"} component={OwnerProducts} />
+      <Route path={"/owner/sales"} component={OwnerSales} />
+      <Route path={"/owner/customers"} component={OwnerCustomers} />
+      <Route path={"/owner/content"} component={OwnerContentManager} />
+      <Route path={"/owner/vouchers"} component={OwnerVouchers} />
+      <Route path={"/owner/settings"} component={OwnerSettings} />
+      <Route path={"/owner/support"} component={OwnerSupport} />
       <Route path={"/client"} component={ClientSide} />
       <Route path={"/client/projects"} component={ClientSide} />
       <Route path={"/client/purchases"} component={ClientPurchases} />

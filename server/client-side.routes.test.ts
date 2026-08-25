@@ -9,6 +9,8 @@ const purchases = readFileSync(new URL("../client/src/pages/ClientPurchases.tsx"
 const billing = readFileSync(new URL("../client/src/pages/ClientBilling.tsx", import.meta.url), "utf8");
 const invoiceDetail = readFileSync(new URL("../client/src/pages/ClientInvoiceDetail.tsx", import.meta.url), "utf8");
 const ownerProductAccess = readFileSync(new URL("../client/src/pages/OwnerProductAccess.tsx", import.meta.url), "utf8");
+const ownerNavigation = readFileSync(new URL("../client/src/data/ownerNavigation.ts", import.meta.url), "utf8");
+const ownerDashboard = readFileSync(new URL("../client/src/pages/OwnerDashboard.tsx", import.meta.url), "utf8");
 
 describe("unified client side", () => {
   it("registers the client-side routes without exposing the old portal path", () => {
@@ -34,5 +36,11 @@ describe("unified client side", () => {
     ["Billing & Invoices", "Sample billing records", "View sample invoice detail", "Sample invoice document unavailable", "Preview only", "setRecordType", "recordType === \"All\""].forEach(copy => expect(billing).toContain(copy));
     ["Sample invoice detail", "not an issued invoice", "Preview total"].forEach(copy => expect(invoiceDetail).toContain(copy));
     ["Grant download access", "Grant Download", "Granted downloads"].forEach(copy => expect(ownerProductAccess).toContain(copy));
+  });
+
+  it("registers the requested DJDC owner operations navigation without fabricated financial results", () => {
+    ["Dashboard", "Inventory", "Sales", "Customers", "Content", "Vouchers", "Settings", "Support"].forEach(label => expect(ownerNavigation).toContain(`label: "${label}"`));
+    ["/owner/inventory", "/owner/sales", "/owner/customers", "/owner/content", "/owner/vouchers", "/owner/settings", "/owner/support"].forEach(path => expect(appRoutes).toContain(`path={"${path}"}`));
+    expect(ownerDashboard).toContain("No real sales recorded");
   });
 });

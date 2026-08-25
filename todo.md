@@ -109,3 +109,15 @@
 - [x] Improve owner-login messaging when a direct owner password has not yet been configured.
 - [ ] Verify owner password setup followed by separate owner sign-in.
 - [x] Save the owner password-setup correction checkpoint.
+- [x] Replace the legacy-session-only owner setup with an accessible one-time token-protected owner password setup flow.
+- [x] Add secure owner setup-token validation and one-time password creation for the configured administrator email.
+- [ ] Verify protected owner setup and separate owner sign-in without needing the active Client Side session.
+- [ ] Save the accessible owner-setup revision checkpoint.
+- [x] Audit the existing owner routes, source data, and safe clearly labelled dashboard metric states.
+- [x] Build the DJDC Owner Side shell with Dashboard, Inventory, Sales, Customers, Content, Vouchers, Settings, and Support navigation.
+- [x] Rework owner inventory, content, product access, and shop controls into the requested operations workspace.
+- [x] Add safe clearly labelled preview states for sales, customer, voucher, settings, and support views without fabricating business transactions or results.
+- [ ] Verify Owner Side responsive views and owner-only access controls.
+- [ ] Save the Owner Side redesign checkpoint.
+- [x] Observe the unauthenticated `/owner` route guard and direct token-protected `/owner/setup` form in a browser without a Client Side session.
+- [ ] Observe the authenticated Owner Dashboard, Inventory, Sales, and Customers views in a browser using the new dedicated owner session, then mark responsive Owner Side verification complete.

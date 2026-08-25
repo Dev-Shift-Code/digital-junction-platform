@@ -107,6 +107,21 @@ describe("first-party Digital Junction account router", () => {
     await expect(caller.auth.ownerLogin({ email: "owner@example.com", password: "Digital-Junction-Owner-2026" })).rejects.toThrow("Owner password has not been set yet");
   });
 
+  it("uses the configured private owner setup token to create a direct owner password and isolated owner session", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    expect(setupToken).toBeTruthy();
+    const { ctx, cookies } = context();
+    const owner = { ...localUser, id: 1, openId: "local-owner-setup", email: "devshiftcode2025@gmail.com", role: "admin" as const, passwordHash: null };
+    dbMock.getUserByEmail.mockResolvedValue(owner);
+    dbMock.setUserPassword.mockResolvedValue(undefined);
+    dbMock.recordUserSignIn.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: owner.email, setupToken: setupToken!, password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.setUserPassword).toHaveBeenCalledWith(owner.id, expect.not.stringContaining("Digital-Junction-Owner-2026"));
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
   it("clears only the owner session cookie when the owner signs out", async () => {
     const owner = { ...localUser, id: 1, role: "admin" as const };
     const clearCookie = vi.fn();
