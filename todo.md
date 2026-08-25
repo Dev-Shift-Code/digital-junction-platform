@@ -1,0 +1,14 @@
+# Project TODO
+
+- [x] Configure the connected Shopify storefront for digital products, cart, and checkout.
+- [x] Define database-backed project, milestone, deliverable, client-access, and portal-content records.
+- [x] Build the public Digital Junction agency website with branded navigation, service offerings, case studies, and contact conversion paths.
+- [x] Build the Shopify storefront browsing experience and link it from the public site.
+- [x] Build the authenticated client portal for project status, milestones, deliverables, and account information.
+- [x] Build the owner-only dashboard for project updates, milestone management, client access, and portal-visible content.
+- [x] Apply responsive, accessible public-site and dashboard navigation patterns.
+- [x] Add automated tests for protected project and portal workflows.
+- [x] Verify the responsive interface and save a completed project checkpoint.
+- [x] Integrate the supplied DJDC logo across public and internal navigation and footer branding.
+- [x] Add a data-backed selected-work and case-study collection that the owner can publish to the public Work page.
+- [x] Extend owner workflows to review and edit existing milestones, deliverables, and portal-visible content.

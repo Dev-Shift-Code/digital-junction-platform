@@ -1,13 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Fraunces", serif;
+  --font-mono: "DM Mono", monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -27,151 +28,64 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
+  --radius: 0.95rem;
+  --background: oklch(0.984 0.021 86);
+  --foreground: oklch(0.255 0.035 165);
+  --card: oklch(0.995 0.012 86);
+  --card-foreground: oklch(0.255 0.035 165);
+  --popover: oklch(0.995 0.012 86);
+  --popover-foreground: oklch(0.255 0.035 165);
+  --primary: oklch(0.491 0.075 166);
+  --primary-foreground: oklch(0.99 0.012 86);
+  --secondary: oklch(0.925 0.047 163);
+  --secondary-foreground: oklch(0.255 0.035 165);
+  --muted: oklch(0.947 0.025 92);
+  --muted-foreground: oklch(0.505 0.04 165);
+  --accent: oklch(0.814 0.106 158);
+  --accent-foreground: oklch(0.225 0.04 165);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --border: oklch(0.835 0.034 158 / 0.65);
+  --input: oklch(0.835 0.034 158 / 0.65);
+  --ring: oklch(0.491 0.075 166);
 }
 
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
-}
+* { border-color: var(--border); }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: "DM Sans", sans-serif; }
+button, a, input, textarea, select { font: inherit; }
+button:not(:disabled), a[href] { cursor: pointer; }
+button:not(:disabled):active, a[href].buttonlike:active { transform: scale(0.97); }
+::selection { background: oklch(0.814 0.106 158 / 0.5); color: #1A312C; }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [type="button"]:not(:disabled),
-  [type="submit"]:not(:disabled),
-  [type="reset"]:not(:disabled),
-  a[href],
-  select:not(:disabled),
-  input[type="checkbox"]:not(:disabled),
-  input[type="radio"]:not(:disabled) {
-    @apply cursor-pointer;
-  }
-}
-
-@layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
-  .container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
-  }
-
-  .flex {
-    min-height: 0;
-    min-width: 0;
-  }
-
-  @media (min-width: 640px) {
-    .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
-    }
-  }
-}
+.site-shell { min-height: 100vh; overflow: hidden; background: #FFF4E1; }
+.site-container { width: min(1180px, calc(100% - 2rem)); margin-inline: auto; }
+.display { font-family: "Fraunces", serif; letter-spacing: -0.045em; }
+.eyebrow { font-family: "DM Mono", monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #428475; }
+.site-nav { background: rgba(255, 244, 225, 0.94); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(26, 49, 44, 0.12); }
+.nav-link { position: relative; color: rgba(26, 49, 44, 0.72); font-size: 0.91rem; font-weight: 600; transition: color 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.nav-link:hover, .nav-link.active { color: #1A312C; }
+.nav-link.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -0.55rem; height: 1px; background: #428475; }
+.brand-mark { display: grid; place-items: center; width: 2.15rem; height: 2.15rem; border-radius: 0.63rem; color: #FFF4E1; background: #1A312C; font-family: "Fraunces", serif; font-size: 1.2rem; }
+.brand-name { font-family: "Fraunces", serif; font-weight: 600; letter-spacing: -0.04em; color: #1A312C; }
+.brand-kicker { color: #428475; font-family: "DM Mono", monospace; font-size: 0.58rem; letter-spacing: 0.09em; text-transform: uppercase; }
+.button-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; min-height: 2.9rem; padding: 0.72rem 1.05rem; border-radius: 0.72rem; background: #428475; color: #FFF4E1; font-size: 0.89rem; font-weight: 700; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.button-primary:hover { background: #1A312C; box-shadow: 0 10px 24px rgba(26, 49, 44, 0.18); }
+.button-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; min-height: 2.9rem; padding: 0.72rem 1.05rem; border: 1px solid rgba(255, 244, 225, 0.35); border-radius: 0.72rem; color: #FFF4E1; font-size: 0.89rem; font-weight: 700; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.button-secondary:hover { background: rgba(255, 244, 225, 0.1); }
+.button-quiet { display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; min-height: 2.7rem; padding: 0.64rem 0.9rem; border: 1px solid rgba(26, 49, 44, 0.14); border-radius: 0.7rem; color: #1A312C; font-size: 0.85rem; font-weight: 700; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.button-quiet:hover { background: rgba(26, 49, 44, 0.06); }
+.hero-grid { background-image: linear-gradient(rgba(137, 215, 183, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(137, 215, 183, 0.1) 1px, transparent 1px); background-size: 36px 36px; }
+.hero-orb { filter: blur(1px); background: radial-gradient(circle, rgba(137, 215, 183, 0.42), rgba(66, 132, 117, 0.12) 45%, transparent 72%); }
+.art-card { border: 1px solid rgba(137, 215, 183, 0.28); background: rgba(255, 244, 225, 0.08); box-shadow: 0 24px 70px rgba(1, 22, 18, 0.24); backdrop-filter: blur(8px); }
+.section-grid { background-image: linear-gradient(rgba(26, 49, 44, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 49, 44, 0.045) 1px, transparent 1px); background-size: 32px 32px; }
+.service-card { background: rgba(255, 251, 241, 0.75); border: 1px solid rgba(26, 49, 44, 0.11); border-radius: 1.2rem; transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1), border-color 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+.service-card:hover { transform: translateY(-5px); border-color: rgba(66, 132, 117, 0.46); box-shadow: 0 20px 38px rgba(26, 49, 44, 0.1); }
+.soft-rule { border-color: rgba(26, 49, 44, 0.12); }
+.form-field { width: 100%; border: 1px solid rgba(26, 49, 44, 0.18); border-radius: 0.68rem; padding: 0.78rem 0.9rem; background: rgba(255, 251, 241, 0.9); color: #1A312C; outline: none; transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.form-field:focus { border-color: #428475; box-shadow: 0 0 0 3px rgba(137, 215, 183, 0.36); }
+.cart-panel { box-shadow: -20px 0 55px rgba(26, 49, 44, 0.22); }
+@media (max-width: 720px) { .site-container { width: min(100% - 1.5rem, 1180px); } .nav-link.active::after { display: none; } }
