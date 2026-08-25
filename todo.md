@@ -58,3 +58,8 @@
 - [x] Align Client Side dummy records and navigation with reference customer flows for service projects, product orders/downloads, billing, account, and support while retaining the DJDC design system.
 - [x] Document the sample-preview fallback audit with each reviewed data-dependent screen and its fallback status.
 - [x] Add a clearly labelled read-only sample fallback for the remaining owner content-management screen.
+- [x] Audit the current Log in and Sign up entry points and preserve the existing form and authentication behavior.
+- [x] Redesign the Log in and Sign up screens in the DJDC visual system using the supplied layout only as a functional reference.
+- [x] Verify responsive authentication-entry screens and save the revision checkpoint.
+- [x] Replace the non-functional local credential forms with an honest managed-account handoff while preserving the DJDC authentication layout.
+- [x] Verify that the Log in and Sign up routes visibly match the available managed authentication behavior.

@@ -2,7 +2,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { startLogin } from "@/const";
 
 const navLinks = [
   ["Home", "/"],
@@ -29,7 +28,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const closeMenu = () => setMenuOpen(false);
   const clientAction = () => {
     if (isAuthenticated) window.location.assign("/client");
-    else startLogin();
+    else window.location.assign("/login");
   };
 
   return (
@@ -53,11 +52,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            <button type="button" className="button-primary !min-h-10 !px-3.5" onClick={() => startLogin()}>
+            <Link href="/login" className="button-primary buttonlike !min-h-10 !px-3.5">
               Log in
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
-            </button>
-            <button type="button" className="button-quiet !min-h-10 !px-3.5" onClick={() => startLogin()}>Sign up</button>
+            </Link>
+            <Link href="/signup" className="button-quiet buttonlike !min-h-10 !px-3.5">Sign up</Link>
           </div>
 
           <div className="flex items-center gap-1.5 md:hidden">
@@ -74,10 +73,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   {label}
                 </Link>
               ))}
-              <button type="button" className="button-primary mt-2 w-full" onClick={() => startLogin()}>
+              <Link href="/login" onClick={closeMenu} className="button-primary buttonlike mt-2 w-full">
                 Log in
-              </button>
-              <button type="button" onClick={() => startLogin()} className="button-quiet mt-1 w-full">Sign up</button>
+              </Link>
+              <Link href="/signup" onClick={closeMenu} className="button-quiet buttonlike mt-1 w-full">Sign up</Link>
             </div>
           </nav>
         )}
