@@ -14,8 +14,8 @@ describe("unified client side", () => {
     expect(appRoutes).not.toContain('path={"/portal"}');
   });
 
-  it("offers client navigation for projects, purchases, billing, account, support, and resources", () => {
-    ["My projects", "Purchases", "Billing", "Account", "Support", "Resources"].forEach(label => expect(clientNavigation).toContain(`label: "${label}"`));
+  it("offers customer navigation for service projects, product orders, billing, account, support, and resources", () => {
+    ["Service projects", "Orders & downloads", "Billing & invoices", "Account", "Support", "Resources"].forEach(label => expect(clientNavigation).toContain(`label: "${label}"`));
     expect(publicLayout).toContain('window.location.assign("/client")');
   });
 });

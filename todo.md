@@ -50,3 +50,11 @@
 - [x] Verify Client Purchases, Billing, Account, and Resources at the mobile breakpoint and record the final responsive findings.
 - [x] Save the completed unified Client Side checkpoint after full responsive verification.
 - [x] Replace the separate Portal navigation and route with the unified authenticated Client Side area.
+- [x] Audit every data-dependent screen and document missing sample preview fallbacks.
+- [x] Add clearly labelled sample preview data for all supported product, project, client-library, billing, resource, and owner-management views.
+- [x] Fix sample product detail routes so each sample catalogue card opens a populated detail view.
+- [x] Verify all populated sample flows and save the completed preview-data checkpoint.
+- [x] Reframe Client Side as the customer area for buyers of Digital Junction services and digital products, not an internal preview space.
+- [x] Align Client Side dummy records and navigation with reference customer flows for service projects, product orders/downloads, billing, account, and support while retaining the DJDC design system.
+- [x] Document the sample-preview fallback audit with each reviewed data-dependent screen and its fallback status.
+- [x] Add a clearly labelled read-only sample fallback for the remaining owner content-management screen.

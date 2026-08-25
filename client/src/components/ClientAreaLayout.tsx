@@ -3,9 +3,9 @@ import { BookOpen, CircleHelp, CreditCard, FolderKanban, LayoutDashboard, Packag
 
 export const clientNavigation: DashboardNavigationItem[] = [
   { icon: LayoutDashboard, label: "Overview", path: "/client" },
-  { icon: FolderKanban, label: "My projects", path: "/client/projects" },
-  { icon: PackageOpen, label: "Purchases", path: "/client/purchases" },
-  { icon: CreditCard, label: "Billing", path: "/client/billing" },
+  { icon: FolderKanban, label: "Service projects", path: "/client/projects" },
+  { icon: PackageOpen, label: "Orders & downloads", path: "/client/purchases" },
+  { icon: CreditCard, label: "Billing & invoices", path: "/client/billing" },
   { icon: UserRound, label: "Account", path: "/client/account" },
   { icon: CircleHelp, label: "Support", path: "/client/support" },
   { icon: BookOpen, label: "Resources", path: "/client/resources" },
