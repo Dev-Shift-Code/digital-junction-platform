@@ -15,3 +15,7 @@
 - [x] Remove Shopify storefront behavior, cart, checkout, and commerce API use from the application.
 - [x] Build a native Digital Junction digital-products catalogue with internal product enquiries.
 - [x] Re-test the internal-only product experience and save a revised checkpoint.
+- [x] Rework the products experience into a Shopify-inspired owner-only catalogue with stronger product discovery and conversion.
+- [x] Expand owner-only product management so only the Digital Junction owner can create, publish, and manage listings.
+- [x] Add editing controls for saved digital-product fields and archive controls for the owner-managed product lifecycle.
+- [x] Verify the owner-only product platform and save the completed revision.

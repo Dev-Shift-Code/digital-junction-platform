@@ -12,3 +12,7 @@
 - The owner content-management workspace reflows its project-resource and case-study controls into a legible single-column mobile layout.
 - The public Products page now presents an internal Digital Junction catalogue with no cart or checkout controls and a clear empty state until products are published.
 - The owner Digital Products workspace provides native catalogue creation and publishing controls, explicitly without an external storefront dependency.
+- The enhanced public product platform now uses a decisive hero, owner-operated trust messaging, featured-product space, product discovery controls, and a direct request path inspired by the supplied reference without copying its branding or marketplace model.
+- The owner product workspace makes it clear that only Digital Junction can create, publish, or feature listings, with no third-party seller path available.
+- The owner product workspace now supports the full listing lifecycle: creation, field editing, publishing, featuring, archiving, and restoration by the owner only.
+- The public products page retains its owner-operated marketplace alternative positioning and does not display archived listings.

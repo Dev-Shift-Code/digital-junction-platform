@@ -154,14 +154,17 @@ export const digitalProducts = mysqlTable(
     category: varchar("category", { length: 100 }).notNull(),
     summary: text("summary").notNull(),
     description: text("description"),
+    deliveryNotes: text("deliveryNotes"),
     price: decimal("price", { precision: 10, scale: 2 }).notNull(),
     coverImageUrl: text("coverImageUrl"),
     isPublished: boolean("isPublished").default(false).notNull(),
+    isFeatured: boolean("isFeatured").default(false).notNull(),
+    isArchived: boolean("isArchived").default(false).notNull(),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  table => [index("digital_products_public_idx").on(table.isPublished, table.category)],
+  table => [index("digital_products_public_idx").on(table.isPublished, table.isArchived, table.isFeatured, table.category)],
 );
 
 export const productInquiries = mysqlTable(

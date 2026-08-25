@@ -250,12 +250,12 @@ export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, cas
 
 export async function getPublishedDigitalProducts() {
   const db = requireDatabase(await getDb());
-  return db.select().from(digitalProducts).where(eq(digitalProducts.isPublished, true)).orderBy(asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
+  return db.select().from(digitalProducts).where(and(eq(digitalProducts.isPublished, true), eq(digitalProducts.isArchived, false))).orderBy(desc(digitalProducts.isFeatured), asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
 }
 
 export async function getDigitalProductBySlug(slug: string) {
   const db = requireDatabase(await getDb());
-  const product = await db.select().from(digitalProducts).where(and(eq(digitalProducts.slug, slug), eq(digitalProducts.isPublished, true))).limit(1);
+  const product = await db.select().from(digitalProducts).where(and(eq(digitalProducts.slug, slug), eq(digitalProducts.isPublished, true), eq(digitalProducts.isArchived, false))).limit(1);
   return product[0] ?? null;
 }
 
