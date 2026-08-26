@@ -129,5 +129,11 @@
 - [x] Audit Owner Side sample-preview gaps for dashboard, inventory, sales, customers, content, vouchers, settings, and support.
 - [x] Add clearly labelled sample preview data to safe Owner Side views without creating fake purchases, payments, invoices, download grants, or customer results.
 - [ ] Verify sample labels, real-data safeguards, and responsive Owner Side presentation.
-- [ ] Save the Owner Side sample-preview update checkpoint.
+- [x] Save the Owner Side sample-preview update checkpoint.
 - [ ] Inspect the updated Owner sample-preview routes in a browser and document visible Sample preview, Preview only, Not configured, and No live data safeguards.
+- [x] Audit available owner dashboard data for Total Revenue, Projects, Customers, Average Order Value, sales, product, and activity sections.
+- [x] Build Owner Dashboard cards for Total Revenue, Total Projects, Total Customers, and Avg. Order Value with real-data-first states.
+- [x] Add Sales Overview, Weekly Sales, Monthly Revenue, Top Products, Recent Activities, and Recent Transactions dashboard sections with clearly labelled no-data or preview states.
+- [ ] Verify the Owner Dashboard analytics layout, data safeguards, and responsive presentation.
+- [ ] Save the Owner Dashboard analytics redesign checkpoint.
+- [ ] Inspect the rebuilt Owner Dashboard in a browser and document the requested analytics sections plus real-data safeguards.
