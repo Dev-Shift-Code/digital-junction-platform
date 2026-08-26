@@ -135,5 +135,14 @@
 - [x] Build Owner Dashboard cards for Total Revenue, Total Projects, Total Customers, and Avg. Order Value with real-data-first states.
 - [x] Add Sales Overview, Weekly Sales, Monthly Revenue, Top Products, Recent Activities, and Recent Transactions dashboard sections with clearly labelled no-data or preview states.
 - [ ] Verify the Owner Dashboard analytics layout, data safeguards, and responsive presentation.
-- [ ] Save the Owner Dashboard analytics redesign checkpoint.
+- [x] Save the Owner Dashboard analytics redesign checkpoint.
 - [ ] Inspect the rebuilt Owner Dashboard in a browser and document the requested analytics sections plus real-data safeguards.
+- [ ] Audit the dedicated owner-session loading behavior in embedded browsers and identify the cookie or transport gap.
+- [ ] Add a resilient owner-session fallback or bounded loading state without weakening separate customer and owner access controls.
+- [ ] Verify authenticated owner dashboard rendering and owner-sign-in fallback behavior in the connected browser.
+- [ ] Save the owner-session rendering reliability fix checkpoint.
+- [x] Define clearly labelled sample values for Sales Overview, Weekly Sales, and Monthly Revenue chart hover states.
+- [x] Add accessible hover and keyboard-focus tooltips to every Owner Dashboard analytics chart point or bar.
+- [ ] Verify chart tooltip content, data-safe labels, and mobile interaction fallback.
+- [ ] Save the Owner Dashboard chart-tooltip update checkpoint.
+- [ ] Inspect hover and keyboard-focus tooltips for Sales Overview, Weekly Sales, and Monthly Revenue in a browser, including a mobile interaction fallback.
