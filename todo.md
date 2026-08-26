@@ -126,3 +126,8 @@
 - [x] Capture inspectable direct `/owner/login` form-submission evidence after setup, without a Client Side session, before marking the separate sign-in verification complete.
 - [x] Observe authenticated Client Side logout returning to `/` while the separate owner session remains active.
 - [ ] Capture inspectable mobile browser evidence for Owner Dashboard, Inventory, Sales, and Customers before completing responsive Owner Side verification.
+- [x] Audit Owner Side sample-preview gaps for dashboard, inventory, sales, customers, content, vouchers, settings, and support.
+- [x] Add clearly labelled sample preview data to safe Owner Side views without creating fake purchases, payments, invoices, download grants, or customer results.
+- [ ] Verify sample labels, real-data safeguards, and responsive Owner Side presentation.
+- [ ] Save the Owner Side sample-preview update checkpoint.
+- [ ] Inspect the updated Owner sample-preview routes in a browser and document visible Sample preview, Preview only, Not configured, and No live data safeguards.
