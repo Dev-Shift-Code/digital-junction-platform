@@ -24,6 +24,7 @@ describe("owner voucher, payment method, and inquiry management", () => {
     expect(router).toContain("getPaymentProviderSetting(\"paypal\")");
     expect(router).toContain("getVoucherDiscount");
     expect(router).toContain("createManualCheckout: publicProcedure");
+    expect(router).toContain('input.discountKind === "fixed" ? input.discountValue * 100');
     expect(database).toContain("incrementVoucherRedemption");
     expect(database).toContain("paymentStatus === \"verified\"");
   });

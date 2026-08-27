@@ -740,7 +740,7 @@ export const portalRouter = router({
             const products = await Promise.all(uniqueProductIds.map(productId => getDigitalProductById(productId)));
             if (products.some(product => !product)) throw new TRPCError({ code: "BAD_REQUEST", message: "One or more selected products no longer exist." });
           }
-          return saveVoucher({ ...input, productIds: uniqueProductIds });
+          return saveVoucher({ ...input, discountValue: input.discountKind === "fixed" ? input.discountValue * 100 : input.discountValue, productIds: uniqueProductIds });
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           return unavailable(error);
