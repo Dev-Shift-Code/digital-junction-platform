@@ -253,3 +253,5 @@
 - [x] Replace unsupported D1-only QR binary upload with an owner-saved external HTTPS QR image URL field, preserving the QR display at checkout without adding R2.
 - [ ] Inspect the existing portfolio's D1-compatible image upload pattern and restore the equivalent QR image upload flow for Digital Junction without replacing D1 as the primary database.
 - [x] Integrate Cloudinary-backed owner QR image uploads while storing only QR URL and storage metadata in Cloudflare D1, without using R2.
+- [ ] Resolve the Cloudinary QR upload 403 caused by an API credential without create permission, without exposing or storing credentials in source control.
+- [x] Restyle the public Selected Work introduction section with the established dark-green background and readable mint/cream text contrast.
