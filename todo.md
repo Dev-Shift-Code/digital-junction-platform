@@ -178,3 +178,4 @@
 - [x] Wire owner-editable section copy, media, CTA, and visibility overrides into Home, Shop, Services, Work, About, Contact, and Footer.
 - [ ] Add regression coverage and verify a saved owner public-content edit updates the matching visitor-facing section without inventing business copy or media.
 - [x] Add regression coverage for the public-section resolver, unpublished-content redaction, and every visitor-facing page integration.
+- [x] Remove the obsolete Owner Sales link to the standalone buyer-file page so buyer files are managed only inside Inventory Add/Edit Product.
