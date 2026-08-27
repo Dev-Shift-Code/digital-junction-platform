@@ -8,9 +8,9 @@ describe("manual payment workflow safeguards", () => {
   it("stores a selected payment method as an immutable order snapshot", () => {
     const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
     const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
-    expect(schema).toContain('paymentMethodName: varchar("paymentMethodName"');
-    expect(schema).toContain('paymentInstructionsSnapshot: text("paymentInstructionsSnapshot")');
-    expect(schema).toContain('paymentQrCodeUrlSnapshot: text("paymentQrCodeUrlSnapshot")');
+    expect(schema).toContain('paymentMethodName: text()');
+    expect(schema).toContain('paymentInstructionsSnapshot: text()');
+    expect(schema).toContain('paymentQrCodeUrlSnapshot: text()');
     expect(router).toContain("paymentMethodName: paymentMethod.displayName");
     expect(router).toContain("paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl");
     expect(router).toContain("!paymentMethod || !paymentMethod.isActive");

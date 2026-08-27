@@ -1,20 +1,18 @@
 import { and, asc, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/d1";
+import * as schema from "../drizzle/schema";
 import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentMethods, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/** Configure the primary application database from the Cloudflare Workers D1 binding. */
+export function configureD1(database: unknown) {
+  _db = drizzle(database as any, { schema });
+}
+
+// The Worker entry point configures D1 once per isolate. Tests may replace this module.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
   return _db;
 }
 
@@ -68,8 +66,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet as any,
     });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
@@ -96,20 +95,26 @@ export async function getUserByEmail(email: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function createLocalUser(input: { openId: string; email: string; passwordHash: string }) {
+export async function createLocalUser(input: { openId: string; email: string; passwordHash: string; role?: "user" | "admin"; name?: string | null }) {
   const db = requireDatabase(await getDb());
   await db.insert(users).values({
     openId: input.openId,
     email: input.email,
-    name: input.email.split("@")[0] ?? "Digital Junction customer",
+    name: input.name ?? input.email.split("@")[0] ?? "Digital Junction customer",
     passwordHash: input.passwordHash,
     loginMethod: "digital-junction",
-    role: "user",
+    role: input.role ?? "user",
     lastSignedIn: new Date(),
   });
   const user = await getUserByOpenId(input.openId);
   if (!user) throw new Error("Unable to create account");
   return user;
+}
+
+export async function hasAdminUser() {
+  const db = requireDatabase(await getDb());
+  const result = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+  return Boolean(result[0]);
 }
 
 export async function recordUserSignIn(openId: string) {
@@ -185,7 +190,7 @@ export async function getClientUsers() {
 export async function createProject(values: typeof projects.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(projects).values(values);
-  const created = await db.select().from(projects).where(eq(projects.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(projects).where(eq(projects.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -198,13 +203,13 @@ export async function updateProject(projectId: number, values: Partial<typeof pr
 
 export async function assignClientToProject(projectId: number, userId: number) {
   const db = requireDatabase(await getDb());
-  await db.insert(projectClients).values({ projectId, userId }).onDuplicateKeyUpdate({ set: { userId } });
+  await db.insert(projectClients).values({ projectId, userId }).onConflictDoUpdate({ target: [projectClients.projectId, projectClients.userId], set: { userId } });
 }
 
 export async function createMilestone(values: typeof milestones.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(milestones).values(values);
-  const created = await db.select().from(milestones).where(eq(milestones.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(milestones).where(eq(milestones.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -218,7 +223,7 @@ export async function updateMilestone(milestoneId: number, values: Partial<typeo
 export async function createDeliverable(values: typeof deliverables.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(deliverables).values(values);
-  const created = await db.select().from(deliverables).where(eq(deliverables.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(deliverables).where(eq(deliverables.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -230,14 +235,14 @@ export async function savePortalContent(values: typeof portalContents.$inferInse
     return updated[0];
   }
   const result = await db.insert(portalContents).values(values);
-  const created = await db.select().from(portalContents).where(eq(portalContents.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(portalContents).where(eq(portalContents.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
 export async function createInquiry(values: typeof inquiries.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(inquiries).values(values);
-  const created = await db.select().from(inquiries).where(eq(inquiries.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(inquiries).where(eq(inquiries.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -283,7 +288,7 @@ export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, cas
     return updated[0];
   }
   const result = await db.insert(caseStudies).values(values);
-  const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -336,7 +341,7 @@ export async function saveDigitalProduct(values: typeof digitalProducts.$inferIn
     return updated[0];
   }
   const result = await db.insert(digitalProducts).values(values);
-  const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -395,7 +400,8 @@ export async function getAllProductAccess() {
 
 export async function grantProductAccess(input: { productId: number; userId: number; deliveryUrl: string; deliveryFileName: string; grantedByUserId: number }) {
   const db = requireDatabase(await getDb());
-  await db.insert(productAccess).values(input).onDuplicateKeyUpdate({
+  await db.insert(productAccess).values(input).onConflictDoUpdate({
+    target: [productAccess.productId, productAccess.userId],
     set: {
       deliveryUrl: input.deliveryUrl,
       deliveryFileName: input.deliveryFileName,
@@ -410,14 +416,14 @@ export async function grantProductAccess(input: { productId: number; userId: num
 export async function createProductInquiry(values: typeof productInquiries.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(productInquiries).values(values);
-  const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
 export async function createGuestCheckoutRequest(values: typeof guestCheckoutRequests.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values(values);
-  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -445,7 +451,7 @@ export async function savePaymentMethod(values: typeof paymentMethods.$inferInse
     return updated[0];
   }
   const result = await db.insert(paymentMethods).values(values);
-  const created = await db.select().from(paymentMethods).where(eq(paymentMethods.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(paymentMethods).where(eq(paymentMethods.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -484,7 +490,7 @@ export async function getProductFiles(productId: number) {
 export async function saveProductFile(values: typeof productFiles.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(productFiles).values(values);
-  const created = await db.select().from(productFiles).where(eq(productFiles.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(productFiles).where(eq(productFiles.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -519,7 +525,7 @@ export async function savePublicSiteContent(values: typeof publicSiteContent.$in
     const updated = await db.select().from(publicSiteContent).where(eq(publicSiteContent.id, contentId)).limit(1);
     return updated[0];
   }
-  await db.insert(publicSiteContent).values(values).onDuplicateKeyUpdate({ set: values });
+  await db.insert(publicSiteContent).values(values).onConflictDoUpdate({ target: [publicSiteContent.page, publicSiteContent.section], set: values });
   const saved = await db.select().from(publicSiteContent).where(and(eq(publicSiteContent.page, values.page), eq(publicSiteContent.section, values.section))).limit(1);
   return saved[0];
 }

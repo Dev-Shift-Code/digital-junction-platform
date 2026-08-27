@@ -53,7 +53,7 @@ import {
   updateProject,
 } from "../db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { storagePut } from "../storage";
+import { isD1OnlyFileMode, storagePut } from "../storage";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
@@ -167,18 +167,22 @@ export const portalRouter = router({
         }
       }),
     guestCheckout: publicProcedure
-      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255), paymentProofMimeType: paymentImageMimeType, paymentProofSizeBytes: z.number().int().min(1).max(5_000_000), paymentProofBase64: z.string().min(1).max(7_000_000) }))
+      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255).optional(), paymentProofMimeType: paymentImageMimeType.optional(), paymentProofSizeBytes: z.number().int().min(1).max(5_000_000).optional(), paymentProofBase64: z.string().min(1).max(7_000_000).optional() }))
       .mutation(async ({ input }) => {
         try {
           const product = await getPublishedDigitalProductById(input.productId);
           if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "This product is not available for guest checkout." });
           const paymentMethod = await getPaymentMethodById(input.paymentMethodId);
           if (!paymentMethod || !paymentMethod.isActive) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an active payment method before submitting your order." });
-          const proofBytes = Buffer.from(input.paymentProofBase64, "base64");
-          if (!proofBytes.length || proofBytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment proof must be an image smaller than 5 MB." });
-          const safeProofName = input.paymentProofFileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-          const proof = await storagePut(`payment-proofs/${Date.now()}-${safeProofName}`, proofBytes, input.paymentProofMimeType);
-          const request = await createGuestCheckoutRequest({ productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentLogoUrlSnapshot: paymentMethod.logoUrl, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl, paymentReference: input.paymentReference, paymentProofUrl: proof.url, paymentProofKey: proof.key, paymentProofFileName: input.paymentProofFileName, paymentProofMimeType: input.paymentProofMimeType, paymentProofSizeBytes: input.paymentProofSizeBytes, paymentStatus: "submitted" });
+          let proof: { key: string; url: string } | null = null;
+          if (!isD1OnlyFileMode()) {
+            if (!input.paymentProofBase64 || !input.paymentProofFileName || !input.paymentProofMimeType || !input.paymentProofSizeBytes) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment proof is required before submitting your order." });
+            const proofBytes = Buffer.from(input.paymentProofBase64, "base64");
+            if (!proofBytes.length || proofBytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment proof must be an image smaller than 5 MB." });
+            const safeProofName = input.paymentProofFileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+            proof = await storagePut(`payment-proofs/${Date.now()}-${safeProofName}`, proofBytes, input.paymentProofMimeType);
+          }
+          const request = await createGuestCheckoutRequest({ productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentLogoUrlSnapshot: paymentMethod.logoUrl, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl, paymentReference: input.paymentReference, paymentProofUrl: proof?.url || null, paymentProofKey: proof?.key || null, paymentProofFileName: input.paymentProofFileName || null, paymentProofMimeType: input.paymentProofMimeType || null, paymentProofSizeBytes: input.paymentProofSizeBytes || null, paymentStatus: proof ? "submitted" : "awaiting_payment" });
           return { requestId: request.id, status: request.status, paymentStatus: request.paymentStatus, paymentMethodName: paymentMethod.displayName, productTitle: product.title };
         } catch (error) {
           if (error instanceof TRPCError) throw error;

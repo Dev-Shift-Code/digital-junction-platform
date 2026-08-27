@@ -220,3 +220,16 @@
 - [x] Replace free-form payment method type entry with a GoTyme, PayPal, GCash, and MariBank dropdown in the owner form and server validation.
 - [x] Re-test owner payment method configuration without creating a payment method or exposing payment account details.
 - [x] Produce a privacy-safe database structure reference listing the current tables and columns, excluding records and sensitive credential fields.
+- [x] Prepare permanent-hosting and managed-deployment updates only in `Dev-Shift-Code/digital-junction-platform`; do not create or use a separate website project.
+- [ ] Verify authenticated Owner Dashboard, Inventory, Projects, Content, Sales, Customers, and Payment Methods routes without creating or modifying business records.
+- [x] Adapt the existing Express application and static-asset build for Cloudflare Workers without binding or querying the isolated D1 database. Superseded by the later D1-as-primary decision.
+- [x] Validate a Cloudflare Workers deployment build, create deployment documentation, and commit only the existing GitHub repository changes.
+- [x] Repair the users-table schema mismatch that prevents secure owner-account setup and sign-in, without altering existing business records.
+- [x] Provision and non-destructively align the application database for the existing website’s users, content, catalogue, projects, inquiries, payment methods, and orders while leaving Cloudflare D1 isolated. Superseded by the later D1-as-primary decision.
+- [x] Replace the primary MySQL application data layer with Cloudflare D1/SQLite and migrate the existing website schema without fabricating or deleting data.
+- [x] Adapt the Express runtime and production build for Cloudflare Workers using the existing `digital-junction-db` D1 database.
+- [x] Provide the requested `db:migrate:cloudflare`, `deploy:cloudflare`, and `deploy:pages` command scripts with distinct D1/Workers/Pages responsibilities.
+- [x] Apply the complete provided table-and-column migration to remote `digital-junction-db` and verify the live D1 schema.
+- [x] Redact password hashes and other non-public account fields from owner and customer session API responses.
+- [x] Remove the Cloudflare R2 dependency and preserve D1 as the sole Cloudflare persistence service for structured application data.
+- [x] Disable new binary product-file, payment-proof, logo, QR-code, and cover-image uploads in the D1-only deployment instead of storing file bytes in the database.

@@ -6,7 +6,7 @@ const detail = readFileSync(new URL("../client/src/pages/ProductDetail.tsx", imp
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../client/src/pages/OwnerWorkspaceViews.tsx", import.meta.url), "utf8");
 const portalRouter = readFileSync(new URL("../server/routers/portal.ts", import.meta.url), "utf8");
-const serverEntry = readFileSync(new URL("../server/_core/index.ts", import.meta.url), "utf8");
+const serverEntry = readFileSync(new URL("../server/_core/application.ts", import.meta.url), "utf8");
 
 describe("owner product form delivery-file workflow", () => {
   it("keeps local buyer-file upload and removal inside the Add/Edit Product form", () => {

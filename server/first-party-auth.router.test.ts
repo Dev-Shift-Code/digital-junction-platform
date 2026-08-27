@@ -6,6 +6,7 @@ import { sdk } from "./_core/sdk";
 const dbMock = vi.hoisted(() => ({
   getUserByEmail: vi.fn(),
   createLocalUser: vi.fn(),
+  hasAdminUser: vi.fn(),
   recordUserSignIn: vi.fn(),
   setUserPassword: vi.fn(),
   getClientProjects: vi.fn(),
@@ -99,6 +100,14 @@ describe("first-party Digital Junction account router", () => {
     await expect(sdk.verifySession(cookies[0]?.value)).resolves.toMatchObject({ openId: "local-owner-1" });
   });
 
+  it("never exposes a password hash through customer or owner session responses", async () => {
+    const owner = { ...localUser, id: 1, role: "admin" as const, passwordHash: "private-scrypt-hash" };
+    const caller = appRouter.createCaller(context(owner).ctx as any);
+
+    await expect(caller.auth.me()).resolves.not.toHaveProperty("passwordHash");
+    await expect(caller.auth.ownerMe()).resolves.not.toHaveProperty("passwordHash");
+  });
+
   it("explains when an existing owner must set a direct password before separate owner login", async () => {
     const { ctx } = context();
     dbMock.getUserByEmail.mockResolvedValue({ ...localUser, id: 1, role: "admin" as const, passwordHash: null });
@@ -120,6 +129,21 @@ describe("first-party Digital Junction account router", () => {
     await expect(caller.auth.ownerSetup({ email: owner.email, setupToken: setupToken!, password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
     expect(dbMock.setUserPassword).toHaveBeenCalledWith(owner.id, expect.not.stringContaining("Digital-Junction-Owner-2026"));
     expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
+  it("bootstraps the first owner only for the configured owner email and private setup token", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    process.env.OWNER_EMAIL = "devshiftcode2025@gmail.com";
+    const { ctx, cookies } = context();
+    dbMock.getUserByEmail.mockResolvedValue(undefined);
+    dbMock.hasAdminUser.mockResolvedValue(false);
+    dbMock.createLocalUser.mockImplementation(async (input: any) => ({ ...localUser, id: 1, ...input, role: "admin" }));
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: "devshiftcode2025@gmail.com", setupToken: setupToken!, password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.createLocalUser).toHaveBeenCalledWith(expect.objectContaining({ role: "admin", email: "devshiftcode2025@gmail.com" }));
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+    delete process.env.OWNER_EMAIL;
   });
 
   it("clears only the owner session cookie when the owner signs out", async () => {

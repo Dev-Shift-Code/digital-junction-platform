@@ -45,6 +45,6 @@ describe("public content override wiring", () => {
     expect(ownerEditor).toContain("getPublicSectionDefault");
     expect(ownerEditor).toContain("eyebrow: draft.eyebrow.trim() || null");
     expect(resolver).toContain("eyebrow: saved?.eyebrow ?? fallback.eyebrow");
-    expect(schema).toContain('eyebrow: varchar("eyebrow", { length: 160 })');
+    expect(schema).toContain('eyebrow: text()');
   });
 });

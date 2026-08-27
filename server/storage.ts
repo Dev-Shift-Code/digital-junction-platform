@@ -4,6 +4,17 @@
 
 import { ENV } from "./_core/env";
 
+let d1OnlyFileMode = false;
+
+/** Prevents file bytes from being treated as database content in a D1-only deployment. */
+export function configureD1OnlyFileMode() {
+  d1OnlyFileMode = true;
+}
+
+export function isD1OnlyFileMode() {
+  return d1OnlyFileMode;
+}
+
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
   const forgeKey = ENV.forgeApiKey;
@@ -33,8 +44,13 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
+
+  if (d1OnlyFileMode) {
+    throw new Error("File uploads are unavailable in the D1-only Cloudflare deployment. Use text and approved external HTTPS media URLs instead.");
+  }
+
+  const { forgeUrl, forgeKey } = getForgeConfig();
 
   // 1. Get presigned PUT URL from Forge
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");

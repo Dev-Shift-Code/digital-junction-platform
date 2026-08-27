@@ -1,0 +1,23 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const worker = readFileSync(new URL("../cloudflare/worker.ts", import.meta.url), "utf8");
+const workerContext = readFileSync(new URL("./_core/workerContext.ts", import.meta.url), "utf8");
+
+describe("Cloudflare Worker deployment wiring", () => {
+  it("uses the native tRPC fetch adapter and binds primary D1 before handling API requests", () => {
+    expect(worker).toContain('from "@trpc/server/adapters/fetch"');
+    expect(worker).toContain("configureD1(bindings.digital_junction_db)");
+    expect(worker).toContain("configureD1OnlyFileMode()");
+    expect(worker).toContain('endpoint: "/api/trpc"');
+    expect(worker).not.toContain("httpServerHandler");
+    expect(worker).not.toContain("DJDC_UPLOADS");
+    expect(worker).toContain("Binary file storage is disabled in this D1-only deployment.");
+  });
+
+  it("preserves isolated owner/customer sessions and translates response cookies for Workers", () => {
+    expect(workerContext).toContain("OWNER_SESSION_COOKIE");
+    expect(workerContext).toContain('resHeaders.append("Set-Cookie"');
+    expect(workerContext).toContain("sdk.authenticateRequest(request, OWNER_SESSION_COOKIE)");
+  });
+});
