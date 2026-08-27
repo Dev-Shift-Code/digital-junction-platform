@@ -233,3 +233,5 @@
 - [x] Redact password hashes and other non-public account fields from owner and customer session API responses.
 - [x] Remove the Cloudflare R2 dependency and preserve D1 as the sole Cloudflare persistence service for structured application data.
 - [x] Disable new binary product-file, payment-proof, logo, QR-code, and cover-image uploads in the D1-only deployment instead of storing file bytes in the database.
+- [ ] Resolve the user’s non-Git Windows checkout so it can pull the pushed D1-only Cloudflare commit and run the deployment scripts.
+- [ ] Diagnose and repair the Windows `cf:build` failure before retrying the D1-only Cloudflare Worker deployment.
