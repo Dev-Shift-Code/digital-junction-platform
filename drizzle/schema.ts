@@ -220,3 +220,39 @@ export const guestCheckoutRequests = mysqlTable(
   },
   table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status)],
 );
+
+/** Owner-managed file metadata for a digital product. File bytes live in storage. */
+export const productFiles = mysqlTable(
+  "productFiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    productId: int("productId").notNull(),
+    fileName: varchar("fileName", { length: 255 }).notNull(),
+    fileUrl: text("fileUrl").notNull(),
+    fileKey: varchar("fileKey", { length: 512 }),
+    mimeType: varchar("mimeType", { length: 160 }),
+    sizeBytes: int("sizeBytes"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("product_files_product_idx").on(table.productId)],
+);
+
+/** Editable copy, media, and calls-to-action used by public website sections. */
+export const publicSiteContent = mysqlTable(
+  "publicSiteContent",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    page: varchar("page", { length: 64 }).notNull(),
+    section: varchar("section", { length: 64 }).notNull(),
+    title: varchar("title", { length: 300 }),
+    body: text("body"),
+    imageUrl: text("imageUrl"),
+    ctaLabel: varchar("ctaLabel", { length: 120 }),
+    ctaHref: varchar("ctaHref", { length: 500 }),
+    isPublished: boolean("isPublished").default(true).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [uniqueIndex("public_site_content_page_section_unique").on(table.page, table.section), index("public_site_content_page_idx").on(table.page, table.isPublished)],
+);

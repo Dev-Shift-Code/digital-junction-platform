@@ -21,8 +21,8 @@ describe("owner authentication and guest product access", () => {
   it("uses guest checkout without a Client Side account or payment claim", () => {
     expect(publicLayout).not.toContain('href="/login"');
     expect(publicLayout).not.toContain('Client side');
-    ["No account is required", "Submit checkout request", "No payment is taken at this step."].forEach(copy => expect(checkoutPage).toContain(copy));
-    ["Guest checkout", "Continue to checkout"].forEach(copy => expect(productDetail).toContain(copy));
+    ["No account is required", "Place order", "Payment remains pending"].forEach(copy => expect(checkoutPage).toContain(copy));
+    ["Direct purchase", "Buy now"].forEach(copy => expect(productDetail).toContain(copy));
     ["No account is required to browse or start checkout.", "Guest checkout"].forEach(copy => expect(shopPage).toContain(copy));
     expect(portalRouter).toContain("guestCheckout: publicProcedure");
   });

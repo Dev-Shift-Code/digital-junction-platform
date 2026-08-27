@@ -8,6 +8,7 @@ import {
   createMilestone,
   createProductInquiry,
   createProject,
+  deleteProductFile,
   getAdminProjectDetail,
   getAllCaseStudies,
   getAllPortalContent,
@@ -18,21 +19,30 @@ import {
   getAllProductAccess,
   getAuthorizedProductDownload,
   getAllDigitalProducts,
+  getAllPublicSiteContent,
   getDigitalProductBySlug,
+  getDigitalProductById,
+  getGuestCheckoutRequests,
   getPublishedDigitalProductById,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
   getPublishedPortalContent,
+  getPublicSiteContent,
+  getProductFiles,
   getUserProductAccess,
   grantProductAccess,
   saveCaseStudy,
   saveDigitalProduct,
+  saveProductFile,
+  savePublicSiteContent,
   savePortalContent,
   updateDeliverable,
+  updateGuestCheckoutRequestStatus,
   updateMilestone,
   updateProject,
 } from "../db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { storagePut } from "../storage";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
@@ -73,6 +83,15 @@ export const portalRouter = router({
       }
     }),
   }),
+  publicContent: router({
+    list: publicProcedure.input(z.object({ page: z.string().trim().min(1).max(64) })).query(async ({ input }) => {
+      try {
+        return getPublicSiteContent(input.page);
+      } catch (error) {
+        return unavailable(error);
+      }
+    }),
+  }),
   caseStudies: router({
     listPublished: publicProcedure.query(async () => {
       try {
@@ -95,6 +114,17 @@ export const portalRouter = router({
         const product = await getDigitalProductBySlug(input.slug);
         if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
         return product;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
+    inclusions: publicProcedure.input(z.object({ productId: z.number().int().positive() })).query(async ({ input }) => {
+      try {
+        const product = await getPublishedDigitalProductById(input.productId);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product files are not available." });
+        const files = await getProductFiles(input.productId);
+        return files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes }));
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         return unavailable(error);
@@ -402,6 +432,69 @@ export const portalRouter = router({
           } catch (error) {
             return unavailable(error);
           }
+      }),
+    }),
+    orders: router({
+      list: adminProcedure.query(async () => {
+        try {
+          return getGuestCheckoutRequests();
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      updateStatus: adminProcedure.input(z.object({ orderId: z.number().int().positive(), status: z.enum(["submitted", "contacted", "fulfilled", "cancelled"]) })).mutation(async ({ input }) => {
+        try {
+          return updateGuestCheckoutRequestStatus(input.orderId, input.status);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+    }),
+    productFiles: router({
+      list: adminProcedure.input(z.object({ productId: z.number().int().positive() })).query(async ({ input }) => {
+        try {
+          return getProductFiles(input.productId);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), sizeBytes: z.number().int().min(0).max(8_000_000), base64: z.string().min(1).max(11_000_000) })).mutation(async ({ input }) => {
+        try {
+          const product = await getDigitalProductById(input.productId);
+          if (!product || product.isArchived) throw new TRPCError({ code: "NOT_FOUND", message: "An active product is required before attaching files." });
+          const bytes = Buffer.from(input.base64, "base64");
+          if (!bytes.length || bytes.length > 8_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Product files must be smaller than 8 MB." });
+          const stored = await storagePut(`product-files/${product.id}/${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
+          return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.key, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+      remove: adminProcedure.input(z.object({ productFileId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          await deleteProductFile(input.productFileId);
+          return { success: true } as const;
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+    }),
+    publicSiteContent: router({
+      list: adminProcedure.query(async () => {
+        try {
+          return getAllPublicSiteContent();
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      save: adminProcedure.input(z.object({ contentId: z.number().int().positive().optional(), page: z.enum(["home", "shop", "services", "work", "about", "contact", "footer"]), section: z.string().trim().min(2).max(64), title: z.string().trim().max(300).optional().nullable(), body: z.string().trim().max(10000).optional().nullable(), imageUrl: z.string().url().max(5000).optional().nullable(), ctaLabel: z.string().trim().max(120).optional().nullable(), ctaHref: z.string().trim().max(500).optional().nullable(), isPublished: z.boolean().default(true) })).mutation(async ({ input }) => {
+        try {
+          const { contentId, ...values } = input;
+          return savePublicSiteContent(values, contentId);
+        } catch (error) {
+          return unavailable(error);
+        }
       }),
     }),
     productAccess: router({

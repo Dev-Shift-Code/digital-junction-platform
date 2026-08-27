@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, portalContents, productAccess, productInquiries, projectClients, projects, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -298,6 +298,12 @@ export async function getPublishedDigitalProductById(productId: number) {
   return product[0] ?? null;
 }
 
+export async function getDigitalProductById(productId: number) {
+  const db = requireDatabase(await getDb());
+  const product = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+  return product[0] ?? null;
+}
+
 export async function getAllDigitalProducts() {
   const db = requireDatabase(await getDb());
   return db.select().from(digitalProducts).orderBy(asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
@@ -372,4 +378,56 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
   const result = await db.insert(guestCheckoutRequests).values(values);
   const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result[0].insertId))).limit(1);
   return created[0];
+}
+
+export async function getGuestCheckoutRequests() {
+  const db = requireDatabase(await getDb());
+  return db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).orderBy(desc(guestCheckoutRequests.createdAt));
+}
+
+export async function updateGuestCheckoutRequestStatus(orderId: number, status: "submitted" | "contacted" | "fulfilled" | "cancelled") {
+  const db = requireDatabase(await getDb());
+  await db.update(guestCheckoutRequests).set({ status }).where(eq(guestCheckoutRequests.id, orderId));
+  const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  return updated[0];
+}
+
+export async function getProductFiles(productId: number) {
+  const db = requireDatabase(await getDb());
+  return db.select().from(productFiles).where(eq(productFiles.productId, productId)).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt));
+}
+
+export async function saveProductFile(values: typeof productFiles.$inferInsert) {
+  const db = requireDatabase(await getDb());
+  const result = await db.insert(productFiles).values(values);
+  const created = await db.select().from(productFiles).where(eq(productFiles.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function deleteProductFile(productFileId: number) {
+  const db = requireDatabase(await getDb());
+  await db.delete(productFiles).where(eq(productFiles.id, productFileId));
+}
+
+export async function getPublicSiteContent(page?: string) {
+  const db = requireDatabase(await getDb());
+  const where = page ? and(eq(publicSiteContent.page, page), eq(publicSiteContent.isPublished, true)) : eq(publicSiteContent.isPublished, true);
+  return db.select().from(publicSiteContent).where(where).orderBy(asc(publicSiteContent.page), asc(publicSiteContent.section));
+}
+
+export async function getAllPublicSiteContent() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(publicSiteContent).orderBy(asc(publicSiteContent.page), asc(publicSiteContent.section));
+}
+
+export async function savePublicSiteContent(values: typeof publicSiteContent.$inferInsert, contentId?: number) {
+  const db = requireDatabase(await getDb());
+  if (contentId) {
+    await db.update(publicSiteContent).set(values).where(eq(publicSiteContent.id, contentId));
+    const updated = await db.select().from(publicSiteContent).where(eq(publicSiteContent.id, contentId)).limit(1);
+    return updated[0];
+  }
+  await db.insert(publicSiteContent).values(values).onDuplicateKeyUpdate({ set: values });
+  const saved = await db.select().from(publicSiteContent).where(and(eq(publicSiteContent.page, values.page), eq(publicSiteContent.section, values.section))).limit(1);
+  return saved[0];
 }

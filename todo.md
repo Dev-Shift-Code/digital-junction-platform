@@ -82,13 +82,13 @@
 - [x] Save the simplified Client Side checkpoint.
 - [x] Add a real My Purchases filter that changes the visible product-library results.
 - [x] Reconfirm the simplified Client Side and My Purchases screens with an authenticated customer session at desktop and mobile widths.
-- [ ] Observe the simplified Client Side and My Purchases in a real authenticated customer browser session at desktop and mobile widths.
+- [x] Superseded by the requested removal of Client Side and conversion to public guest browsing and checkout.
 - [x] Audit existing native product data and owner controls for real customer product-access grants.
 - [x] Add secure owner-granted product access records and authorized client download delivery.
 - [x] Change My Purchases actions so genuine access records show Download while static sample records remain clearly non-downloadable.
-- [ ] Verify owner grants and authenticated customer download authorization.
+- [x] Superseded by the requested removal of the account-based Client Side from the public commerce flow; existing owner-grant code remains inactive and is not exposed publicly.
 - [x] Add automated successful owner-grant, client-list, and authorized-download integration coverage.
-- [ ] Execute and observe one real owner-granted product access flow with an authenticated client Download action once genuine product and customer records are available.
+- [x] Superseded by the requested removal of Client Side; no dummy client purchase or download access was created.
 - [x] Save the product-access revision checkpoint.
 - [x] Create safe clearly labelled sample billing records and invoice-detail content without payment or tax claims.
 - [x] Build a Billing & Invoices table with summary, search, filter, sort, and eye-triggered detail view.
@@ -97,7 +97,7 @@
 - [x] Add a visible invoice-document Download action beside the eye action, with sample records clearly non-downloadable until real documents exist.
 - [x] Verify adjacent Billing & Invoices row actions at desktop and mobile widths.
 - [x] Add a real Billing & Invoices filter that changes visible table records.
-- [ ] Observe Billing & Invoices and invoice detail in a real authenticated customer browser session at desktop and mobile widths.
+- [x] Superseded by the requested removal of Client Side; no guest payment, invoice, or billing record is fabricated.
 - [x] Audit customer and owner session cookie handling, route guards, and logout behavior.
 - [x] Implement independent customer and owner session cookies so logging into one area does not displace the other.
 - [x] Add a dedicated Owner sign-in entry and owner-session guard while preserving direct customer login.
@@ -151,5 +151,15 @@
 - [x] Remove Client Side account requirements and navigation from the public product flow.
 - [x] Build a public guest product browsing and on-site guest checkout request flow without fabricated payment, order, invoice, or delivery records.
 - [ ] Verify guest browsing and guest checkout pathways alongside owner-only inventory controls at desktop and mobile widths.
-- [ ] Save the Owner Inventory and guest-checkout update checkpoint.
+- [x] Save the Owner Inventory and guest-checkout update checkpoint.
 - [ ] Submit a real published product through guest checkout and verify the request is recorded without a payment, invoice, or automatic delivery claim.
+- [ ] Allow sample product checkout URLs to render the clearly non-submittable guest checkout preview instead of a false unavailable-product state.
+- [x] Audit the existing product, guest checkout, file delivery, owner fulfilment, and public-content data structures.
+- [x] Replace generic guest checkout messaging with full product detail and direct purchase pathways for published products.
+- [x] Add owner-managed product inclusions and controlled file delivery metadata for common product file types without exposing paid files publicly.
+- [x] Add owner purchase fulfilment controls for genuine submitted orders, without fabricating payment, invoice, or delivery confirmations.
+- [x] Extend Owner Content so the owner can edit public page text, media URLs, calls-to-action, services, work, and product-facing content without editing application code.
+- [ ] Verify direct purchase pages, file safeguards, owner fulfilment, and public-content controls at desktop and mobile widths.
+- [ ] Save the direct purchase and full public-content editor update checkpoint.
+- [ ] Publish one real product with genuine content and files, then verify its public Product Name, Description, Price, Inclusions, and Buy now journey without submitting a fake order.
+- [ ] Save a real public-section edit through Owner Content and verify the matching visitor-facing section updates without inventing copy or media.

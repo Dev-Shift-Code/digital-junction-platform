@@ -18,6 +18,8 @@ import { Link } from "wouter";
 type ViewKind = "sales" | "customers" | "vouchers" | "settings" | "support";
 type CustomerSummary = { id: number; name?: string | null; email?: string | null };
 type CustomerQueryView = { isLoading: boolean; data?: CustomerSummary[] };
+type OrderSummary = { order: { id: number; name: string; email: string; company: string | null; message: string | null; status: "submitted" | "contacted" | "fulfilled" | "cancelled"; createdAt: Date }; product: { title: string; price: string } };
+type OrderQueryView = { isLoading: boolean; data?: OrderSummary[] };
 
 const copy: Record<ViewKind, { eyebrow: string; title: string; description: string }> = {
   sales: {
@@ -52,6 +54,8 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
   const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const clients = trpc.portal.admin.clients.useQuery(undefined, { enabled: isOwner && kind === "customers" });
+  const orders = trpc.portal.admin.orders.list.useQuery(undefined, { enabled: isOwner && kind === "sales" });
+  const updateOrder = trpc.portal.admin.orders.updateStatus.useMutation({ onSuccess: () => orders.refetch() });
   const title = copy[kind];
   const previewPanels = kind === "customers" ? [] : ownerWorkspacePreview[kind];
   const icon =
@@ -77,6 +81,8 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
             </header>
             {kind === "customers" ? (
               <CustomerWorkspace clients={clients} />
+            ) : kind === "sales" ? (
+              <SalesWorkspace orders={orders} onUpdate={(orderId, status) => updateOrder.mutate({ orderId, status })} updating={updateOrder.isPending} />
             ) : (
               <>
                 <section className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
@@ -89,16 +95,13 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
                       </div>
                     </div>
                     <p className="mt-6 max-w-xl text-sm leading-7 text-[#1A312C]/68">
-                      {kind === "sales"
-                        ? "Continue to the customer product-access workspace for genuine controlled delivery records once listings and customer access are configured."
-                        : kind === "vouchers"
-                          ? "Voucher creation will be added only when your programme rules, terms, and real promotion dates are ready."
-                          : kind === "settings"
-                            ? "Use one direct owner password and the separate Owner sign-in page to keep client activity independent."
-                            : "Use the public Contact page to send an owner support request with the relevant product, customer, or content context."}
+                      {kind === "vouchers"
+                        ? "Voucher creation will be added only when your programme rules, terms, and real promotion dates are ready."
+                        : kind === "settings"
+                          ? "Use one direct owner password and the separate Owner sign-in page to keep client activity independent."
+                          : "Use the public Contact page to send an owner support request with the relevant product, customer, or content context."}
                     </p>
                     <div className="mt-7 flex flex-wrap gap-3">
-                      {kind === "sales" && <Link href="/owner/product-access" className="button-primary buttonlike">Open product access <ArrowRight className="size-4" /></Link>}
                       {kind === "settings" && <Link href="/owner/setup" className="button-primary buttonlike">Owner setup <ArrowRight className="size-4" /></Link>}
                       {kind === "support" && <Link href="/contact" className="button-primary buttonlike">Contact support <ArrowRight className="size-4" /></Link>}
                     </div>
@@ -165,6 +168,10 @@ function CustomerWorkspace({ clients }: { clients: CustomerQueryView }) {
       </div>
     </section>
   );
+}
+
+function SalesWorkspace({ orders, onUpdate, updating }: { orders: OrderQueryView; onUpdate: (orderId: number, status: OrderSummary["order"]["status"]) => void; updating: boolean }) {
+  return <section className="rounded-[1.55rem] border border-[#1A312C]/12 bg-white p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Direct purchase orders</p><h2 className="display mt-1 text-3xl text-[#1A312C]">Order fulfilment</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#1A312C]/62">Review only genuine guest orders here. Update status after you have handled the real payment and delivery process; no payment confirmation or file delivery is created automatically.</p></div><Link href="/owner/product-files" className="button-quiet buttonlike w-fit">Manage product files</Link></div>{orders.isLoading ? <div className="grid min-h-36 place-items-center"><Loader2 className="size-6 animate-spin text-[#428475]" /></div> : orders.data?.length ? <div className="mt-6 overflow-x-auto rounded-xl border border-[#1A312C]/10"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[#FFF4E1]/55 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/50"><tr><th className="px-4 py-3 font-medium">Order</th><th className="px-4 py-3 font-medium">Buyer</th><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 text-right font-medium">Update</th></tr></thead><tbody>{orders.data.map(({ order, product }) => <tr key={order.id} className="border-t border-[#1A312C]/8"><td className="px-4 py-4"><p className="font-bold text-[#1A312C]">#{order.id}</p><p className="mt-1 text-xs text-[#1A312C]/52">{new Date(order.createdAt).toLocaleDateString()}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{order.name}</p><p className="mt-1 text-xs text-[#1A312C]/55">{order.email}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{product.title}</p><p className="mt-1 text-xs text-[#1A312C]/55">₱{product.price}</p></td><td className="px-4 py-4"><span className="rounded-full bg-[#89D7B7]/24 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/70">{order.status}</span></td><td className="px-4 py-4 text-right"><select value={order.status} disabled={updating} onChange={event => onUpdate(order.id, event.target.value as OrderSummary["order"]["status"])} className="form-field ml-auto !h-9 !w-30 !py-1 text-xs"><option value="submitted">Submitted</option><option value="contacted">Contacted</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></td></tr>)}</tbody></table></div> : <div className="mt-6 rounded-xl border border-dashed border-[#1A312C]/16 bg-[#FFF4E1]/55 p-7"><p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#428475]">No live orders</p><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Submitted guest purchases will appear here after a visitor places an order for a genuine published product. Sample products do not create an order record.</p></div>}</section>;
 }
 
 export const OwnerSales = () => <OwnerWorkspaceView kind="sales" />;

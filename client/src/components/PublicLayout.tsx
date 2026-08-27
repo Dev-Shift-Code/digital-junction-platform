@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ArrowUpRight, Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 
 const navLinks = [
@@ -16,6 +17,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const footerInput = useMemo(() => ({ page: "footer" }), []);
+  const footerContent = trpc.portal.publicContent.list.useQuery(footerInput);
+  const footerBrand = footerContent.data?.find(item => item.section === "brand");
+  const footerContact = footerContent.data?.find(item => item.section === "contact");
 
   useEffect(() => {
     const updateScroll = () => setScrolled(window.scrollY > 12);
@@ -83,14 +88,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <img src="/manus-storage/djdc-logo_bb40eabf.png" alt="DJDC logo" className="size-10 rounded-lg object-contain" />
               <span className="font-display text-xl tracking-tight">Digital Junction</span>
             </div>
-            <p className="mt-5 max-w-sm text-sm leading-6 text-[#FFF4E1]/70">Connecting ideas with practical, thoughtful digital experiences—built for the work ahead.</p>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-[#FFF4E1]/70">{footerBrand?.body || "Connecting ideas with practical, thoughtful digital experiences—built for the work ahead."}</p>
           </div>
           <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Company</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/about" className="hover:text-[#89D7B7]">About</Link><Link href="/services" className="hover:text-[#89D7B7]">Services</Link><Link href="/work" className="hover:text-[#89D7B7]">Projects</Link><Link href="/contact" className="hover:text-[#89D7B7]">Contact</Link></div></div>
           <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Digital products</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/shop" className="hover:text-[#89D7B7]">All products</Link><Link href="/shop" className="hover:text-[#89D7B7]">UI kits</Link><Link href="/shop" className="hover:text-[#89D7B7]">Business resources</Link><Link href="/shop" className="hover:text-[#89D7B7]">Guest checkout</Link></div><p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Product help</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/contact" className="hover:text-[#89D7B7]">Order questions</Link><Link href="/contact" className="hover:text-[#89D7B7]">Delivery support</Link><Link href="/contact" className="hover:text-[#89D7B7]">Support</Link></div></div>
           <div>
             <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Start a conversation</p>
-            <p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">Tell us what you are building, where you are stuck, and what success needs to look like.</p>
-            <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#89D7B7] hover:text-[#FFF4E1]">Start a project <ArrowUpRight className="size-3.5" /></Link>
+            <p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">{footerContact?.body || "Tell us what you are building, where you are stuck, and what success needs to look like."}</p>
+            <Link href={footerContact?.ctaHref || "/contact"} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#89D7B7] hover:text-[#FFF4E1]">{footerContact?.ctaLabel || "Start a project"} <ArrowUpRight className="size-3.5" /></Link>
             <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Contact</p><div className="mt-4 grid gap-2 text-sm text-[#FFF4E1]/76"><span>Email: official address to be confirmed</span><span>Phone: official number to be confirmed</span></div>
             <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Social</p><p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">Official social links will appear here when the company channels are ready.</p>
             <p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Legal</p><div className="mt-4 grid gap-2 text-sm text-[#FFF4E1]/76"><Link href="/privacy" className="hover:text-[#89D7B7]">Privacy policy</Link><Link href="/terms" className="hover:text-[#89D7B7]">Terms & conditions</Link><Link href="/refunds" className="hover:text-[#89D7B7]">Refund policy</Link></div>
