@@ -36,7 +36,8 @@ describe("transactional payment delivery email", () => {
     const source = readFileSync(resolve(import.meta.dirname, "appsScriptRelay.ts"), "utf8");
     expect(source).toContain('const appsScriptRelayHost = "script.google.com"');
     expect(source).toContain("APPS_SCRIPT_RELAY_SECRET");
-    expect(source).toContain("hmacHex");
+    expect(source).toContain("APPS_SCRIPT_RELAY_SECRET");
+    expect(source).toContain("JSON.stringify({ timestamp, payloadJson, secret: sharedSecret })");
     expect(source).not.toContain("api.brevo.com");
     expect(source).not.toMatch(/attachments\s*:/);
   });
@@ -53,7 +54,8 @@ describe("transactional payment delivery email", () => {
   it("keeps the owner copy-paste Apps Script relay free of numeric separators and requires signed requests", () => {
     const script = readFileSync(resolve(import.meta.dirname, "../apps-script/DJDCEmailRelay.gs"), "utf8");
     expect(script).toContain("function doPost(e)");
-    expect(script).toContain("Utilities.computeHmacSha256Signature");
+    expect(script).toContain("function constantTimeEquals(left, right)");
+    expect(script).toContain("request.secret");
     expect(script).toContain("MailApp.sendEmail");
     expect(script).not.toMatch(/\d+_\d+/);
   });

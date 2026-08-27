@@ -2,7 +2,7 @@
 
 The buyer email sender is a private Google Apps Script web app owned by `devshiftcode2025@gmail.com`. This avoids Gmail OAuth refresh tokens and an external email provider account. It sends the existing branded HTML/text delivery and manual-payment rejection notices using `MailApp`.
 
-The Cloudflare Worker submits a timestamped serialized email payload and an HMAC-SHA-256 signature. The relay rejects unauthenticated or stale requests, uses a script-level lock to prevent concurrent duplicates, and retains short-lived sent-message records keyed by the D1 email audit request identifier. It sends no attachment; delivery messages retain individual one-time D1 entitlement links only and rejection messages include no download link.
+The Cloudflare Worker submits a timestamped serialized email payload and the same high-entropy private shared secret held in Apps Script Script Properties. The relay rejects unauthenticated or stale requests, uses a script-level lock to prevent concurrent duplicates, and retains short-lived sent-message records keyed by the D1 email audit request identifier. The secret travels only in the HTTPS Worker-to-Google request and must never appear in frontend source. The relay sends no attachment; delivery messages retain individual one-time D1 entitlement links only and rejection messages include no download link.
 
 ## Apps Script web-app configuration
 

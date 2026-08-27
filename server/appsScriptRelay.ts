@@ -72,19 +72,12 @@ function safeAppsScriptRelayUrl(value: string) {
   return url.toString();
 }
 
-async function hmacHex(value: string, secret: string) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, "0")).join("");
-}
-
 async function sendAppsScriptRelayEmail(payload: ReturnType<typeof buildAppsScriptRelayPayload>) {
   const relayUrl = safeAppsScriptRelayUrl(ENV.appsScriptRelayUrl);
   const sharedSecret = safeHeaderValue(ENV.appsScriptRelaySecret, "APPS_SCRIPT_RELAY_SECRET");
   const timestamp = Date.now();
   const payloadJson = JSON.stringify(payload);
-  const signature = await hmacHex(`${timestamp}.${payloadJson}`, sharedSecret);
-  const response = await fetch(relayUrl, { method: "POST", headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify({ timestamp, payloadJson, signature }) });
+  const response = await fetch(relayUrl, { method: "POST", headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify({ timestamp, payloadJson, secret: sharedSecret }) });
   const responseText = await response.text();
   let result: { ok?: boolean; messageId?: string; error?: string } | null = null;
   try { result = responseText ? JSON.parse(responseText) : null; } catch { /* Do not place untrusted provider response body in the email audit. */ }

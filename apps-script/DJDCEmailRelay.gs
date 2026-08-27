@@ -8,12 +8,11 @@ function doPost(e) {
     const request = JSON.parse(e.postData && e.postData.contents ? e.postData.contents : "{}");
     const timestamp = Number(request.timestamp);
     const payloadJson = typeof request.payloadJson === "string" ? request.payloadJson : "";
-    const signature = typeof request.signature === "string" ? request.signature : "";
+    const requestSecret = typeof request.secret === "string" ? request.secret : "";
     const secret = PropertiesService.getScriptProperties().getProperty(DJDC_RELAY_SECRET_PROPERTY);
-    if (!secret || !Number.isFinite(timestamp) || !payloadJson || !signature) return jsonResponse({ ok: false, error: "Invalid relay request." });
+    if (!secret || !Number.isFinite(timestamp) || !payloadJson || !requestSecret) return jsonResponse({ ok: false, error: "Invalid relay request." });
     if (Math.abs(Date.now() - timestamp) > DJDC_REPLAY_WINDOW_MS) return jsonResponse({ ok: false, error: "Expired relay request." });
-    const expectedSignature = hex(Utilities.computeHmacSha256Signature(`${timestamp}.${payloadJson}`, secret));
-    if (!constantTimeEquals(expectedSignature, signature)) return jsonResponse({ ok: false, error: "Unauthorized relay request." });
+    if (!constantTimeEquals(secret, requestSecret)) return jsonResponse({ ok: false, error: "Unauthorized relay request." });
 
     const payload = JSON.parse(payloadJson);
     validatePayload(payload);
@@ -64,10 +63,6 @@ function constantTimeEquals(left, right) {
   let difference = 0;
   for (let index = 0; index < left.length; index += 1) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
   return difference === 0;
-}
-
-function hex(bytes) {
-  return bytes.map(byte => (byte < 0 ? byte + 256 : byte).toString(16).padStart(2, "0")).join("");
 }
 
 function jsonResponse(value) {
