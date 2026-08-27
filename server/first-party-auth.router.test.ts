@@ -131,6 +131,22 @@ describe("first-party Digital Junction account router", () => {
     expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
   });
 
+  it("allows the configured private owner setup token to replace an existing owner password during recovery", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    expect(setupToken).toBeTruthy();
+    const { ctx, cookies } = context();
+    const owner = { ...localUser, id: 1, openId: "local-owner-recovery", email: "devshiftcode2025@gmail.com", role: "admin" as const, passwordHash: await hashPassword("Previous-Owner-Password-2026") };
+    dbMock.getUserByEmail.mockResolvedValue(owner);
+    dbMock.setUserPassword.mockResolvedValue(undefined);
+    dbMock.recordUserSignIn.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: owner.email, setupToken: setupToken!, password: "Recovered-Owner-Password-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.setUserPassword).toHaveBeenCalledWith(owner.id, expect.not.stringContaining("Recovered-Owner-Password-2026"));
+    expect(dbMock.recordUserSignIn).toHaveBeenCalledWith(owner.openId);
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
   it("bootstraps the first owner only for the configured owner email and private setup token", async () => {
     const setupToken = process.env.OWNER_SETUP_TOKEN;
     process.env.OWNER_EMAIL = "devshiftcode2025@gmail.com";

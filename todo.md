@@ -241,3 +241,6 @@
 - [x] Configure the Cloudflare Pages project name and deployment command for the requested `digital-junction-platform.pages.dev` URL.
 - [x] Repair owner-session cookie handoff between the Cloudflare Pages frontend and D1-backed Worker API so valid owner credentials remain authenticated on the Pages domain.
 - [x] Preserve all Worker `Set-Cookie` headers through the Pages API proxy so owner login sessions are stored on `digital-junction-platform.pages.dev`.
+- [ ] Diagnose and repair the persistent live owner-login failure on the Pages domain using direct API response evidence, without changing owner or business data.
+- [ ] Verify the production D1 owner account role and password-configuration state through a read-only query before altering authentication logic.
+- [x] Add a token-protected owner password recovery path for an existing admin account when the current direct sign-in password cannot be verified.

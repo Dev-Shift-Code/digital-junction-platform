@@ -75,7 +75,6 @@ export const appRouter = router({
         return { success: true } as const;
       }
       if (user.role !== "admin") throw new Error("This email is not the configured owner account.");
-      if (user.passwordHash) throw new Error("A direct owner password is already configured. Use Owner sign in.");
       await db.setUserPassword(user.id, await hashPassword(input.password));
       await db.recordUserSignIn(user.openId);
       await issueLocalSession(ctx, user, "owner");
