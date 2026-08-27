@@ -2,6 +2,7 @@ ALTER TABLE guestCheckoutRequests ADD COLUMN commerceStatus TEXT NOT NULL DEFAUL
 ALTER TABLE guestCheckoutRequests ADD COLUMN paidAt INTEGER;
 ALTER TABLE guestCheckoutRequests ADD COLUMN paymentPublicToken TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS guest_checkout_payment_public_token_unique ON guestCheckoutRequests(paymentPublicToken);
+ALTER TABLE guestCheckoutRequests ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE productFiles ADD COLUMN storageProvider TEXT NOT NULL DEFAULT 'legacy';
 ALTER TABLE productFiles ADD COLUMN resourceType TEXT;
 

@@ -10,13 +10,15 @@ describe("Owner Sales management workspace", () => {
     const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
     expect(sales).toContain("trpc.portal.admin.orders.list.useQuery");
     expect(sales).toContain("Gross order value");
-    expect(sales).toContain("Verified payment value");
+    expect(sales).toContain("PayRex verified value");
     expect(sales).toContain("Export CSV");
     expect(sales).toContain("paymentStatus");
     expect(sales).toContain("reviewPayment.mutate");
     expect(sales).toContain("updateOrder.mutate");
     expect(sales).toContain("revokeDeliveryLinks.useMutation");
-    expect(sales).toContain("Revoke download links");
+    expect(sales).toContain("createReplacementDeliveryLink.useMutation");
+    expect(sales).toContain("Revoke unused links");
+    expect(sales).toContain("New link");
     expect(sales).toContain("does not create sample sales");
     expect(app).toContain('path={"/owner/sales"} component={OwnerSalesManagement}');
   });

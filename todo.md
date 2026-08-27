@@ -265,4 +265,5 @@
 - [x] Automatically release revocable one-time buyer download controls for each eligible private file only after a verified PayRex payment event, with D1 delivery audit records.
 - [x] Show paid buyers their eligible one-time delivery controls on the payment-success page and provide owner revoke controls.
 - [ ] Send an optional transactional buyer email containing the one-time delivery link after verified payment, using a configured email provider and without exposing delivery URLs publicly.
+- [x] Extend Owner Sales with real PayRex payment and one-time delivery entitlement statuses per order, plus safe revoke and regeneration controls.
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.

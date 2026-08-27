@@ -5,6 +5,7 @@ import {
   createDeliverable,
   createGuestCheckoutRequest,
   createOneTimeDeliveryEntitlement,
+  createOwnerOneTimeDeliveryEntitlement,
   createPayrexCheckoutOrder,
   createPayrexPaymentTransaction,
   createInquiry,
@@ -226,7 +227,7 @@ export const portalRouter = router({
             successUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=success`,
             cancelUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=cancelled`, expiresAt,
           });
-          const order = await createPayrexCheckoutOrder({ productId: product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
+          const order = await createPayrexCheckoutOrder({ productId: product.id, quantity: input.quantity, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
           await createPayrexPaymentTransaction({ orderId: order.id, publicToken, amountCents: unitAmountCents * input.quantity, providerCheckoutSessionId: session.id, providerPaymentIntentId: session.payment_intent?.id || null, checkoutUrl: session.url, expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : expiresAt });
           return { publicToken, checkoutUrl: session.url, expiresAt: session.expires_at ? session.expires_at * 1000 : expiresAt.getTime(), amountCents: unitAmountCents * input.quantity, currency: "PHP" };
         } catch (error) {
@@ -614,6 +615,17 @@ export const portalRouter = router({
         try {
           return revokeDeliveryEntitlementsForOrder(input.orderId);
         } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      createReplacementDeliveryLink: adminProcedure.input(z.object({ orderId: z.number().int().positive(), productFileId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          const token = crypto.randomUUID();
+          const entitlement = await createOwnerOneTimeDeliveryEntitlement({ orderId: input.orderId, productFileId: input.productFileId, tokenHash: await hashDeliveryToken(token), expiresAt: new Date(Date.now() + 15 * 60 * 1000) });
+          if (!entitlement) throw new TRPCError({ code: "BAD_REQUEST", message: "A replacement link can be created only for a verified PayRex payment and an eligible private buyer file." });
+          return { url: `${ENV.publicAppOrigin.replace(/\/+$/, "")}/api/delivery/${token}`, expiresAt: entitlement.expiresAt };
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
           return unavailable(error);
         }
       }),
