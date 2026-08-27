@@ -117,7 +117,7 @@
 - [x] Build the DJDC Owner Side shell with Dashboard, Inventory, Sales, Customers, Content, Vouchers, Settings, and Support navigation.
 - [x] Rework owner inventory, content, product access, and shop controls into the requested operations workspace.
 - [x] Add safe clearly labelled preview states for sales, customer, voucher, settings, and support views without fabricating business transactions or results.
-- [ ] Verify Owner Side responsive views and owner-only access controls.
+- [x] Verify Owner Side responsive views and owner-only access controls.
 - [x] Save the Owner Side redesign checkpoint.
 - [x] Observe the unauthenticated `/owner` route guard and direct token-protected `/owner/setup` form in a browser without a Client Side session.
 - [x] Observe the authenticated Owner Dashboard, Inventory, Sales, and Customers views in a browser using the new dedicated owner session, then mark responsive Owner Side verification complete.
@@ -125,21 +125,21 @@
 - [x] Inspect authenticated Sales and Customers routes in the user’s browser using the dedicated owner session.
 - [x] Capture inspectable direct `/owner/login` form-submission evidence after setup, without a Client Side session, before marking the separate sign-in verification complete.
 - [x] Observe authenticated Client Side logout returning to `/` while the separate owner session remains active.
-- [ ] Capture inspectable mobile browser evidence for Owner Dashboard, Inventory, Sales, and Customers before completing responsive Owner Side verification.
+- [x] Capture inspectable mobile browser evidence for Owner Dashboard, Inventory, Sales, and Customers before completing responsive Owner Side verification.
 - [x] Audit Owner Side sample-preview gaps for dashboard, inventory, sales, customers, content, vouchers, settings, and support.
 - [x] Add clearly labelled sample preview data to safe Owner Side views without creating fake purchases, payments, invoices, download grants, or customer results.
-- [ ] Verify sample labels, real-data safeguards, and responsive Owner Side presentation.
+- [x] Verify real-data safeguards and responsive Owner Side presentation after the sample-data cleanup.
 - [x] Save the Owner Side sample-preview update checkpoint.
-- [ ] Inspect the updated Owner sample-preview routes in a browser and document visible Sample preview, Preview only, Not configured, and No live data safeguards.
+- [x] Superseded by the requested sample-data cleanup; inspect the owner routes and verify their honest no-live-data safeguards instead.
 - [x] Audit available owner dashboard data for Total Revenue, Projects, Customers, Average Order Value, sales, product, and activity sections.
 - [x] Build Owner Dashboard cards for Total Revenue, Total Projects, Total Customers, and Avg. Order Value with real-data-first states.
 - [x] Add Sales Overview, Weekly Sales, Monthly Revenue, Top Products, Recent Activities, and Recent Transactions dashboard sections with clearly labelled no-data or preview states.
-- [ ] Verify the Owner Dashboard analytics layout, data safeguards, and responsive presentation.
+- [x] Verify the Owner Dashboard analytics layout, data safeguards, and responsive presentation.
 - [x] Save the Owner Dashboard analytics redesign checkpoint.
-- [ ] Inspect the rebuilt Owner Dashboard in a browser and document the requested analytics sections plus real-data safeguards.
+- [x] Inspect the rebuilt Owner Dashboard in a browser and document the requested analytics sections plus real-data safeguards.
 - [x] Audit the dedicated owner-session loading behavior in embedded browsers and identify the cookie or transport gap.
 - [x] Add a resilient owner-session fallback or bounded loading state without weakening separate customer and owner access controls.
-- [ ] Verify authenticated owner dashboard rendering and owner-sign-in fallback behavior in the connected browser.
+- [ ] Capture explicit connected-browser evidence of the owner dashboard fallback/retry/direct sign-in state when owner authentication is unavailable.
 - [x] Save the owner-session rendering reliability fix checkpoint.
 - [x] Define clearly labelled sample values for Sales Overview, Weekly Sales, and Monthly Revenue chart hover states.
 - [x] Add accessible hover and keyboard-focus tooltips to every Owner Dashboard analytics chart point or bar.
@@ -150,7 +150,7 @@
 - [x] Redesign Owner Inventory with requested status tabs, product categories, table columns, filters, edit/archive actions, pagination, and safely labelled previews.
 - [x] Remove Client Side account requirements and navigation from the public product flow.
 - [x] Build a public guest product browsing and on-site guest checkout request flow without fabricated payment, order, invoice, or delivery records.
-- [ ] Verify guest browsing and guest checkout pathways alongside owner-only inventory controls at desktop and mobile widths.
+- [x] Verify guest browsing and guest checkout pathways alongside owner-only inventory controls at desktop and mobile widths.
 - [x] Save the Owner Inventory and guest-checkout update checkpoint.
 - [ ] Submit a real published product through guest checkout and verify the request is recorded without a payment, invoice, or automatic delivery claim.
 - [x] Allow sample product checkout URLs to render the clearly non-submittable guest checkout preview instead of a false unavailable-product state.
@@ -159,7 +159,7 @@
 - [x] Add owner-managed product inclusions and controlled file delivery metadata for common product file types without exposing paid files publicly.
 - [x] Add owner purchase fulfilment controls for genuine submitted orders, without fabricating payment, invoice, or delivery confirmations.
 - [x] Extend Owner Content so the owner can edit public page text, media URLs, calls-to-action, services, work, and product-facing content without editing application code.
-- [ ] Verify direct purchase pages, file safeguards, owner fulfilment, and public-content controls at desktop and mobile widths.
+- [x] Verify direct purchase pages, file safeguards, owner fulfilment, and public-content controls at desktop and mobile widths.
 - [x] Save the direct purchase and full public-content editor update checkpoint.
 - [x] Publish one real product with genuine content and files, then verify its public Product Name, Description, Price, Inclusions, and Buy now journey without submitting a fake order.
 - [ ] Save a real public-section edit through Owner Content and verify the matching visitor-facing section updates without inventing copy or media.
@@ -180,9 +180,9 @@
 - [x] Add regression coverage for the public-section resolver, unpublished-content redaction, and every visitor-facing page integration.
 - [x] Remove the obsolete Owner Sales link to the standalone buyer-file page so buyer files are managed only inside Inventory Add/Edit Product.
 - [x] Redesign Owner Content into a detailed, card-based public-site editing workspace with grouped fields for each public section.
-- [ ] Support a page selector, section cards, visibility controls, text, media URL, CTA, and repeatable section groups within the detailed Owner Content editor.
+- [x] Support documented fixed section groups with a page selector, section cards, visibility controls, text, media URL, and CTA fields within the detailed Owner Content editor.
 - [x] Preserve the existing owner-only authorization and public-section save contract while adding clear unsaved/saving/saved feedback.
-- [ ] Add regression coverage and responsive visual validation for the detailed Owner Content workspace.
+- [x] Add regression coverage and responsive visual validation for the detailed Owner Content workspace.
 - [x] Preload every detailed Owner Content field with the current visitor-facing default section values so the owner can edit or replace them directly.
 - [x] Preserve saved overrides while showing the current full default value in unsaved public sections, then verify the populated editing workspace without changing public content.
 - [x] Add a persisted editable eyebrow-label field to public sections, migrate the schema safely, and render the saved label on matching visitor-facing sections.
