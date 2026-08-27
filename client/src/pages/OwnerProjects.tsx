@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { ownerNavigation } from "@/data/ownerNavigation";
 import { trpc } from "@/lib/trpc";
 import { Check, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, ShieldAlert, Trash2, X } from "lucide-react";
@@ -48,6 +49,7 @@ export default function OwnerProjects() {
   const [editor, setEditor] = useState<ProjectRecord | "new" | null>(null);
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
   const [notice, setNotice] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<ProjectRecord | null>(null);
   const editedProject = editor && editor !== "new" ? editor : undefined;
   const coverInputId = `project-cover-${editedProject?.id ?? "new"}`;
   const busy = saveProject.isPending || uploadCover.isPending || removeCover.isPending || deleteProject.isPending;
@@ -92,8 +94,11 @@ export default function OwnerProjects() {
       onError: () => setNotice("We could not remove the project cover. Please try again."),
     });
   };
-  const removeProject = (project: ProjectRecord) => {
-    if (!window.confirm(`Delete “${project.title}”? This cannot be undone.`)) return;
+  const removeProject = (project: ProjectRecord) => setPendingDelete(project);
+  const confirmDelete = () => {
+    const project = pendingDelete;
+    if (!project) return;
+    setPendingDelete(null);
     deleteProject.mutate({ caseStudyId: project.id }, {
       onSuccess: async () => {
         if (editedProject?.id === project.id) closeEditor();
@@ -140,6 +145,15 @@ export default function OwnerProjects() {
   }
 
   return <DashboardLayout navigation={ownerNavigation} title="DJDC Owner"><div className="mx-auto max-w-7xl space-y-6 py-2">
+    <ConfirmDialog
+      open={Boolean(pendingDelete)}
+      onOpenChange={open => { if (!open) setPendingDelete(null); }}
+      title={pendingDelete ? `Delete “${pendingDelete.title}”?` : "Delete project?"}
+      description="This project case study cannot be recovered after deletion. Archive it instead if you may need it later."
+      confirmLabel="Delete project"
+      destructive
+      onConfirm={confirmDelete}
+    />
     <header className="flex flex-col gap-5 rounded-[1.55rem] bg-[#1A312C] px-6 py-8 text-[#FFF4E1] sm:px-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="font-mono text-[.62rem] uppercase tracking-[.14em] text-[#89D7B7]">Owner workspace / selected work</p><h1 className="display mt-3 text-4xl">Projects</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#FFF4E1]/72">Add real work when it is ready to share. Published projects appear on the public Projects page; nothing is prefilled or fabricated.</p></div><button type="button" onClick={() => openEditor("new")} className="button-primary w-fit !bg-[#89D7B7] !text-[#1A312C]"><Plus className="size-4" />Add project</button></header>
     {notice ? <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-[#428475]/22 bg-[#89D7B7]/15 px-4 py-3 text-sm text-[#1A312C]"><span className="flex items-center gap-2"><Check className="size-4" />{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss notification"><X className="size-4" /></button></div> : null}
     {editor ? <section className="rounded-[1.55rem] border border-[#1A312C]/12 bg-[#FFF4E1] p-5 shadow-[0_18px_45px_rgba(26,49,44,.06)] sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="eyebrow">{editedProject ? "Edit project" : "New project"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editedProject?.title || "Add project"}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Describe only genuine work that you are allowed to share publicly.</p></div><button type="button" onClick={closeEditor} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button></div><form key={editedProject?.id ?? "new"} onSubmit={submit} className="mt-6"><section className="rounded-xl border border-dashed border-[#428475]/35 bg-[#89D7B7]/10 p-4"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-[#1A312C]">Project Cover</p><p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload a local image for this project. You can remove or replace it if the wrong image was selected.</p></div><input id={coverInputId} type="file" accept="image/*" className="sr-only" onChange={selectCover} disabled={busy} /><label htmlFor={coverInputId} className={`button-quiet w-fit cursor-pointer !min-h-9 !px-3 text-xs ${busy ? "pointer-events-none opacity-60" : ""}`}><ImagePlus className="size-3.5" />{coverUrl ? "Replace cover" : "Upload cover"}</label></div>{coverUrl ? <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#1A312C]/10 bg-white/75 p-2"><img src={coverUrl} alt="Project cover preview" className="size-18 rounded-md border border-[#1A312C]/10 object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#1A312C]">{pendingCover?.fileName || "Current project cover"}</p><p className="mt-1 text-[.68rem] text-[#1A312C]/55">Local image preview</p></div><button type="button" onClick={clearCover} disabled={busy} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700"><X className="size-3.5" />Remove</button></div> : null}</section><div className="mt-5 grid gap-5"><Field label="Project Title"><input required name="title" minLength={2} maxLength={180} defaultValue={editedProject?.title ?? ""} className="form-field !bg-[#FFF4E1]" placeholder="Project title" /></Field><Field label="Project Description"><textarea required name="summary" minLength={10} maxLength={5000} defaultValue={editedProject?.summary ?? ""} className="form-field min-h-28 resize-y !bg-[#FFF4E1]" placeholder="Describe the project clearly." /></Field><div className="grid gap-5 lg:grid-cols-2"><Field label="Problem Addressed"><textarea name="problem" maxLength={5000} defaultValue={editedProject?.problem ?? ""} className="form-field min-h-28 resize-y !bg-[#FFF4E1]" placeholder="What problem did the project address?" /></Field><Field label="Key Features"><textarea name="solution" maxLength={5000} defaultValue={editedProject?.solution ?? ""} className="form-field min-h-28 resize-y !bg-[#FFF4E1]" placeholder="List the real key features." /></Field><Field label="My Contribution"><textarea name="results" maxLength={5000} defaultValue={editedProject?.results ?? ""} className="form-field min-h-28 resize-y !bg-[#FFF4E1]" placeholder="Describe your real contribution." /></Field><Field label="Tech Stack"><textarea name="technologies" maxLength={2000} defaultValue={editedProject?.technologies ?? ""} className="form-field min-h-28 resize-y !bg-[#FFF4E1]" placeholder="Tools, frameworks, and technologies used" /></Field></div><div className="flex flex-wrap items-center gap-5"><label className="flex items-center gap-2 text-sm font-bold text-[#1A312C]"><input name="isPublished" type="checkbox" defaultChecked={editedProject?.isPublished ?? false} className="size-4 accent-[#428475]" />Publish on public Projects</label><label className="flex items-center gap-2 text-sm font-bold text-[#1A312C]">Display order <input name="sortOrder" type="number" min={0} defaultValue={editedProject?.sortOrder ?? 0} className="form-field !h-9 !w-20 !bg-[#FFF4E1] !py-1" /></label></div></div><div className="mt-6 flex flex-wrap gap-3"><button disabled={busy} className="button-primary disabled:opacity-60">{busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editedProject ? "Save changes" : "Save project"}</button><button type="button" className="button-quiet" onClick={closeEditor}>Cancel</button>{editedProject ? <button type="button" disabled={busy} onClick={() => removeProject(editedProject)} className="button-quiet text-rose-700 disabled:opacity-60"><Trash2 className="size-4" />Delete project</button> : null}</div></form></section> : null}

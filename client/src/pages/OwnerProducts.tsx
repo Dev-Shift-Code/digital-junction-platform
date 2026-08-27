@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { ownerNavigation } from "@/data/ownerNavigation";
 import { trpc } from "@/lib/trpc";
 import {
@@ -255,6 +256,7 @@ export default function OwnerProducts() {
   const [notice, setNotice] = useState("");
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
   const [pendingBuyerFiles, setPendingBuyerFiles] = useState<PendingBuyerFile[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "product" | "buyer-file"; id: number; label: string } | null>(null);
 
   const currentProductId = editor && editor !== "new" ? editor.id : 0;
   const currentProductFileInput = useMemo(() => ({ productId: currentProductId }), [currentProductId]);
@@ -382,16 +384,7 @@ export default function OwnerProducts() {
       setNotice("We could not read one of those files. Please try again.");
     }
   };
-  const removeStoredBuyerFile = (fileId: number, fileName: string) => {
-    if (!window.confirm(`Remove “${fileName}” from this product?`)) return;
-    removeBuyerFile.mutate({ productFileId: fileId }, {
-      onSuccess: async () => {
-        setNotice(`${fileName} removed.`);
-        await attachedBuyerFiles.refetch();
-      },
-      onError: () => setNotice("We could not remove that buyer file. Please try again."),
-    });
-  };
+  const removeStoredBuyerFile = (fileId: number, fileName: string) => setPendingDelete({ kind: "buyer-file", id: fileId, label: fileName });
 
   const submitProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -436,9 +429,22 @@ export default function OwnerProducts() {
       sortOrder: product.sortOrder,
     });
   };
-  const removeProduct = (product: ProductValues) => {
-    if (!window.confirm(`Delete “${product.title}”? This cannot be undone. Products with buyer records cannot be deleted and must be archived instead.`)) return;
-    deleteProduct.mutate({ productId: product.id }, {
+  const removeProduct = (product: ProductValues) => setPendingDelete({ kind: "product", id: product.id, label: product.title });
+  const confirmDelete = () => {
+    const pending = pendingDelete;
+    if (!pending) return;
+    setPendingDelete(null);
+    if (pending.kind === "buyer-file") {
+      removeBuyerFile.mutate({ productFileId: pending.id }, {
+        onSuccess: async () => {
+          setNotice(`${pending.label} removed.`);
+          await attachedBuyerFiles.refetch();
+        },
+        onError: () => setNotice("We could not remove that buyer file. Please try again."),
+      });
+      return;
+    }
+    deleteProduct.mutate({ productId: pending.id }, {
       onSuccess: async () => {
         setNotice("Product deleted.");
         await products.refetch();
@@ -458,6 +464,15 @@ export default function OwnerProducts() {
   return (
     <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
       <div className="mx-auto max-w-7xl space-y-6 py-2">
+        <ConfirmDialog
+          open={Boolean(pendingDelete)}
+          onOpenChange={open => { if (!open) setPendingDelete(null); }}
+          title={pendingDelete?.kind === "product" ? `Delete “${pendingDelete.label}”?` : `Remove “${pendingDelete?.label ?? "this file"}”?`}
+          description={pendingDelete?.kind === "product" ? "This cannot be undone. Products with buyer records cannot be deleted and must be archived instead." : "This buyer delivery file will be removed from the product. The action cannot be undone."}
+          confirmLabel={pendingDelete?.kind === "product" ? "Delete product" : "Remove file"}
+          destructive
+          onConfirm={confirmDelete}
+        />
         {!isOwner ? (
           <section className="grid min-h-[60vh] place-items-center"><div className="max-w-md rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the Digital Junction owner can manage the inventory.</p></div></section>
         ) : (

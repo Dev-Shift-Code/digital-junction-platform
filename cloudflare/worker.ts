@@ -113,7 +113,7 @@ export default {
       });
     }
 
-    if (pathname === "/manus-storage/djdc-logo_bb40eabf.png") {
+    if (pathname === "/manus-storage/djdc-logo_228b68ab.png") {
       return new Response(brandMarkSvg, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" } });
     }
 
