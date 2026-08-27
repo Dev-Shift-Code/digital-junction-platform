@@ -4,6 +4,8 @@ import {
   assignClientToProject,
   createDeliverable,
   createGuestCheckoutRequest,
+  createPayrexCheckoutOrder,
+  createPayrexPaymentTransaction,
   createInquiry,
   createMilestone,
   createProductInquiry,
@@ -30,6 +32,7 @@ import {
   getGuestCheckoutRequests,
   getActivePaymentMethods,
   getPaymentMethodById,
+  getPayrexPaymentStatus,
   getPublishedDigitalProductById,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
@@ -54,6 +57,8 @@ import {
 } from "../db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { isD1OnlyFileMode, storagePut, storagePutPaymentQr } from "../storage";
+import { createPayrexGcashCheckout } from "../payrex";
+import { ENV } from "../_core/env";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
@@ -65,6 +70,13 @@ const paymentInstructions = z.string().trim().min(3).max(5000).refine(
 );
 
 const optionalDate = z.coerce.date().optional().nullable();
+
+function priceToCents(value: string | number) {
+  const normalized = String(value).trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) throw new TRPCError({ code: "BAD_REQUEST", message: "The product price is invalid." });
+  const [whole, decimal = ""] = normalized.split(".");
+  return Number(whole) * 100 + Number(decimal.padEnd(2, "0"));
+}
 
 function unavailable(error: unknown): never {
   console.error("[portal] procedure failed", error);
@@ -189,6 +201,41 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
+    createPayrexCheckout: publicProcedure
+      .input(z.object({ productId: z.number().int().positive(), quantity: z.number().int().min(1).max(20).default(1), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional() }))
+      .mutation(async ({ input }) => {
+        try {
+          const product = await getPublishedDigitalProductById(input.productId);
+          if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "This product is not available for checkout." });
+          const unitAmountCents = priceToCents(product.price);
+          if (unitAmountCents < 2_000) throw new TRPCError({ code: "BAD_REQUEST", message: "PayRex GCash checkout requires a product price of at least ₱20.00." });
+          const publicToken = crypto.randomUUID();
+          const orderReference = `DJ-${publicToken}`;
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+          const appOrigin = ENV.publicAppOrigin.replace(/\/+$/, "");
+          const session = await createPayrexGcashCheckout({
+            orderReference, productTitle: product.title, productDescription: product.summary, coverImageUrl: product.coverImageUrl, unitAmountCents, quantity: input.quantity,
+            successUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=success`,
+            cancelUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=cancelled`, expiresAt,
+          });
+          const order = await createPayrexCheckoutOrder({ productId: product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
+          await createPayrexPaymentTransaction({ orderId: order.id, publicToken, amountCents: unitAmountCents * input.quantity, providerCheckoutSessionId: session.id, providerPaymentIntentId: session.payment_intent?.id || null, checkoutUrl: session.url, expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : expiresAt });
+          return { publicToken, checkoutUrl: session.url, expiresAt: session.expires_at ? session.expires_at * 1000 : expiresAt.getTime(), amountCents: unitAmountCents * input.quantity, currency: "PHP" };
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+    payrexPaymentStatus: publicProcedure.input(z.object({ publicToken: z.string().uuid() })).query(async ({ input }) => {
+      try {
+        const result = await getPayrexPaymentStatus(input.publicToken);
+        if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Payment status was not found." });
+        return { orderId: result.order.id, productTitle: result.product.title, amountCents: result.transaction.amountCents, currency: result.transaction.currency, status: result.transaction.status, paidAt: result.transaction.paidAt, expiresAt: result.transaction.expiresAt, checkoutUrl: result.transaction.status === "pending" ? result.transaction.checkoutUrl : null };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
   }),
   productAccess: router({
     listMine: protectedProcedure.query(async ({ ctx }) => {

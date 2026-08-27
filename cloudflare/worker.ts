@@ -3,6 +3,8 @@ import { appRouter } from "../server/routers";
 import { configureD1 } from "../server/db";
 import { configureCloudinaryStorage, configureD1OnlyFileMode } from "../server/storage";
 import { createWorkerContext } from "../server/_core/workerContext";
+import { markPayrexPaymentPaid, registerPayrexWebhookEvent } from "../server/db";
+import { sha256, verifyPayrexWebhook } from "../server/payrex";
 
 type WorkerBindings = Record<string, unknown> & {
   digital_junction_db?: unknown;
@@ -25,6 +27,29 @@ function configuredCloudinaryStorage(bindings: WorkerBindings) {
   return cloudName && apiKey && apiSecret ? { cloudName, apiKey, apiSecret } : null;
 }
 
+function webhookResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+
+async function handlePayrexWebhook(request: Request) {
+  try {
+    if (request.method !== "POST") return webhookResponse({ error: "Method not allowed" }, 405);
+    const rawBody = await request.text();
+    const event = await verifyPayrexWebhook(rawBody, request.headers.get("PayRex-Signature"));
+    if (!event.id || !event.type) return webhookResponse({ error: "Invalid PayRex event" }, 400);
+    const paymentIntentId = event.data?.resource?.id || null;
+    const isNew = await registerPayrexWebhookEvent({ providerEventId: event.id, eventType: event.type, providerPaymentIntentId: paymentIntentId, payloadHash: await sha256(rawBody) });
+    if (!isNew) return webhookResponse({ received: true, duplicate: true });
+    if (event.type === "payment_intent.succeeded" && paymentIntentId) {
+      await markPayrexPaymentPaid(paymentIntentId, event.data?.resource?.latest_payment || null);
+    }
+    return webhookResponse({ received: true });
+  } catch (error) {
+    console.error("[payrex-webhook] rejected", error);
+    return webhookResponse({ error: "Webhook verification failed" }, 400);
+  }
+}
+
 export default {
   async fetch(request: Request, bindings: WorkerBindings, ctx: ExecutionContext) {
     hydrateEnvironment(bindings);
@@ -37,6 +62,7 @@ export default {
     configureCloudinaryStorage(configuredCloudinaryStorage(bindings));
 
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/api/payrex/webhook") return handlePayrexWebhook(request);
     if (pathname.startsWith("/api/trpc")) {
       return fetchRequestHandler({
         endpoint: "/api/trpc",

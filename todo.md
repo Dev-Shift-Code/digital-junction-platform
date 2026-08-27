@@ -260,4 +260,6 @@
 - [ ] Confirm an authorized GCash provider and sandbox credentials before payment API or webhook implementation.
 - [ ] Verify PayRex pricing, transaction fees, and merchant onboarding requirements before enabling the selected GCash integration.
 - [ ] Verify Xendit GCash pricing and compare it with PayRex before confirming the payment provider.
+- [x] Implement server-side PayRex GCash Checkout Session creation, D1 transaction records, and signature-verified webhook handling; live sandbox credentials and remote migration remain pending.
+- [x] Align the owner payment configuration screen with PayRex GCash-only checkout and remove legacy manual payment choices from the active buyer flow.
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
