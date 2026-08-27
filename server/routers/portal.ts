@@ -6,6 +6,8 @@ import {
   createGuestCheckoutRequest,
   createOneTimeDeliveryEntitlement,
   createOwnerOneTimeDeliveryEntitlement,
+  createPaypalCheckoutOrder,
+  createPaypalPaymentTransaction,
   createPayrexCheckoutOrder,
   createPayrexPaymentTransaction,
   createInquiry,
@@ -34,6 +36,7 @@ import {
   getGuestCheckoutRequests,
   getActivePaymentMethods,
   getPaymentMethodById,
+  getPaypalTransactionForPublicToken,
   getPayrexPaymentStatus,
   listPaidDeliveryFiles,
   getPublishedDigitalProductById,
@@ -62,6 +65,7 @@ import {
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { isD1OnlyFileMode, storagePut, storagePutPaymentQr, storagePutPrivateDeliveryFile } from "../storage";
 import { createPayrexGcashCheckout } from "../payrex";
+import { capturePaypalOrder, createPaypalOrder } from "../paypal";
 import { ENV } from "../_core/env";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
@@ -235,11 +239,44 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
+    createPaypalCheckout: publicProcedure
+      .input(z.object({ productId: z.number().int().positive(), quantity: z.number().int().min(1).max(20).default(1), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional() }))
+      .mutation(async ({ input }) => {
+        try {
+          const product = await getPublishedDigitalProductById(input.productId);
+          if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "This product is not available for checkout." });
+          const unitAmountCents = priceToCents(product.price);
+          if (unitAmountCents < 1) throw new TRPCError({ code: "BAD_REQUEST", message: "The product price must be at least ₱0.01 for PayPal checkout." });
+          const publicToken = crypto.randomUUID();
+          const orderReference = `DJ-PP-${publicToken}`;
+          const appOrigin = ENV.publicAppOrigin.replace(/\/+$/, "");
+          const paypal = await createPaypalOrder({ orderReference, productTitle: input.quantity > 1 ? `${product.title} × ${input.quantity}` : product.title, productDescription: product.summary, amountCents: unitAmountCents * input.quantity, successUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&provider=paypal`, cancelUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&provider=paypal&result=cancelled` });
+          const order = await createPaypalCheckoutOrder({ productId: product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
+          await createPaypalPaymentTransaction({ orderId: order.id, publicToken, amountCents: unitAmountCents * input.quantity, providerOrderId: paypal.order.id, approvalUrl: paypal.approvalUrl });
+          return { publicToken, checkoutUrl: paypal.approvalUrl, amountCents: unitAmountCents * input.quantity, currency: "PHP", provider: "paypal" as const };
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+    capturePaypalCheckout: publicProcedure.input(z.object({ publicToken: z.string().uuid(), paypalOrderId: z.string().trim().min(3).max(255) })).mutation(async ({ input }) => {
+      try {
+        const transaction = await getPaypalTransactionForPublicToken(input.publicToken);
+        if (!transaction || transaction.providerCheckoutSessionId !== input.paypalOrderId) throw new TRPCError({ code: "FORBIDDEN", message: "This PayPal approval does not match the checkout session." });
+        if (transaction.status === "paid") return { pendingWebhook: false, status: "paid" as const };
+        const order = await capturePaypalOrder(input.paypalOrderId);
+        if (order.status !== "COMPLETED") throw new TRPCError({ code: "BAD_REQUEST", message: "PayPal has not completed this payment." });
+        return { pendingWebhook: true, status: "pending" as const };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
     payrexPaymentStatus: publicProcedure.input(z.object({ publicToken: z.string().uuid() })).query(async ({ input }) => {
       try {
         const result = await getPayrexPaymentStatus(input.publicToken);
         if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Payment status was not found." });
-        return { orderId: result.order.id, productTitle: result.product.title, amountCents: result.transaction.amountCents, currency: result.transaction.currency, status: result.transaction.status, paidAt: result.transaction.paidAt, expiresAt: result.transaction.expiresAt, checkoutUrl: result.transaction.status === "pending" ? result.transaction.checkoutUrl : null };
+        return { orderId: result.order.id, productTitle: result.product.title, provider: result.transaction.provider, amountCents: result.transaction.amountCents, currency: result.transaction.currency, status: result.transaction.status, paidAt: result.transaction.paidAt, expiresAt: result.transaction.expiresAt, checkoutUrl: result.transaction.status === "pending" ? result.transaction.checkoutUrl : null };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         return unavailable(error);

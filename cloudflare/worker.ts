@@ -3,8 +3,9 @@ import { appRouter } from "../server/routers";
 import { configureD1 } from "../server/db";
 import { configureCloudinaryStorage, configureD1OnlyFileMode, storageGetPrivateDeliveryUrl } from "../server/storage";
 import { createWorkerContext } from "../server/_core/workerContext";
-import { consumeOneTimeDeliveryEntitlement, markPayrexPaymentPaid, registerPayrexWebhookEvent } from "../server/db";
+import { consumeOneTimeDeliveryEntitlement, markPaypalPaymentPaid, markPayrexPaymentPaid, registerPaypalWebhookEvent, registerPayrexWebhookEvent } from "../server/db";
 import { sha256, verifyPayrexWebhook } from "../server/payrex";
+import { verifyPaypalWebhook } from "../server/paypal";
 
 type WorkerBindings = Record<string, unknown> & {
   digital_junction_db?: unknown;
@@ -50,6 +51,23 @@ async function handlePayrexWebhook(request: Request) {
   }
 }
 
+async function handlePaypalWebhook(request: Request) {
+  try {
+    if (request.method !== "POST") return webhookResponse({ error: "Method not allowed" }, 405);
+    const rawBody = await request.text();
+    const event = await verifyPaypalWebhook(rawBody, request.headers);
+    if (!event.id || !event.event_type) return webhookResponse({ error: "Invalid PayPal event" }, 400);
+    const providerOrderId = event.resource?.supplementary_data?.related_ids?.order_id || null;
+    const isNew = await registerPaypalWebhookEvent({ providerEventId: event.id, eventType: event.event_type, providerOrderId, payloadHash: await sha256(rawBody) });
+    if (!isNew) return webhookResponse({ received: true, duplicate: true });
+    if (event.event_type === "PAYMENT.CAPTURE.COMPLETED" && providerOrderId) await markPaypalPaymentPaid(providerOrderId, event.resource?.id || null);
+    return webhookResponse({ received: true });
+  } catch (error) {
+    console.error("[paypal-webhook] rejected", error);
+    return webhookResponse({ error: "Webhook verification failed" }, 400);
+  }
+}
+
 async function handleOneTimeDelivery(token: string) {
   const tokenHash = await sha256(token);
   const entitlement = await consumeOneTimeDeliveryEntitlement(tokenHash);
@@ -80,6 +98,7 @@ export default {
 
     const pathname = new URL(request.url).pathname;
     if (pathname === "/api/payrex/webhook") return handlePayrexWebhook(request);
+    if (pathname === "/api/paypal/webhook") return handlePaypalWebhook(request);
     if (request.method === "GET" && pathname.startsWith("/api/delivery/")) {
       const token = pathname.slice("/api/delivery/".length);
       if (/^[0-9a-f-]{36}$/i.test(token)) return handleOneTimeDelivery(token);

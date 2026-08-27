@@ -35,4 +35,11 @@ describe("Cloudflare Worker deployment wiring", () => {
     expect(pagesProxy).toContain('headers.append("Set-Cookie", cookie)');
     expect(pagesProxy).toContain("Pages API proxy is not configured.");
   });
+
+  it("registers separate raw-body verified PayRex and PayPal webhook endpoints", () => {
+    expect(worker).toContain('pathname === "/api/payrex/webhook"');
+    expect(worker).toContain('pathname === "/api/paypal/webhook"');
+    expect(worker).toContain("verifyPaypalWebhook(rawBody, request.headers)");
+    expect(worker).toContain("registerPaypalWebhookEvent");
+  });
 });

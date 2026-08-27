@@ -433,27 +433,48 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
   return created[0];
 }
 
-export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+type PaymentProvider = "payrex" | "paypal";
+type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; paymentMethodName: string; paymentMethodType: string };
+
+async function createProviderCheckoutOrder(input: ProviderCheckoutOrderInput) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values({
     productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
     status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken,
-    paymentMethodName: "GCash", paymentMethodType: "GCash", paymentReference: input.paymentReference, paymentStatus: "awaiting_payment",
+    paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentReference: input.paymentReference, paymentStatus: "awaiting_payment",
   });
   const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
   if (!created[0]) throw new Error("Unable to create checkout order");
   return created[0];
 }
 
-export async function createPayrexPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null }) {
+export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+  return createProviderCheckoutOrder({ ...input, paymentMethodName: "GCash", paymentMethodType: "GCash" });
+}
+
+export async function createPaypalCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+  return createProviderCheckoutOrder({ ...input, paymentMethodName: "PayPal", paymentMethodType: "PayPal" });
+}
+
+type ProviderTransactionInput = { provider: PaymentProvider; paymentMethod: string; orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null };
+
+async function createProviderPaymentTransaction(input: ProviderTransactionInput) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(paymentTransactions).values({
-    orderId: input.orderId, publicToken: input.publicToken, provider: "payrex", paymentMethod: "gcash", amountCents: input.amountCents, currency: "PHP", status: "pending",
+    orderId: input.orderId, publicToken: input.publicToken, provider: input.provider, paymentMethod: input.paymentMethod, amountCents: input.amountCents, currency: "PHP", status: "pending",
     providerCheckoutSessionId: input.providerCheckoutSessionId, providerPaymentIntentId: input.providerPaymentIntentId || null, checkoutUrl: input.checkoutUrl, expiresAt: input.expiresAt || null,
   });
   const created = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, Number(result.meta.last_row_id))).limit(1);
-  if (!created[0]) throw new Error("Unable to record PayRex payment transaction");
+  if (!created[0]) throw new Error("Unable to record payment transaction");
   return created[0];
+}
+
+export async function createPayrexPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null }) {
+  return createProviderPaymentTransaction({ ...input, provider: "payrex", paymentMethod: "gcash" });
+}
+
+export async function createPaypalPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerOrderId: string; approvalUrl: string }) {
+  return createProviderPaymentTransaction({ provider: "paypal", paymentMethod: "paypal", orderId: input.orderId, publicToken: input.publicToken, amountCents: input.amountCents, providerCheckoutSessionId: input.providerOrderId, providerPaymentIntentId: input.providerOrderId, checkoutUrl: input.approvalUrl });
 }
 
 export async function getPayrexPaymentStatus(publicToken: string) {
@@ -464,27 +485,50 @@ export async function getPayrexPaymentStatus(publicToken: string) {
   return rows[0] ?? null;
 }
 
-export async function registerPayrexWebhookEvent(input: { providerEventId: string; eventType: string; providerPaymentIntentId?: string | null; payloadHash: string }) {
+async function registerProviderWebhookEvent(input: { provider: PaymentProvider; providerEventId: string; eventType: string; providerPaymentIntentId?: string | null; payloadHash: string }) {
   const db = requireDatabase(await getDb());
-  const existing = await db.select({ id: paymentWebhookEvents.id }).from(paymentWebhookEvents).where(and(eq(paymentWebhookEvents.provider, "payrex"), eq(paymentWebhookEvents.providerEventId, input.providerEventId))).limit(1);
+  const existing = await db.select({ id: paymentWebhookEvents.id }).from(paymentWebhookEvents).where(and(eq(paymentWebhookEvents.provider, input.provider), eq(paymentWebhookEvents.providerEventId, input.providerEventId))).limit(1);
   if (existing[0]) return false;
   try {
-    await db.insert(paymentWebhookEvents).values({ provider: "payrex", providerEventId: input.providerEventId, eventType: input.eventType, providerPaymentIntentId: input.providerPaymentIntentId || null, payloadHash: input.payloadHash, processedAt: new Date() });
+    await db.insert(paymentWebhookEvents).values({ provider: input.provider, providerEventId: input.providerEventId, eventType: input.eventType, providerPaymentIntentId: input.providerPaymentIntentId || null, payloadHash: input.payloadHash, processedAt: new Date() });
     return true;
   } catch { return false; }
 }
 
-export async function markPayrexPaymentPaid(providerPaymentIntentId: string, providerPaymentId?: string | null) {
+export async function registerPayrexWebhookEvent(input: { providerEventId: string; eventType: string; providerPaymentIntentId?: string | null; payloadHash: string }) {
+  return registerProviderWebhookEvent({ ...input, provider: "payrex" });
+}
+
+export async function registerPaypalWebhookEvent(input: { providerEventId: string; eventType: string; providerOrderId?: string | null; payloadHash: string }) {
+  return registerProviderWebhookEvent({ provider: "paypal", providerEventId: input.providerEventId, eventType: input.eventType, providerPaymentIntentId: input.providerOrderId || null, payloadHash: input.payloadHash });
+}
+
+async function markProviderPaymentPaid(input: { provider: PaymentProvider; match: "providerPaymentIntentId" | "providerCheckoutSessionId"; providerReference: string; providerPaymentId?: string | null }) {
   const db = requireDatabase(await getDb());
-  const rows = await db.select().from(paymentTransactions).where(eq(paymentTransactions.providerPaymentIntentId, providerPaymentIntentId)).limit(1);
+  const matchColumn = input.match === "providerPaymentIntentId" ? paymentTransactions.providerPaymentIntentId : paymentTransactions.providerCheckoutSessionId;
+  const rows = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.provider, input.provider), eq(matchColumn, input.providerReference))).limit(1);
   const transaction = rows[0];
   if (!transaction) return null;
   if (transaction.status !== "paid") {
     const paidAt = new Date();
-    await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
+    await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: input.providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
     await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
   }
   return transaction;
+}
+
+export async function markPayrexPaymentPaid(providerPaymentIntentId: string, providerPaymentId?: string | null) {
+  return markProviderPaymentPaid({ provider: "payrex", match: "providerPaymentIntentId", providerReference: providerPaymentIntentId, providerPaymentId });
+}
+
+export async function markPaypalPaymentPaid(providerOrderId: string, providerCaptureId?: string | null) {
+  return markProviderPaymentPaid({ provider: "paypal", match: "providerCheckoutSessionId", providerReference: providerOrderId, providerPaymentId: providerCaptureId });
+}
+
+export async function getPaypalTransactionForPublicToken(publicToken: string) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.publicToken, publicToken), eq(paymentTransactions.provider, "paypal"))).limit(1);
+  return rows[0] || null;
 }
 
 export async function listPaidDeliveryFiles(paymentPublicToken: string) {
