@@ -6,11 +6,12 @@ import { trpc } from "@/lib/trpc";
 import {
   Archive,
   Check,
-  FileUp,
   Eye,
+  FileText,
   FolderArchive,
   ImagePlus,
   Loader2,
+  LockKeyhole,
   PackageOpen,
   Pencil,
   Plus,
@@ -20,10 +21,10 @@ import {
   Sparkles,
   Store,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
-import { Link } from "wouter";
 
 type ProductValues = {
   id: number;
@@ -55,27 +56,101 @@ type InventoryRow = {
   source?: ProductValues;
 };
 
+type PendingCover = {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  base64: string;
+  previewUrl: string;
+};
+
+type PendingBuyerFile = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  base64: string;
+};
+
+type StoredBuyerFile = {
+  id: number;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+};
+
 function money(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(value);
 }
 
-type PendingCover = { fileName: string; mimeType: string; sizeBytes: number; base64: string; previewUrl: string };
+function formatBytes(sizeBytes: number | null) {
+  if (sizeBytes === null) return "Unknown size";
+  return sizeBytes < 1024 * 1024 ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-function ProductFields({ product, pendingCover, onCoverChange, onCoverRemove }: { product?: ProductValues; pendingCover: PendingCover | null; onCoverChange: (event: ChangeEvent<HTMLInputElement>) => void; onCoverRemove: () => void }) {
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
+    };
+    reader.onerror = () => reject(new Error("File could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function ProductFields({
+  product,
+  pendingCover,
+  onCoverChange,
+  onCoverRemove,
+}: {
+  product?: ProductValues;
+  pendingCover: PendingCover | null;
+  onCoverChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCoverRemove: () => void;
+}) {
   const currentCover = pendingCover?.previewUrl || product?.coverImageUrl;
+
   return (
     <div className="grid gap-3">
       <div className="rounded-xl border border-dashed border-[#428475]/35 bg-[#89D7B7]/12 p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-[#1A312C]">Product cover</p><p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload a local image for the public product cover. You can remove or replace it anytime.</p></div><label className="button-quiet w-fit cursor-pointer !min-h-9 !px-3 text-xs"><ImagePlus className="size-3.5" />{currentCover ? "Replace cover" : "Upload cover"}<input type="file" accept="image/*" className="sr-only" onChange={onCoverChange} /></label></div>
-        {currentCover ? <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#1A312C]/10 bg-white/75 p-2"><img src={currentCover} alt="Selected product cover preview" className="size-16 rounded-md border border-[#1A312C]/10 object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#1A312C]">{pendingCover?.fileName || "Current product cover"}</p><p className="mt-1 text-[.68rem] text-[#1A312C]/55">Local upload preview</p></div><button type="button" onClick={onCoverRemove} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700"><X className="size-3.5" />Remove</button></div> : null}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-[#1A312C]">Product cover</p>
+            <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload a local image for the public product cover. You can remove or replace it anytime.</p>
+          </div>
+          <label className="button-quiet w-fit cursor-pointer !min-h-9 !px-3 text-xs">
+            <ImagePlus className="size-3.5" />
+            {currentCover ? "Replace cover" : "Upload cover"}
+            <input type="file" accept="image/*" className="sr-only" onChange={onCoverChange} />
+          </label>
+        </div>
+        {currentCover ? (
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#1A312C]/10 bg-white/75 p-2">
+            <img src={currentCover} alt="Selected product cover preview" className="size-16 rounded-md border border-[#1A312C]/10 object-cover" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-[#1A312C]">{pendingCover?.fileName || "Current product cover"}</p>
+              <p className="mt-1 text-[.68rem] text-[#1A312C]/55">Local upload preview</p>
+            </div>
+            <button type="button" onClick={onCoverRemove} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700">
+              <X className="size-3.5" />Remove
+            </button>
+          </div>
+        ) : null}
       </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
         <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
       </div>
       <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Short public summary" />
       <textarea name="description" defaultValue={product?.description ?? ""} className="form-field min-h-24 resize-y text-sm" placeholder="Full product description (optional)" />
-      <label className="grid gap-1.5 text-sm font-bold text-[#1A312C]"><span>Inclusions <span className="font-normal text-[#1A312C]/55">(text only)</span></span><textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Example: Editable source files, step-by-step guide, bonus templates" /></label>
+      <label className="grid gap-1.5 text-sm font-bold text-[#1A312C]">
+        <span>Inclusions <span className="font-normal text-[#1A312C]/55">(text only)</span></span>
+        <textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Example: Editable source files, step-by-step guide, bonus templates" />
+      </label>
       <input required min="0" step="0.01" type="number" name="price" defaultValue={product?.price ?? ""} className="form-field text-sm" placeholder="Price in PHP" />
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isPublished" type="checkbox" defaultChecked={product?.isPublished ?? false} />Publish publicly</label>
@@ -86,6 +161,81 @@ function ProductFields({ product, pendingCover, onCoverChange, onCoverRemove }: 
   );
 }
 
+function BuyerFilesPanel({
+  product,
+  pendingFiles,
+  storedFiles,
+  filesLoading,
+  isUploading,
+  isRemoving,
+  onSelectFiles,
+  onRemovePending,
+  onRemoveStored,
+}: {
+  product?: ProductValues;
+  pendingFiles: PendingBuyerFile[];
+  storedFiles?: StoredBuyerFile[];
+  filesLoading: boolean;
+  isUploading: boolean;
+  isRemoving: boolean;
+  onSelectFiles: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemovePending: (fileId: string) => void;
+  onRemoveStored: (fileId: number, fileName: string) => void;
+}) {
+  const canAttachFiles = !product || !product.isArchived;
+
+  return (
+    <section className="mt-5 rounded-[1.25rem] border border-[#428475]/22 bg-[#89D7B7]/10 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 border-b border-[#1A312C]/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow">Buyer delivery files</p>
+          <h3 className="display mt-2 text-2xl text-[#1A312C]">Files the buyer receives</h3>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Upload PDFs, ZIPs, PNGs, documents, or any other file type here. These are separate from the text-only Inclusions above.</p>
+        </div>
+        {canAttachFiles ? (
+          <label className="button-primary w-fit cursor-pointer">
+            <Upload className="size-4" />
+            {isUploading ? "Uploading…" : "Add buyer files"}
+            <input type="file" multiple className="sr-only" onChange={onSelectFiles} disabled={isUploading} />
+          </label>
+        ) : null}
+      </div>
+
+      {product?.isArchived ? <p className="mt-4 rounded-lg bg-white/65 px-3 py-3 text-xs leading-5 text-[#1A312C]/64">Restore this archived listing before attaching buyer files.</p> : null}
+
+      {pendingFiles.length ? (
+        <div className="mt-5">
+          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Queued for upload</p>
+          <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">{product ? "These files will upload when you save changes." : "These files will upload when you save this new product."}</p>
+          <div className="mt-3 grid gap-2">
+            {pendingFiles.map(file => (
+              <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span>
+                  <div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div>
+                </div>
+                <button type="button" onClick={() => onRemovePending(file.id)} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700"><X className="size-3.5" />Remove</button>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {product ? (
+        <div className="mt-5">
+          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Saved buyer files</p>
+          {filesLoading ? <div className="grid min-h-20 place-items-center"><Loader2 className="size-5 animate-spin text-[#428475]" /></div> : storedFiles?.length ? <div className="mt-3 grid gap-2">{storedFiles.map(file => <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div></div><button type="button" onClick={() => onRemoveStored(file.id, file.fileName)} disabled={isRemoving} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700 disabled:opacity-50"><X className="size-3.5" />Remove</button></article>)}</div> : <p className="mt-3 rounded-lg border border-dashed border-[#1A312C]/15 bg-white/60 px-3 py-3 text-xs leading-5 text-[#1A312C]/60">No buyer files are attached yet.</p>}
+        </div>
+      ) : null}
+
+      <aside className="mt-5 flex items-start gap-3 rounded-xl border border-[#428475]/18 bg-white/52 p-3 text-xs leading-5 text-[#1A312C]/65">
+        <LockKeyhole className="mt-0.5 size-4 shrink-0 text-[#428475]" />
+        <p><strong className="text-[#1A312C]">Delivery safeguard:</strong> public product pages show only file names and formats. The stored delivery links remain owner-controlled until you confirm real payment and fulfilment.</p>
+      </aside>
+    </section>
+  );
+}
+
 export default function OwnerProducts() {
   const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
@@ -93,6 +243,8 @@ export default function OwnerProducts() {
   const saveProduct = trpc.portal.admin.products.save.useMutation();
   const uploadCover = trpc.portal.admin.productCovers.upload.useMutation();
   const removeCover = trpc.portal.admin.productCovers.remove.useMutation();
+  const uploadBuyerFile = trpc.portal.admin.productFiles.upload.useMutation();
+  const removeBuyerFile = trpc.portal.admin.productFiles.remove.useMutation();
   const deleteProduct = trpc.portal.admin.products.delete.useMutation();
   const [status, setStatus] = useState<InventoryStatus>("all");
   const [category, setCategory] = useState("all");
@@ -101,6 +253,11 @@ export default function OwnerProducts() {
   const [editor, setEditor] = useState<ProductValues | "new" | null>(null);
   const [notice, setNotice] = useState("");
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
+  const [pendingBuyerFiles, setPendingBuyerFiles] = useState<PendingBuyerFile[]>([]);
+
+  const currentProductId = editor && editor !== "new" ? editor.id : 0;
+  const currentProductFileInput = useMemo(() => ({ productId: currentProductId }), [currentProductId]);
+  const attachedBuyerFiles = trpc.portal.admin.productFiles.list.useQuery(currentProductFileInput, { enabled: isOwner && currentProductId > 0 });
 
   const realRows = useMemo<InventoryRow[]>(() => (products.data ?? []).map(raw => {
     const item = raw as ProductValues;
@@ -150,9 +307,23 @@ export default function OwnerProducts() {
       sortOrder: Number(form.get("sortOrder")) || 0,
     };
   };
-  const closeEditor = () => { setEditor(null); setPendingCover(null); };
-  const openEditor = (value: ProductValues | "new") => { setPendingCover(null); setEditor(value); };
-  const finishSave = async (message: string) => { setNotice(message); closeEditor(); await products.refetch(); };
+
+  const closeEditor = () => {
+    setEditor(null);
+    setPendingCover(null);
+    setPendingBuyerFiles([]);
+  };
+  const openEditor = (value: ProductValues | "new") => {
+    setPendingCover(null);
+    setPendingBuyerFiles([]);
+    setEditor(value);
+  };
+  const finishSave = async (message: string) => {
+    setNotice(message);
+    closeEditor();
+    await products.refetch();
+  };
+
   const selectCover = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
@@ -160,21 +331,83 @@ export default function OwnerProducts() {
     if (!file.type.startsWith("image/")) { setNotice("Product covers must be image files."); return; }
     if (file.size > 5_000_000) { setNotice("Product covers must be smaller than 5 MB."); return; }
     const reader = new FileReader();
-    reader.onload = () => { const result = String(reader.result ?? ""); setPendingCover({ fileName: file.name, mimeType: file.type, sizeBytes: file.size, base64: result.includes(",") ? result.split(",", 2)[1] : result, previewUrl: result }); };
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      setPendingCover({ fileName: file.name, mimeType: file.type, sizeBytes: file.size, base64: result.includes(",") ? result.split(",", 2)[1] : result, previewUrl: result });
+    };
     reader.readAsDataURL(file);
   };
   const clearCover = () => {
     if (pendingCover) { setPendingCover(null); return; }
-    if (editor && editor !== "new" && editor.coverImageUrl) removeCover.mutate({ productId: editor.id }, { onSuccess: async updated => { setEditor({ ...editor, coverImageUrl: updated.coverImageUrl }); setNotice("Product cover removed."); await products.refetch(); }, onError: () => setNotice("We could not remove the cover. Please try again.") });
+    if (editor && editor !== "new" && editor.coverImageUrl) {
+      removeCover.mutate({ productId: editor.id }, {
+        onSuccess: async updated => {
+          setEditor({ ...editor, coverImageUrl: updated.coverImageUrl });
+          setNotice("Product cover removed.");
+          await products.refetch();
+        },
+        onError: () => setNotice("We could not remove the cover. Please try again."),
+      });
+    }
   };
-  const submitProduct = (event: FormEvent<HTMLFormElement>) => {
+
+  const selectBuyerFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files ?? []);
+    event.currentTarget.value = "";
+    if (!selected.length) return;
+    const validFiles = selected.filter(file => file.size <= 8_000_000);
+    if (validFiles.length !== selected.length) setNotice("Files larger than 8 MB were not added.");
+    if (!validFiles.length) return;
+    try {
+      const staged = await Promise.all(validFiles.map(async file => ({
+        id: `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).slice(2)}`,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        base64: await readFileAsBase64(file),
+      })));
+      setPendingBuyerFiles(current => [...current, ...staged]);
+    } catch {
+      setNotice("We could not read one of those files. Please try again.");
+    }
+  };
+  const removeStoredBuyerFile = (fileId: number, fileName: string) => {
+    if (!window.confirm(`Remove “${fileName}” from this product?`)) return;
+    removeBuyerFile.mutate({ productFileId: fileId }, {
+      onSuccess: async () => {
+        setNotice(`${fileName} removed.`);
+        await attachedBuyerFiles.refetch();
+      },
+      onError: () => setNotice("We could not remove that buyer file. Please try again."),
+    });
+  };
+
+  const submitProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cover = pendingCover;
-    saveProduct.mutate(payloadFromForm(new FormData(event.currentTarget), editor === "new" ? undefined : editor ?? undefined), { onSuccess: async saved => {
-      if (!cover) { await finishSave("Product listing saved."); return; }
-      uploadCover.mutate({ productId: saved.id, fileName: cover.fileName, mimeType: cover.mimeType, sizeBytes: cover.sizeBytes, base64: cover.base64 }, { onSuccess: () => finishSave("Product listing and cover saved."), onError: () => setNotice("Product saved, but the cover could not upload. Open the product again and retry the cover upload.") });
-    }, onError: () => setNotice("We could not save this product. Please check the fields and try again.") });
+    let savedProduct: ProductValues | null = null;
+    try {
+      savedProduct = await saveProduct.mutateAsync(payloadFromForm(new FormData(event.currentTarget), editor === "new" ? undefined : editor ?? undefined)) as ProductValues;
+      if (cover) {
+        savedProduct = await uploadCover.mutateAsync({ productId: savedProduct.id, fileName: cover.fileName, mimeType: cover.mimeType, sizeBytes: cover.sizeBytes, base64: cover.base64 }) as ProductValues;
+        setPendingCover(null);
+      }
+      for (const file of pendingBuyerFiles) {
+        await uploadBuyerFile.mutateAsync({ productId: savedProduct.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
+        setPendingBuyerFiles(current => current.filter(item => item.id !== file.id));
+      }
+      await finishSave(cover || pendingBuyerFiles.length ? "Product listing and buyer files saved." : "Product listing saved.");
+    } catch {
+      if (savedProduct) {
+        setEditor(savedProduct);
+        setNotice("The product was saved, but one or more files could not upload. Retry the queued file below.");
+        await products.refetch();
+      } else {
+        setNotice("We could not save this product. Please check the fields and try again.");
+      }
+    }
   };
+
   const updateProduct = (product: ProductValues, changes: Partial<Pick<ProductValues, "isPublished" | "isFeatured" | "isArchived">>) => {
     saveProduct.mutate({
       productId: product.id,
@@ -194,7 +427,13 @@ export default function OwnerProducts() {
   };
   const removeProduct = (product: ProductValues) => {
     if (!window.confirm(`Delete “${product.title}”? This cannot be undone. Products with buyer records cannot be deleted and must be archived instead.`)) return;
-    deleteProduct.mutate({ productId: product.id }, { onSuccess: async () => { setNotice("Product deleted."); await products.refetch(); }, onError: error => setNotice(error.message || "This product could not be deleted. Archive it instead.") });
+    deleteProduct.mutate({ productId: product.id }, {
+      onSuccess: async () => {
+        setNotice("Product deleted.");
+        await products.refetch();
+      },
+      onError: error => setNotice(error.message || "This product could not be deleted. Archive it instead."),
+    });
   };
 
   const statusTabs: Array<{ id: InventoryStatus; label: string; count: number }> = [
@@ -203,6 +442,7 @@ export default function OwnerProducts() {
     { id: "draft", label: "Drafts", count: counts.draft },
     { id: "archived", label: "Archived", count: counts.archived },
   ];
+  const isSaving = saveProduct.isPending || uploadCover.isPending || uploadBuyerFile.isPending || removeCover.isPending;
 
   return (
     <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
@@ -218,7 +458,22 @@ export default function OwnerProducts() {
 
             {notice ? <div className="flex items-center justify-between gap-3 rounded-xl bg-[#89D7B7]/30 px-4 py-3 text-sm text-[#1A312C]"><span className="flex items-center gap-2"><Check className="size-4" />{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss notification"><X className="size-4" /></button></div> : null}
 
-            {editor ? <section className="rounded-[1.4rem] border border-[#428475]/25 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.08)] sm:p-7"><div className="flex items-start justify-between gap-5"><div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add a local cover, text-only inclusions, then upload the actual buyer files separately.</p></div><button onClick={closeEditor} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button></div><form onSubmit={submitProduct} className="mt-6"><ProductFields product={editor === "new" ? undefined : editor} pendingCover={pendingCover} onCoverChange={selectCover} onCoverRemove={clearCover} /><div className="mt-5 flex flex-wrap gap-3"><button className="button-primary disabled:opacity-60" disabled={saveProduct.isPending || uploadCover.isPending || removeCover.isPending}>{saveProduct.isPending || uploadCover.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button>{editor !== "new" ? <Link href="/owner/product-files" className="button-quiet buttonlike"><FileUp className="size-4" />Manage buyer files</Link> : null}<button type="button" className="button-quiet" onClick={closeEditor}>Cancel</button></div></form></section> : null}
+            {editor ? (
+              <section className="rounded-[1.4rem] border border-[#428475]/25 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.08)] sm:p-7">
+                <div className="flex items-start justify-between gap-5">
+                  <div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add a local cover, write text-only inclusions, and attach the actual buyer delivery files in this form.</p></div>
+                  <button type="button" onClick={closeEditor} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button>
+                </div>
+                <form key={editor === "new" ? "new" : editor.id} onSubmit={submitProduct} className="mt-6">
+                  <ProductFields product={editor === "new" ? undefined : editor} pendingCover={pendingCover} onCoverChange={selectCover} onCoverRemove={clearCover} />
+                  <BuyerFilesPanel product={editor === "new" ? undefined : editor} pendingFiles={pendingBuyerFiles} storedFiles={attachedBuyerFiles.data as StoredBuyerFile[] | undefined} filesLoading={attachedBuyerFiles.isLoading} isUploading={isSaving} isRemoving={removeBuyerFile.isPending} onSelectFiles={selectBuyerFiles} onRemovePending={fileId => setPendingBuyerFiles(current => current.filter(file => file.id !== fileId))} onRemoveStored={removeStoredBuyerFile} />
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button className="button-primary disabled:opacity-60" disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button>
+                    <button type="button" className="button-quiet" onClick={closeEditor}>Cancel</button>
+                  </div>
+                </form>
+              </section>
+            ) : null}
 
             <section className="overflow-hidden rounded-[1.45rem] border border-[#1A312C]/10 bg-white shadow-[0_14px_35px_rgba(26,49,44,.04)]">
               <div className="flex flex-col gap-4 border-b border-[#1A312C]/10 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">

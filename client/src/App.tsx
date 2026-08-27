@@ -11,7 +11,6 @@ import OwnerPublicContent from "@/pages/OwnerPublicContent";
 import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
 import OwnerProductAccess from "@/pages/OwnerProductAccess";
-import OwnerProductFiles from "@/pages/OwnerProductFiles";
 import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
 import { OwnerCustomers, OwnerSales, OwnerSettings, OwnerSupport, OwnerVouchers } from "@/pages/OwnerWorkspaceViews";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
@@ -49,7 +48,6 @@ function Router() {
       <Route path={"/owner/manage"} component={OwnerContentManager} />
       <Route path={"/owner/products"} component={OwnerProducts} />
       <Route path={"/owner/product-access"} component={OwnerProductAccess} />
-      <Route path={"/owner/product-files"} component={OwnerProductFiles} />
       <Route path={"/owner/shop-preview"} component={OwnerShopPreview} />
       <Route path={"/privacy"} component={PrivacyPage} />
       <Route path={"/terms"} component={TermsPage} />

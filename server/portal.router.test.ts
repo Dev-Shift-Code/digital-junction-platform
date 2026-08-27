@@ -52,6 +52,7 @@ describe("portal router access control", () => {
     const caller = appRouter.createCaller(createContext("user"));
     await expect(caller.portal.admin.products.delete({ productId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.portal.admin.productCovers.upload({ productId: 1, fileName: "cover.png", mimeType: "image/png", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.productFiles.upload({ productId: 1, fileName: "delivery.zip", mimeType: "application/zip", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("validates product cover and delivery file inputs before storage access", async () => {
