@@ -247,3 +247,5 @@
 - [ ] Audit every live owner-login dependency: Pages proxy deployment, Worker secrets and variables, D1 owner account state, password verification, Set-Cookie delivery, and owner-session token verification.
 - [x] Remove the production dependency on a manually configured `VITE_APP_ID` for first-party owner and customer session validity while retaining JWT signature verification.
 - [x] Make token-gated owner recovery cover an absent D1 owner record and an incorrectly assigned customer role without requiring an optional owner-email variable.
+- [ ] Add owner-created vouchers with a general all-product scope or a selected-digital-products scope, backed by D1 and enforced at guest checkout.
+- [x] Remove the optional payment-method logo upload and its public checkout dependency, and remove the QR-code image file-size limit while retaining image-type validation.

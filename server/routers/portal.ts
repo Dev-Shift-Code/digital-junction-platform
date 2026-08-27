@@ -113,7 +113,7 @@ export const portalRouter = router({
     listActive: publicProcedure.query(async () => {
       try {
         const methods = await getActivePaymentMethods();
-        return methods.map(({ id, methodType, displayName, logoUrl, qrCodeUrl, instructions }) => ({ id, methodType, displayName, logoUrl, qrCodeUrl, instructions }));
+        return methods.map(({ id, methodType, displayName, qrCodeUrl, instructions }) => ({ id, methodType, displayName, qrCodeUrl, instructions }));
       } catch (error) {
         return unavailable(error);
       }
@@ -182,7 +182,7 @@ export const portalRouter = router({
             const safeProofName = input.paymentProofFileName.replace(/[^a-zA-Z0-9._-]/g, "-");
             proof = await storagePut(`payment-proofs/${Date.now()}-${safeProofName}`, proofBytes, input.paymentProofMimeType);
           }
-          const request = await createGuestCheckoutRequest({ productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentLogoUrlSnapshot: paymentMethod.logoUrl, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl, paymentReference: input.paymentReference, paymentProofUrl: proof?.url || null, paymentProofKey: proof?.key || null, paymentProofFileName: input.paymentProofFileName || null, paymentProofMimeType: input.paymentProofMimeType || null, paymentProofSizeBytes: input.paymentProofSizeBytes || null, paymentStatus: proof ? "submitted" : "awaiting_payment" });
+          const request = await createGuestCheckoutRequest({ productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentLogoUrlSnapshot: null, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl, paymentReference: input.paymentReference, paymentProofUrl: proof?.url || null, paymentProofKey: proof?.key || null, paymentProofFileName: input.paymentProofFileName || null, paymentProofMimeType: input.paymentProofMimeType || null, paymentProofSizeBytes: input.paymentProofSizeBytes || null, paymentStatus: proof ? "submitted" : "awaiting_payment" });
           return { requestId: request.id, status: request.status, paymentStatus: request.paymentStatus, paymentMethodName: paymentMethod.displayName, productTitle: product.title };
         } catch (error) {
           if (error instanceof TRPCError) throw error;
@@ -551,12 +551,12 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      uploadAsset: adminProcedure.input(z.object({ assetType: z.enum(["logo", "qr-code"]), fileName: z.string().trim().min(1).max(255), mimeType: paymentImageMimeType, sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
+      uploadAsset: adminProcedure.input(z.object({ assetType: z.literal("qr-code"), fileName: z.string().trim().min(1).max(255), mimeType: paymentImageMimeType, sizeBytes: z.number().int().min(1), base64: z.string().min(1) })).mutation(async ({ input }) => {
         try {
           const bytes = Buffer.from(input.base64, "base64");
-          if (!bytes.length || bytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment images must be smaller than 5 MB." });
+          if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty QR code image." });
           const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-          const stored = await storagePut(`payment-method-assets/${input.assetType}/${Date.now()}-${safeName}`, bytes, input.mimeType);
+          const stored = await storagePut(`payment-method-assets/qr-code/${Date.now()}-${safeName}`, bytes, input.mimeType);
           return { key: stored.key, url: stored.url };
         } catch (error) {
           if (error instanceof TRPCError) throw error;

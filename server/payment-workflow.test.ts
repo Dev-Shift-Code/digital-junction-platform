@@ -39,4 +39,17 @@ describe("manual payment workflow safeguards", () => {
     expect(paymentMethods).toContain("<select required");
     expect(portalRouter).toContain('const paymentMethodType = z.enum(["GoTyme", "PayPal", "GCash", "MariBank"]);');
   });
+
+  it("uses QR codes without payment-logo controls or an application-level QR file-size limit", () => {
+    const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
+    const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
+    const portalRouter = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    expect(paymentMethods).toContain("function QrCodePicker");
+    expect(paymentMethods).not.toContain("AssetPicker");
+    expect(paymentMethods).not.toContain("max 5 MB");
+    expect(paymentMethods).not.toContain("file.size > 5_000_000");
+    expect(checkout).not.toContain("method.logoUrl");
+    expect(portalRouter).toContain('assetType: z.literal("qr-code")');
+    expect(portalRouter).toContain("sizeBytes: z.number().int().min(1), base64: z.string().min(1)");
+  });
 });
