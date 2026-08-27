@@ -604,8 +604,8 @@ export async function claimPaymentDeliveryEmail(orderId: number) {
   if (Number(inserted.meta.changes || 0) === 1) return { email: { id: Number(inserted.meta.last_row_id), orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
   const existing = await db.select().from(paymentDeliveryEmails).where(eq(paymentDeliveryEmails.orderId, orderId)).limit(1);
   const audit = existing[0];
-  if (!audit || audit.status !== "failed") return null;
-  const claimed = await db.update(paymentDeliveryEmails).set({ status: "sending", attempts: sql`${paymentDeliveryEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, audit.id), eq(paymentDeliveryEmails.status, "failed")));
+  if (!audit || (audit.status !== "failed" && audit.status !== "skipped")) return null;
+  const claimed = await db.update(paymentDeliveryEmails).set({ status: "sending", attempts: sql`${paymentDeliveryEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, audit.id), sql`${paymentDeliveryEmails.status} IN ('failed', 'skipped')`));
   if (Number(claimed.meta.changes || 0) !== 1) return null;
   return { email: { id: audit.id, orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
 }

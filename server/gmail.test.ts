@@ -20,12 +20,16 @@ describe("transactional payment delivery email", () => {
         { fileName: 'assets.zip', url: 'https://digital-junction-platform.pages.dev/api/delivery/one-time-token-b' },
       ],
     });
-    expect(email.subject).toBe("Your Digital Junction download links: Guide & Toolkit");
+    expect(email.subject).toBe("Your purchase is ready — Digital Junction");
     expect(email.html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(email.html).not.toContain("<img src=x onerror=alert(1)>");
     expect(email.html).toContain("/api/delivery/one-time-token-a");
     expect(email.html).toContain("/api/delivery/one-time-token-b");
-    expect(email.html).toContain("expires in 15 minutes and can be used once");
+    expect(email.html).toContain("Digital Junction Development Co.");
+    expect(email.html).toContain("Your files are ready.");
+    expect(email.html).toContain("Download file");
+    expect(email.html).toContain("Each button works once and expires in 15 minutes");
+    expect(email.html).toContain("Thank you for your patience and for purchasing from Digital Junction Development Co.");
     expect(email.text).toContain("Download guide.pdf:");
     expect(email.text).toContain("Download assets.zip:");
 

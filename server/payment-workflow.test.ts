@@ -41,6 +41,8 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("window.location.assign(result.checkoutUrl)");
     expect(checkout).toContain("manual QR payment needs owner review");
     expect(checkout).toContain("Files are not released until the payment is manually verified");
+    expect(checkout).toContain("Your files will be sent by email.");
+    expect(checkout).toContain("Thank you for waiting and purchasing from Digital Junction Development Co.");
     expect(checkout).not.toContain("paymentProofBase64");
     expect(checkout).not.toContain("paymentReference");
     expect(checkout).not.toMatch(/accountNumber|account_name|bankAccount|gcashNumber/i);
@@ -102,7 +104,7 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentDeliveryEmails");
     expect(migration).toContain("paymentDeliveryEmails (orderId)");
     expect(database).toContain("claimPaymentDeliveryEmail");
-    expect(database).toContain('audit.status !== "failed"');
+    expect(database).toContain('audit.status !== "failed" && audit.status !== "skipped"');
     expect(database).toContain('provider: "manual"');
     expect(database).toContain("createManualApprovedPaymentTransaction");
     expect(worker).toContain("ctx.waitUntil(sendPaymentDeliveryEmail(transaction.orderId))");

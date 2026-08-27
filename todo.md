@@ -287,4 +287,9 @@
 - [x] Implement automatic Resend transactional email delivery containing per-file one-time download links only after a verified PayRex/PayPal payment or owner-approved manual payment, with D1 delivery audit records and no file attachments.
 - [x] Superseded: configure and verify the Resend sending domain/sender secrets before enabling real buyer delivery emails.
 - [x] Replace the pending Resend sender configuration with owner-authorized Gmail API delivery from devshiftcode2025@gmail.com, while preserving D1 email audit records, verified-payment-only triggers, and per-file one-time links.
-- [ ] Create owner-authorized Gmail API OAuth credentials and add the Gmail Worker secrets before enabling real buyer delivery emails.
+- [x] Create owner-authorized Gmail API OAuth credentials and add the Gmail Worker secrets before enabling real buyer delivery emails.
+- [x] Diagnose and correct the skipped automatic Gmail delivery audit for verified manual payments when eligible private buyer files are present, without re-approving payment or creating duplicate delivery links.
+- [x] Redesign the buyer delivery email into a polished DJDC-branded transactional template with a strong hierarchy, clear one-time download buttons, security guidance, and responsive email-client-safe layout.
+- [x] Update the manual payment order-created screen to clearly explain that Digital Junction Development Co. will send purchased files by email after owner verification, with a buyer-friendly thank-you message.
+- [x] Confirm that the owner-authorized Gmail API sender can deliver to arbitrary buyer checkout email addresses; Google OAuth Testing mode restricts sender authorization accounts, not email recipients.
+- [ ] Consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
