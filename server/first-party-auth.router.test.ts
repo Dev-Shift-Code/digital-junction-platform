@@ -100,6 +100,18 @@ describe("first-party Digital Junction account router", () => {
     await expect(sdk.verifySession(cookies[0]?.value)).resolves.toMatchObject({ openId: "local-owner-1" });
   });
 
+  it("accepts a signed first-party owner session when VITE_APP_ID is not configured in the Worker environment", async () => {
+    const originalAppId = process.env.VITE_APP_ID;
+    delete process.env.VITE_APP_ID;
+    try {
+      const token = await sdk.createSessionToken("local-owner-without-app-id", { name: "Digital Junction Owner" });
+      await expect(sdk.verifySession(token)).resolves.toMatchObject({ openId: "local-owner-without-app-id", appId: "" });
+    } finally {
+      if (originalAppId === undefined) delete process.env.VITE_APP_ID;
+      else process.env.VITE_APP_ID = originalAppId;
+    }
+  });
+
   it("never exposes a password hash through customer or owner session responses", async () => {
     const owner = { ...localUser, id: 1, role: "admin" as const, passwordHash: "private-scrypt-hash" };
     const caller = appRouter.createCaller(context(owner).ctx as any);

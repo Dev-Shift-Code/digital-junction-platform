@@ -244,3 +244,5 @@
 - [ ] Diagnose and repair the persistent live owner-login failure on the Pages domain using direct API response evidence, without changing owner or business data.
 - [ ] Verify the production D1 owner account role and password-configuration state through a read-only query before altering authentication logic.
 - [x] Add a token-protected owner password recovery path for an existing admin account when the current direct sign-in password cannot be verified.
+- [ ] Audit every live owner-login dependency: Pages proxy deployment, Worker secrets and variables, D1 owner account state, password verification, Set-Cookie delivery, and owner-session token verification.
+- [x] Remove the production dependency on a manually configured `VITE_APP_ID` for first-party owner and customer session validity while retaining JWT signature verification.
