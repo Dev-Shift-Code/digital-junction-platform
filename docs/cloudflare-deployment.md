@@ -53,6 +53,28 @@ pnpm deploy:cloudflare
 
 Wrangler returns a `workers.dev` URL after a successful deployment. To use a custom domain, add the domain to Cloudflare and configure a Worker Custom Domain in the Cloudflare dashboard or in `wrangler.jsonc`; do not add a route until the domain ownership and DNS configuration are confirmed.
 
+## Deploy the requested Pages URL
+
+The repository's `deploy:pages` command creates or updates the Pages project named `digital-junction-platform`. If that Pages name is available in the Cloudflare account, its public URL is:
+
+```text
+https://digital-junction-platform.pages.dev
+```
+
+The Pages build contains a same-origin `/api/*` proxy. Before deploying Pages, add the deployed Worker URL as the `WORKER_ORIGIN` Pages secret:
+
+```powershell
+npx wrangler@latest pages secret put WORKER_ORIGIN --project-name digital-junction-platform
+```
+
+Enter `https://digital-junction-platform.devshiftcode2025.workers.dev` when prompted, then deploy Pages:
+
+```powershell
+pnpm deploy:pages
+```
+
+The Pages domain then serves the public frontend while its authentication, owner, catalogue, checkout, and D1 operations are forwarded to the existing Worker. Do not use the Pages deployment before setting `WORKER_ORIGIN`, because owner and data-backed workflows would return a configuration error.
+
 ## First owner account
 
 After the D1 schema is applied and deployment succeeds, open:

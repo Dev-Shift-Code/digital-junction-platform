@@ -237,3 +237,5 @@
 - [x] Diagnose and repair the Windows `cf:build` failure before retrying the D1-only Cloudflare Worker deployment.
 - [x] Replace legacy `/manus-storage` logo references that fail on the live D1-only Cloudflare Worker deployment.
 - [x] Remove the misleading D1-only public banner and forced file-input disablement from the live website while retaining Cloudflare D1 as the application database.
+- [x] Repair the clipped responsive hero illustration so the Digital Operations card remains fully visible.
+- [x] Configure the Cloudflare Pages project name and deployment command for the requested `digital-junction-platform.pages.dev` URL.

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const worker = readFileSync(new URL("../cloudflare/worker.ts", import.meta.url), "utf8");
 const workerContext = readFileSync(new URL("./_core/workerContext.ts", import.meta.url), "utf8");
+const pagesProxy = readFileSync(new URL("../functions/api/[[path]].ts", import.meta.url), "utf8");
 
 describe("Cloudflare Worker deployment wiring", () => {
   it("uses the native tRPC fetch adapter and binds primary D1 before handling API requests", () => {
@@ -21,5 +22,11 @@ describe("Cloudflare Worker deployment wiring", () => {
     expect(workerContext).toContain("OWNER_SESSION_COOKIE");
     expect(workerContext).toContain('resHeaders.append("Set-Cookie"');
     expect(workerContext).toContain("sdk.authenticateRequest(request, OWNER_SESSION_COOKIE)");
+  });
+
+  it("connects the requested Pages hostname to the D1-backed Worker API", () => {
+    expect(pagesProxy).toContain("WORKER_ORIGIN");
+    expect(pagesProxy).toContain("new Request(targetUrl, context.request)");
+    expect(pagesProxy).toContain("Pages API proxy is not configured.");
   });
 });
