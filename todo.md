@@ -219,3 +219,4 @@
 - [x] Move Payment Methods from Owner Settings to a dedicated Owner sidebar item and route.
 - [x] Replace free-form payment method type entry with a GoTyme, PayPal, GCash, and MariBank dropdown in the owner form and server validation.
 - [x] Re-test owner payment method configuration without creating a payment method or exposing payment account details.
+- [x] Produce a privacy-safe database structure reference listing the current tables and columns, excluding records and sensitive credential fields.
