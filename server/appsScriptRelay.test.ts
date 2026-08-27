@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildBrevoPayload, buildManualPaymentRejectedEmail, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./brevo";
+import { buildAppsScriptRelayPayload, buildManualPaymentRejectedEmail, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./appsScriptRelay";
 
 describe("transactional payment delivery email", () => {
   it("uses a deterministic order-scoped idempotency key", () => {
@@ -33,20 +33,20 @@ describe("transactional payment delivery email", () => {
     expect(email.text).toContain("Download guide.pdf:");
     expect(email.text).toContain("Download assets.zip:");
 
-    const source = readFileSync(resolve(import.meta.dirname, "brevo.ts"), "utf8");
-    expect(source).toContain('"https://api.brevo.com/v3/smtp/email"');
-    expect(source).toContain('"api-key": apiKey');
-    expect(source).not.toContain("oauth2.googleapis.com");
+    const source = readFileSync(resolve(import.meta.dirname, "appsScriptRelay.ts"), "utf8");
+    expect(source).toContain('const appsScriptRelayHost = "script.google.com"');
+    expect(source).toContain("APPS_SCRIPT_RELAY_SECRET");
+    expect(source).toContain("hmacHex");
+    expect(source).not.toContain("api.brevo.com");
     expect(source).not.toMatch(/attachments\s*:/);
   });
 
-  it("builds a Brevo transactional payload with a verified individual sender and no attachments", () => {
-    const payload = buildBrevoPayload({ senderEmail: "devshiftcode2025@gmail.com", to: "buyer@example.com", replyTo: "devshiftcode2025@gmail.com", subject: "Your downloads", text: "Plain delivery message", html: "<p>HTML delivery message</p>", orderId: 12, messageType: "delivery", buyerName: "Buyer" });
-    expect(payload.sender).toEqual({ name: "Digital Junction Development Co.", email: "devshiftcode2025@gmail.com" });
-    expect(payload.to).toEqual([{ email: "buyer@example.com", name: "Buyer" }]);
-    expect(payload.replyTo).toEqual({ email: "devshiftcode2025@gmail.com" });
-    expect(payload.tags).toEqual(["djdc-transactional", "delivery"]);
-    expect(payload.headers["X-Mailin-custom"]).toContain("djdc_order:12");
+  it("builds a signed relay payload with a deterministic request ID and no attachments", () => {
+    const payload = buildAppsScriptRelayPayload({ to: "buyer@example.com", replyTo: "devshiftcode2025@gmail.com", subject: "Your downloads", text: "Plain delivery message", html: "<p>HTML delivery message</p>", orderId: 12, messageType: "delivery", buyerName: "Buyer" });
+    expect(payload.requestId).toBe("djdc-payment-delivery-order-12-delivery");
+    expect(payload.to).toBe("buyer@example.com");
+    expect(payload.replyTo).toBe("devshiftcode2025@gmail.com");
+    expect(payload.messageType).toBe("delivery");
     expect(JSON.stringify(payload)).not.toContain("attachment");
   });
 

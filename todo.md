@@ -295,4 +295,6 @@
 - [x] Superseded: consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
 - [x] Superseded: prepare and complete the Google OAuth production authorization path for the owner Gmail sender so refresh-token renewal is not a recurring operating task, subject to Google’s approval requirements.
 - [x] Replace the temporary Google OAuth sender with a durable API-key transactional email provider that verifies devshiftcode2025@gmail.com by email and does not require a custom sending domain or recurring refresh-token replacement.
+- [x] Replace the unavailable Brevo transport with a secured Google Apps Script relay that sends from devshiftcode2025@gmail.com without OAuth refresh-token maintenance or a custom domain.
+- [ ] Deploy the private Apps Script relay, configure its shared secret and Cloudflare Worker relay secrets, then confirm delivery from a real owner-approved or provider-verified order.
 - [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.

@@ -99,7 +99,7 @@ describe("provider-backed payment workflow safeguards", () => {
     const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
     const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
     const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
-    const brevo = readFileSync(resolve(root, "server/brevo.ts"), "utf8");
+    const relay = readFileSync(resolve(root, "server/appsScriptRelay.ts"), "utf8");
     expect(schema).toContain("export const paymentDeliveryEmails");
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentDeliveryEmails");
     expect(migration).toContain("paymentDeliveryEmails (orderId)");
@@ -113,11 +113,11 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(router).toContain('if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id)');
     expect(router).toContain("retryDeliveryEmail: adminProcedure");
     expect(router).not.toMatch(/capturePaypalCheckout[\s\S]{0,1000}sendPaymentDeliveryEmail/);
-    expect(brevo).toContain("createOwnerOneTimeDeliveryEntitlement");
-    expect(brevo).toContain("tokenHash: await hashDeliveryToken(token)");
-    expect(brevo).toContain('status: "failed"');
-    expect(brevo).toContain("markPaymentDeliveryEmailFailed");
-    expect(brevo).toContain("https://api.brevo.com/v3/smtp/email");
+    expect(relay).toContain("createOwnerOneTimeDeliveryEntitlement");
+    expect(relay).toContain("tokenHash: await hashDeliveryToken(token)");
+    expect(relay).toContain('status: "failed"');
+    expect(relay).toContain("markPaymentDeliveryEmailFailed");
+    expect(relay).toContain("APPS_SCRIPT_RELAY_SECRET");
   });
 
   it("sends an audited rejection notice only after an owner rejects a manual payment and never releases buyer files", () => {
@@ -125,7 +125,7 @@ describe("provider-backed payment workflow safeguards", () => {
     const migration = readFileSync(resolve(root, "cloudflare/migrations/0007_manual_payment_rejection_email.sql"), "utf8");
     const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
     const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
-    const brevo = readFileSync(resolve(root, "server/brevo.ts"), "utf8");
+    const relay = readFileSync(resolve(root, "server/appsScriptRelay.ts"), "utf8");
     expect(schema).toContain("export const paymentRejectionEmails");
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentRejectionEmails");
     expect(database).toContain("claimManualPaymentRejectionEmail");
@@ -133,9 +133,9 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(database).toContain("if (transaction[0]) return null");
     expect(router).toContain('if (input.paymentStatus === "rejected" && reviewed) await sendManualPaymentRejectedEmail(reviewed.id)');
     expect(router).toContain("retryRejectionEmail: adminProcedure");
-    expect(brevo).toContain("buildManualPaymentRejectedEmail");
-    expect(brevo).toContain("markManualPaymentRejectionEmailSent");
-    expect(brevo).not.toMatch(/buildManualPaymentRejectedEmail[\s\S]{0,2500}createOwnerOneTimeDeliveryEntitlement/);
+    expect(relay).toContain("buildManualPaymentRejectedEmail");
+    expect(relay).toContain("markManualPaymentRejectionEmailSent");
+    expect(relay).not.toMatch(/buildManualPaymentRejectedEmail[\s\S]{0,2500}createOwnerOneTimeDeliveryEntitlement/);
   });
 
   it("gives the owner payment toggles and manual QR method controls", () => {

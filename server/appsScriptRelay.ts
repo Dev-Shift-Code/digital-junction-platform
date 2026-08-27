@@ -2,7 +2,7 @@ import { createOwnerOneTimeDeliveryEntitlement, claimManualPaymentRejectionEmail
 import { ENV } from "./_core/env";
 
 const deliveryLinkLifetimeMs = 15 * 60 * 1000;
-const brevoTransactionalEndpoint = "https://api.brevo.com/v3/smtp/email";
+const appsScriptRelayHost = "script.google.com";
 const brandLogoUrl = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663920827301/UriSGgVGQZmuEDZB.png";
 
 function escapeHtml(value: string) {
@@ -52,28 +52,43 @@ export function buildManualPaymentRejectedEmail(input: { buyerName: string; prod
   };
 }
 
-export function buildBrevoPayload(input: { senderEmail: string; to: string; replyTo?: string; subject: string; text: string; html: string; orderId: number; messageType: "delivery" | "rejection"; buyerName: string }) {
-  const senderEmail = safeEmail(input.senderEmail, "BREVO_SENDER_EMAIL");
+export function buildAppsScriptRelayPayload(input: { to: string; replyTo?: string; subject: string; text: string; html: string; orderId: number; messageType: "delivery" | "rejection"; buyerName: string }) {
   const recipientEmail = safeEmail(input.to, "buyer email");
   return {
-    sender: { name: "Digital Junction Development Co.", email: senderEmail },
-    to: [{ email: recipientEmail, name: safeHeaderValue(input.buyerName || "Buyer", "buyer name") }],
-    ...(input.replyTo ? { replyTo: { email: safeEmail(input.replyTo, "BREVO_REPLY_TO") } } : {}),
+    requestId: `${paymentDeliveryEmailIdempotencyKey(input.orderId)}-${input.messageType}`,
+    to: recipientEmail,
+    buyerName: safeHeaderValue(input.buyerName || "Buyer", "buyer name"),
+    ...(input.replyTo ? { replyTo: safeEmail(input.replyTo, "APPS_SCRIPT_REPLY_TO") } : {}),
     subject: safeHeaderValue(input.subject, "Email subject"),
-    htmlContent: input.html,
-    textContent: input.text,
-    tags: ["djdc-transactional", input.messageType],
-    headers: { "X-Mailin-custom": `djdc_order:${input.orderId}|message_type:${input.messageType}|audit_key:${paymentDeliveryEmailIdempotencyKey(input.orderId)}` },
+    html: input.html,
+    text: input.text,
+    messageType: input.messageType,
   };
 }
 
-async function sendBrevoTransactionalEmail(payload: ReturnType<typeof buildBrevoPayload>) {
-  const apiKey = safeHeaderValue(ENV.brevoApiKey, "BREVO_API_KEY");
-  const response = await fetch(brevoTransactionalEndpoint, { method: "POST", headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify(payload) });
+function safeAppsScriptRelayUrl(value: string) {
+  const url = new URL(safeHeaderValue(value, "APPS_SCRIPT_RELAY_URL"));
+  if (url.protocol !== "https:" || url.hostname !== appsScriptRelayHost || !url.pathname.includes("/macros/s/")) throw new Error("APPS_SCRIPT_RELAY_URL must be an HTTPS Google Apps Script web-app URL.");
+  return url.toString();
+}
+
+async function hmacHex(value: string, secret: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function sendAppsScriptRelayEmail(payload: ReturnType<typeof buildAppsScriptRelayPayload>) {
+  const relayUrl = safeAppsScriptRelayUrl(ENV.appsScriptRelayUrl);
+  const sharedSecret = safeHeaderValue(ENV.appsScriptRelaySecret, "APPS_SCRIPT_RELAY_SECRET");
+  const timestamp = Date.now();
+  const payloadJson = JSON.stringify(payload);
+  const signature = await hmacHex(`${timestamp}.${payloadJson}`, sharedSecret);
+  const response = await fetch(relayUrl, { method: "POST", headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify({ timestamp, payloadJson, signature }) });
   const responseText = await response.text();
-  let result: { messageId?: string; code?: string; message?: string } | null = null;
+  let result: { ok?: boolean; messageId?: string; error?: string } | null = null;
   try { result = responseText ? JSON.parse(responseText) : null; } catch { /* Do not place untrusted provider response body in the email audit. */ }
-  if (!response.ok || !result?.messageId) throw new Error(`Brevo delivery request failed (${response.status}): ${result?.message || result?.code || "no message ID returned"}`);
+  if (!response.ok || !result?.ok || !result?.messageId) throw new Error(`Apps Script relay request failed (${response.status}): ${result?.error || "no message ID returned"}`);
   return result.messageId;
 }
 
@@ -93,9 +108,9 @@ export async function sendPaymentDeliveryEmail(orderId: number) {
       return { fileName: file.fileName, url: `${appOrigin}/api/delivery/${token}` };
     }));
     const content = buildPaymentDeliveryEmail({ buyerName: claimed.order.name, productTitle: claimed.product.title, links, orderId: claimed.order.id });
-    const messageId = await sendBrevoTransactionalEmail(buildBrevoPayload({ senderEmail: ENV.brevoSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.brevoReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "delivery", buyerName: claimed.order.name }));
+    const messageId = await sendAppsScriptRelayEmail(buildAppsScriptRelayPayload({ to: claimed.email.recipientEmail, replyTo: ENV.appsScriptReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "delivery", buyerName: claimed.order.name }));
     await markPaymentDeliveryEmailSent(claimed.email.id, messageId);
-    return { status: "sent" as const, brevoMessageId: messageId };
+    return { status: "sent" as const, relayMessageId: messageId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected transactional email failure.";
     await markPaymentDeliveryEmailFailed(claimed.email.id, message);
@@ -109,9 +124,9 @@ export async function sendManualPaymentRejectedEmail(orderId: number) {
   if (!claimed) return { status: "not_due" as const };
   try {
     const content = buildManualPaymentRejectedEmail({ buyerName: claimed.order.name, productTitle: claimed.product.title, orderId: claimed.order.id });
-    const messageId = await sendBrevoTransactionalEmail(buildBrevoPayload({ senderEmail: ENV.brevoSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.brevoReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "rejection", buyerName: claimed.order.name }));
+    const messageId = await sendAppsScriptRelayEmail(buildAppsScriptRelayPayload({ to: claimed.email.recipientEmail, replyTo: ENV.appsScriptReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "rejection", buyerName: claimed.order.name }));
     await markManualPaymentRejectionEmailSent(claimed.email.id, messageId);
-    return { status: "sent" as const, brevoMessageId: messageId };
+    return { status: "sent" as const, relayMessageId: messageId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected rejection-email failure.";
     await markManualPaymentRejectionEmailFailed(claimed.email.id, message);
