@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = resolve(import.meta.dirname, "..");
+
+describe("Owner Sales management workspace", () => {
+  it("uses real D1 order records for metrics, filters, CSV export, and payment or fulfilment actions", () => {
+    const sales = readFileSync(resolve(root, "client/src/pages/OwnerSalesManagement.tsx"), "utf8");
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    expect(sales).toContain("trpc.portal.admin.orders.list.useQuery");
+    expect(sales).toContain("Gross order value");
+    expect(sales).toContain("Verified payment value");
+    expect(sales).toContain("Export CSV");
+    expect(sales).toContain("paymentStatus");
+    expect(sales).toContain("reviewPayment.mutate");
+    expect(sales).toContain("updateOrder.mutate");
+    expect(sales).toContain("does not create sample sales");
+    expect(app).toContain('path={"/owner/sales"} component={OwnerSalesManagement}');
+  });
+});

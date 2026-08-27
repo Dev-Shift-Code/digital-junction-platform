@@ -255,3 +255,4 @@
 - [x] Integrate Cloudinary-backed owner QR image uploads while storing only QR URL and storage metadata in Cloudflare D1, without using R2.
 - [ ] Resolve the Cloudinary QR upload 403 caused by an API credential without create permission, without exposing or storing credentials in source control.
 - [x] Restyle the public Selected Work introduction section with the established dark-green background and readable mint/cream text contrast.
+- [x] Redesign Owner Sales as a real-data sales-management workspace with KPI summaries, filters, CSV export, and payment/fulfilment actions without fabricated transaction data.
