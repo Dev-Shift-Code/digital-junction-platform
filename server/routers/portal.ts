@@ -54,6 +54,11 @@ import { storagePut } from "../storage";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
+const paymentImageMimeType = z.enum(["image/png", "image/jpeg", "image/webp"]);
+const paymentInstructions = z.string().trim().min(3).max(5000).refine(
+  value => !/(?:account\s*(?:number|name)|bank\s*(?:number|account)|gcash\s*number|mobile\s*number|\b[\d][\d\s-]{8,}[\d]\b|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i.test(value),
+  "Do not include account, bank, mobile-number, or email details in buyer instructions. Use the QR code for payment destination details.",
+);
 
 const optionalDate = z.coerce.date().optional().nullable();
 
@@ -158,7 +163,7 @@ export const portalRouter = router({
         }
       }),
     guestCheckout: publicProcedure
-      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255), paymentProofMimeType: z.string().trim().min(1).max(160).refine(value => value.startsWith("image/"), "Payment proof must be an image."), paymentProofSizeBytes: z.number().int().min(1).max(5_000_000), paymentProofBase64: z.string().min(1).max(7_000_000) }))
+      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255), paymentProofMimeType: paymentImageMimeType, paymentProofSizeBytes: z.number().int().min(1).max(5_000_000), paymentProofBase64: z.string().min(1).max(7_000_000) }))
       .mutation(async ({ input }) => {
         try {
           const product = await getPublishedDigitalProductById(input.productId);
@@ -499,7 +504,7 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      save: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive().optional(), methodType: z.string().trim().min(2).max(64), displayName: z.string().trim().min(2).max(120), logoUrl: z.string().trim().url().max(5000).optional().nullable(), logoKey: z.string().trim().max(512).optional().nullable(), qrCodeUrl: z.string().trim().url().max(5000).optional().nullable(), qrCodeKey: z.string().trim().max(512).optional().nullable(), instructions: z.string().trim().min(3).max(5000), isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0) })).mutation(async ({ input }) => {
+      save: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive().optional(), methodType: z.string().trim().min(2).max(64), displayName: z.string().trim().min(2).max(120), logoUrl: z.string().trim().url().max(5000).optional().nullable(), logoKey: z.string().trim().max(512).optional().nullable(), qrCodeUrl: z.string().trim().url().max(5000).optional().nullable(), qrCodeKey: z.string().trim().max(512).optional().nullable(), instructions: paymentInstructions, isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0) })).mutation(async ({ input }) => {
         try {
           const { paymentMethodId, ...values } = input;
           return savePaymentMethod(values, paymentMethodId);
@@ -507,7 +512,7 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      uploadAsset: adminProcedure.input(z.object({ assetType: z.enum(["logo", "qr-code"]), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().min(1).max(160).refine(value => value.startsWith("image/"), "Payment assets must be image files."), sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
+      uploadAsset: adminProcedure.input(z.object({ assetType: z.enum(["logo", "qr-code"]), fileName: z.string().trim().min(1).max(255), mimeType: paymentImageMimeType, sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
         try {
           const bytes = Buffer.from(input.base64, "base64");
           if (!bytes.length || bytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment images must be smaller than 5 MB." });

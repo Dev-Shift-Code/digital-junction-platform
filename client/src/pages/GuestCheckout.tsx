@@ -5,6 +5,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 
 type PaymentProof = { fileName: string; mimeType: string; sizeBytes: number; base64: string };
+const acceptedPaymentImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function money(value: string | number) { return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(Number(value)); }
 
@@ -39,7 +40,7 @@ export default function GuestCheckout() {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setProof(null); setProofError("Payment proof must be an image file (PNG, JPG, or WEBP)."); return; }
+    if (!acceptedPaymentImageTypes.has(file.type)) { setProof(null); setProofError("Payment proof must be a PNG, JPG, or WEBP image."); return; }
     if (file.size > 5_000_000) { setProof(null); setProofError("Payment proof must be 5 MB or smaller."); return; }
     try {
       setIsReadingProof(true);
@@ -60,7 +61,7 @@ export default function GuestCheckout() {
       return;
     }
     const form = new FormData(event.currentTarget);
-    purchase.mutate({ productId: productQuery.data.id, name: String(form.get("name") ?? ""), email: String(form.get("email") ?? ""), company: String(form.get("company") ?? "") || undefined, message: String(form.get("message") ?? "") || undefined, paymentMethodId: selectedMethod.id, paymentReference: String(form.get("paymentReference") ?? ""), paymentProofFileName: proof.fileName, paymentProofMimeType: proof.mimeType, paymentProofSizeBytes: proof.sizeBytes, paymentProofBase64: proof.base64 }, { onSuccess: order => setOrderId(order.requestId) });
+    purchase.mutate({ productId: productQuery.data.id, name: String(form.get("name") ?? ""), email: String(form.get("email") ?? ""), company: String(form.get("company") ?? "") || undefined, message: String(form.get("message") ?? "") || undefined, paymentMethodId: selectedMethod.id, paymentReference: String(form.get("paymentReference") ?? ""), paymentProofFileName: proof.fileName, paymentProofMimeType: proof.mimeType as "image/png" | "image/jpeg" | "image/webp", paymentProofSizeBytes: proof.sizeBytes, paymentProofBase64: proof.base64 }, { onSuccess: order => setOrderId(order.requestId) });
   };
 
   if (productQuery.isLoading) return <PublicLayout><main className="grid min-h-[60vh] place-items-center bg-[#FFF4E1]"><Loader2 className="size-7 animate-spin text-[#428475]" /></main></PublicLayout>;

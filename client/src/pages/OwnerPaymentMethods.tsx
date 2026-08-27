@@ -8,6 +8,7 @@ import { Link } from "wouter";
 
 type Draft = { paymentMethodId?: number; methodType: string; displayName: string; logoUrl: string | null; logoKey: string | null; qrCodeUrl: string | null; qrCodeKey: string | null; instructions: string; isActive: boolean; sortOrder: number };
 const blankDraft = (): Draft => ({ methodType: "", displayName: "", logoUrl: null, logoKey: null, qrCodeUrl: null, qrCodeKey: null, instructions: "", isActive: true, sortOrder: 0 });
+const acceptedPaymentImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function readFile(file: File) {
   return new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error("File read failed.")); reader.onload = () => resolve(String(reader.result).split(",")[1] ?? ""); reader.readAsDataURL(file); });
@@ -29,11 +30,11 @@ export default function OwnerPaymentMethods() {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setAssetError("Only image files can be used for the logo or QR code."); return; }
+    if (!acceptedPaymentImageTypes.has(file.type)) { setAssetError("Only PNG, JPG, or WEBP images can be used for the logo or QR code."); return; }
     if (file.size > 5_000_000) { setAssetError("Payment images must be 5 MB or smaller."); return; }
     try {
       setAssetError("");
-      const stored = await upload.mutateAsync({ assetType, fileName: file.name, mimeType: file.type, sizeBytes: file.size, base64: await readFile(file) });
+      const stored = await upload.mutateAsync({ assetType, fileName: file.name, mimeType: file.type as "image/png" | "image/jpeg" | "image/webp", sizeBytes: file.size, base64: await readFile(file) });
       setDraft(current => assetType === "logo" ? { ...current, logoUrl: stored.url, logoKey: stored.key } : { ...current, qrCodeUrl: stored.url, qrCodeKey: stored.key });
     } catch { setAssetError("The image could not be uploaded. Please try again."); }
   };

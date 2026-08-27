@@ -69,6 +69,12 @@ describe("portal router access control", () => {
     await expect(publicCaller.portal.products.guestCheckout({ productId: 1, name: "Buyer Name", email: "buyer@example.com", paymentMethodId: 1, paymentReference: "REF-123", paymentProofFileName: "proof.txt", paymentProofMimeType: "text/plain", paymentProofSizeBytes: 4, paymentProofBase64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     const ownerCaller = appRouter.createCaller(createContext("admin"));
     await expect(ownerCaller.portal.admin.paymentMethods.uploadAsset({ assetType: "qr-code", fileName: "method.txt", mimeType: "text/plain", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(ownerCaller.portal.admin.paymentMethods.uploadAsset({ assetType: "logo", fileName: "method.svg", mimeType: "image/svg+xml", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects payment instructions that contain likely public account details", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await expect(caller.portal.admin.paymentMethods.save({ methodType: "Wallet", displayName: "QR payment", instructions: "Send to account number 0917 123 4567.", isActive: true, sortOrder: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("validates product cover and delivery file inputs before storage access", async () => {
