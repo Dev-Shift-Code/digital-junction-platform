@@ -8,7 +8,7 @@ import { Link } from "wouter";
 
 const pages = ["home", "shop", "services", "work", "about", "contact", "footer"] as const;
 const sectionOptions: Record<(typeof pages)[number], string[]> = {
-  home: ["hero", "services", "products", "projects", "call-to-action"],
+  home: ["hero", "services", "products", "projects", "story", "call-to-action"],
   shop: ["hero", "catalogue", "call-to-action"],
   services: ["hero", "service-list", "call-to-action"],
   work: ["hero", "projects", "call-to-action"],

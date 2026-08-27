@@ -174,3 +174,7 @@
 - [x] Remove the standalone buyer-file management entry point once the integrated product-form workflow is complete.
 - [x] Add regression coverage for integrated buyer-file controls and verify public file metadata remains link-safe.
 - [x] Render text-only Inclusions separately from the Included files metadata on public product details.
+- [x] Create a reusable published public-section resolver for owner-saved content overrides.
+- [x] Wire owner-editable section copy, media, CTA, and visibility overrides into Home, Shop, Services, Work, About, Contact, and Footer.
+- [ ] Add regression coverage and verify a saved owner public-content edit updates the matching visitor-facing section without inventing business copy or media.
+- [x] Add regression coverage for the public-section resolver, unpublished-content redaction, and every visitor-facing page integration.

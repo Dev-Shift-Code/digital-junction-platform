@@ -433,8 +433,16 @@ export async function deleteProductFile(productFileId: number) {
 
 export async function getPublicSiteContent(page?: string) {
   const db = requireDatabase(await getDb());
-  const where = page ? and(eq(publicSiteContent.page, page), eq(publicSiteContent.isPublished, true)) : eq(publicSiteContent.isPublished, true);
-  return db.select().from(publicSiteContent).where(where).orderBy(asc(publicSiteContent.page), asc(publicSiteContent.section));
+  const where = page ? eq(publicSiteContent.page, page) : undefined;
+  const rows = await db.select().from(publicSiteContent).where(where).orderBy(asc(publicSiteContent.page), asc(publicSiteContent.section));
+  return rows.map(row => row.isPublished ? row : {
+    ...row,
+    title: null,
+    body: null,
+    imageUrl: null,
+    ctaLabel: null,
+    ctaHref: null,
+  });
 }
 
 export async function getAllPublicSiteContent() {
