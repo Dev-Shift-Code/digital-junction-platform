@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../drizzle/schema";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEmails, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -446,7 +446,7 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
   return created[0];
 }
 
-type PaymentProvider = "payrex" | "paypal";
+type PaymentProvider = "payrex" | "paypal" | "manual";
 type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken?: string | null; paymentReference?: string | null; paymentMethodId?: number | null; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot?: string | null; paymentQrCodeUrlSnapshot?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number };
 
 async function createProviderCheckoutOrder(input: ProviderCheckoutOrderInput) {
@@ -469,7 +469,7 @@ export async function createPaypalCheckoutOrder(input: { productId: number; name
   return createProviderCheckoutOrder({ ...input, paymentMethodName: "PayPal", paymentMethodType: "PayPal" });
 }
 
-export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
   return createProviderCheckoutOrder(input);
 }
 
@@ -492,6 +492,19 @@ export async function createPayrexPaymentTransaction(input: { orderId: number; p
 
 export async function createPaypalPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerOrderId: string; approvalUrl: string }) {
   return createProviderPaymentTransaction({ provider: "paypal", paymentMethod: "paypal", orderId: input.orderId, publicToken: input.publicToken, amountCents: input.amountCents, providerCheckoutSessionId: input.providerOrderId, providerPaymentIntentId: input.providerOrderId, checkoutUrl: input.approvalUrl });
+}
+
+async function createManualApprovedPaymentTransaction(order: typeof guestCheckoutRequests.$inferSelect, paidAt: Date) {
+  if (!order.paymentPublicToken || !order.paymentMethodName || !order.totalCents) throw new Error("Manual payment order is missing its secure delivery details.");
+  const transaction = await createProviderPaymentTransaction({
+    provider: "manual", paymentMethod: order.paymentMethodType || "manual", orderId: order.id, publicToken: order.paymentPublicToken,
+    amountCents: order.totalCents, providerCheckoutSessionId: `manual-order-${order.id}`, providerPaymentIntentId: null, checkoutUrl: "manual-review",
+  });
+  const db = requireDatabase(await getDb());
+  await db.update(paymentTransactions).set({ status: "paid", paidAt }).where(eq(paymentTransactions.id, transaction.id));
+  const rows = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, transaction.id)).limit(1);
+  if (!rows[0]) throw new Error("Unable to finalize the approved manual payment transaction.");
+  return rows[0];
 }
 
 export async function getPayrexPaymentStatus(publicToken: string) {
@@ -526,13 +539,12 @@ async function markProviderPaymentPaid(input: { provider: PaymentProvider; match
   const rows = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.provider, input.provider), eq(matchColumn, input.providerReference))).limit(1);
   const transaction = rows[0];
   if (!transaction) return null;
-  if (transaction.status !== "paid") {
-    const paidAt = new Date();
-    await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: input.providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
-    await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
-    const orders = await db.select({ voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, transaction.orderId)).limit(1);
-    await incrementVoucherRedemption(orders[0]?.voucherId || null);
-  }
+  if (transaction.status === "paid") return null;
+  const paidAt = new Date();
+  await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: input.providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
+  await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
+  const orders = await db.select({ voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, transaction.orderId)).limit(1);
+  await incrementVoucherRedemption(orders[0]?.voucherId || null);
   return transaction;
 }
 
@@ -575,6 +587,42 @@ export async function createOneTimeDeliveryEntitlement(input: { paymentPublicTok
   const result = await db.insert(paymentDeliveryEntitlements).values({ orderId: delivery.order.id, paymentTransactionId: delivery.transaction.id, productFileId: productFile.id, fileName: productFile.fileName, fileKey: productFile.fileKey, fileMimeType: productFile.mimeType || null, tokenHash: input.tokenHash, status: "active", expiresAt: input.expiresAt });
   const created = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.id, Number(result.meta.last_row_id))).limit(1);
   return created[0] || null;
+}
+
+export async function claimPaymentDeliveryEmail(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select({ transaction: paymentTransactions, order: guestCheckoutRequests, product: digitalProducts })
+    .from(paymentTransactions).innerJoin(guestCheckoutRequests, eq(paymentTransactions.orderId, guestCheckoutRequests.id))
+    .innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id))
+    .where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const delivery = rows[0];
+  if (!delivery || delivery.transaction.status !== "paid" || delivery.order.paymentStatus !== "verified") return null;
+  const files = (await db.select({ id: productFiles.id, fileName: productFiles.fileName, mimeType: productFiles.mimeType, fileKey: productFiles.fileKey, fileUrl: productFiles.fileUrl })
+    .from(productFiles).where(eq(productFiles.productId, delivery.order.productId)).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt)))
+    .filter(file => file.fileUrl.includes("/raw/private/") && Boolean(file.fileKey));
+  const inserted = await db.insert(paymentDeliveryEmails).values({ orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email, status: "sending", attempts: 1 }).onConflictDoNothing();
+  if (Number(inserted.meta.changes || 0) === 1) return { email: { id: Number(inserted.meta.last_row_id), orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
+  const existing = await db.select().from(paymentDeliveryEmails).where(eq(paymentDeliveryEmails.orderId, orderId)).limit(1);
+  const audit = existing[0];
+  if (!audit || audit.status !== "failed") return null;
+  const claimed = await db.update(paymentDeliveryEmails).set({ status: "sending", attempts: sql`${paymentDeliveryEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, audit.id), eq(paymentDeliveryEmails.status, "failed")));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return { email: { id: audit.id, orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
+}
+
+export async function markPaymentDeliveryEmailSent(emailId: number, resendEmailId: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "sent", resendEmailId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+}
+
+export async function markPaymentDeliveryEmailFailed(emailId: number, error: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "failed", lastError: error.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+}
+
+export async function markPaymentDeliveryEmailSkipped(emailId: number, reason: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "skipped", lastError: reason.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
 }
 
 export async function consumeOneTimeDeliveryEntitlement(tokenHash: string) {
@@ -706,11 +754,13 @@ export async function getGuestCheckoutRequests() {
   const privateFiles = (await db.select().from(productFiles)).filter(file => file.fileUrl.includes("/raw/private/"));
   const entitlements = await db.select().from(paymentDeliveryEntitlements);
   const transactions = await db.select().from(paymentTransactions);
+  const deliveryEmails = await db.select().from(paymentDeliveryEmails);
   return rows.map(row => {
     const files = privateFiles.filter(file => file.productId === row.order.productId);
     const entries = entitlements.filter(entry => entry.orderId === row.order.id);
     const transaction = transactions.find(candidate => candidate.orderId === row.order.id) || null;
-    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
+    const deliveryEmail = deliveryEmails.find(candidate => candidate.orderId === row.order.id) || null;
+    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, resendEmailId: deliveryEmail.resendEmailId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
   });
 }
 
@@ -740,10 +790,12 @@ export async function updateGuestCheckoutRequestStatus(orderId: number, status: 
 
 export async function updateGuestCheckoutPaymentReview(orderId: number, paymentStatus: "verified" | "rejected", paymentReviewNote?: string | null) {
   const db = requireDatabase(await getDb());
-  const existing = await db.select({ paymentStatus: guestCheckoutRequests.paymentStatus, voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const existing = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
   const transaction = await db.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.orderId, orderId)).limit(1);
   if (transaction[0]) throw new Error("Provider payments can be marked paid only by verified provider webhook processing.");
+  if (!existing[0]) throw new Error("Payment order was not found.");
   const reviewedAt = new Date();
+  if (paymentStatus === "verified") await createManualApprovedPaymentTransaction(existing[0], reviewedAt);
   await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: reviewedAt, paymentReviewNote: paymentReviewNote || null, commerceStatus: paymentStatus === "verified" ? "paid" : "pending_payment", paidAt: paymentStatus === "verified" ? reviewedAt : null }).where(eq(guestCheckoutRequests.id, orderId));
   if (paymentStatus === "verified" && existing[0]?.paymentStatus !== "verified") await incrementVoucherRedemption(existing[0]?.voucherId || null);
   const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);

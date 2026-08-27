@@ -284,3 +284,5 @@
 - [x] Apply the supplied DJDC logo asset to public header/footer, owner sidebar branding, and browser-tab favicon.
 - [x] Allow an owner to remove public projects and sold-out/ended catalogue listings at any time while preserving historical purchase, payment, and entitled-delivery records.
 - [x] Fix the live DJDC logo delivery so the supplied PNG is served instead of any legacy fallback or cached asset in the public site, owner workspace, and browser tab.
+- [x] Implement automatic Resend transactional email delivery containing per-file one-time download links only after a verified PayRex/PayPal payment or owner-approved manual payment, with D1 delivery audit records and no file attachments.
+- [ ] Configure and verify the Resend sending domain/sender secrets before enabling real buyer delivery emails.

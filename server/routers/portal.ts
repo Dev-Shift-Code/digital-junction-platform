@@ -76,6 +76,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "../
 import { isD1OnlyFileMode, storagePut, storagePutPaymentQr, storagePutPrivateDeliveryFile } from "../storage";
 import { createPayrexGcashCheckout } from "../payrex";
 import { capturePaypalOrder, createPaypalOrder } from "../paypal";
+import { sendPaymentDeliveryEmail } from "../resend";
 import { ENV } from "../_core/env";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
@@ -306,7 +307,8 @@ export const portalRouter = router({
           ]);
           if (!paymentMethod || !paymentMethod.isActive) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an active manual payment method before placing this order." });
           if (total.totalCents < 1) throw new TRPCError({ code: "BAD_REQUEST", message: "A manual payment order must have a final total of at least ₱0.01." });
-          const order = await createManualCheckoutOrder({ productId: total.product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl || null, voucherId: total.voucherId, voucherCodeSnapshot: total.voucherCodeSnapshot, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents });
+          const publicToken = crypto.randomUUID();
+          const order = await createManualCheckoutOrder({ productId: total.product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl || null, voucherId: total.voucherId, voucherCodeSnapshot: total.voucherCodeSnapshot, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents });
           return { orderId: order.id, paymentMethodName: paymentMethod.displayName, qrCodeUrl: paymentMethod.qrCodeUrl, instructions: paymentMethod.instructions, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents, status: "awaiting_manual_review" as const };
         } catch (error) {
           if (error instanceof TRPCError) throw error;
@@ -695,7 +697,9 @@ export const portalRouter = router({
       }),
       reviewPayment: adminProcedure.input(z.object({ orderId: z.number().int().positive(), paymentStatus: z.enum(["verified", "rejected"]), paymentReviewNote: z.string().trim().max(1000).optional() })).mutation(async ({ input }) => {
         try {
-          return updateGuestCheckoutPaymentReview(input.orderId, input.paymentStatus, input.paymentReviewNote);
+          const reviewed = await updateGuestCheckoutPaymentReview(input.orderId, input.paymentStatus, input.paymentReviewNote);
+          if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id);
+          return reviewed;
         } catch (error) {
           return unavailable(error);
         }
@@ -711,10 +715,17 @@ export const portalRouter = router({
         try {
           const token = crypto.randomUUID();
           const entitlement = await createOwnerOneTimeDeliveryEntitlement({ orderId: input.orderId, productFileId: input.productFileId, tokenHash: await hashDeliveryToken(token), expiresAt: new Date(Date.now() + 15 * 60 * 1000) });
-          if (!entitlement) throw new TRPCError({ code: "BAD_REQUEST", message: "A replacement link can be created only for a verified PayRex payment and an eligible private buyer file." });
+          if (!entitlement) throw new TRPCError({ code: "BAD_REQUEST", message: "A replacement link can be created only for a verified payment and an eligible private buyer file." });
           return { url: `${ENV.publicAppOrigin.replace(/\/+$/, "")}/api/delivery/${token}`, expiresAt: entitlement.expiresAt };
         } catch (error) {
           if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+      retryDeliveryEmail: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          return sendPaymentDeliveryEmail(input.orderId);
+        } catch (error) {
           return unavailable(error);
         }
       }),

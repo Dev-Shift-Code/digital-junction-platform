@@ -91,6 +91,32 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("single-use download link");
   });
 
+  it("prepares a D1-audited Resend delivery only after a verified provider webhook or manual owner approval", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const migration = readFileSync(resolve(root, "cloudflare/migrations/0005_transactional_delivery_email.sql"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const resend = readFileSync(resolve(root, "server/resend.ts"), "utf8");
+    expect(schema).toContain("export const paymentDeliveryEmails");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentDeliveryEmails");
+    expect(migration).toContain("paymentDeliveryEmails (orderId)");
+    expect(database).toContain("claimPaymentDeliveryEmail");
+    expect(database).toContain('audit.status !== "failed"');
+    expect(database).toContain('provider: "manual"');
+    expect(database).toContain("createManualApprovedPaymentTransaction");
+    expect(worker).toContain("ctx.waitUntil(sendPaymentDeliveryEmail(transaction.orderId))");
+    expect(worker).toContain('event.type === "payment_intent.succeeded"');
+    expect(worker).toContain('event.event_type === "PAYMENT.CAPTURE.COMPLETED"');
+    expect(router).toContain('if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id)');
+    expect(router).toContain("retryDeliveryEmail: adminProcedure");
+    expect(router).not.toMatch(/capturePaypalCheckout[\s\S]{0,1000}sendPaymentDeliveryEmail/);
+    expect(resend).toContain("createOwnerOneTimeDeliveryEntitlement");
+    expect(resend).toContain("tokenHash: await hashDeliveryToken(token)");
+    expect(resend).toContain('status: "failed"');
+    expect(resend).toContain("markPaymentDeliveryEmailFailed");
+  });
+
   it("gives the owner payment toggles and manual QR method controls", () => {
     const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
     expect(paymentMethods).toContain("Payment methods");

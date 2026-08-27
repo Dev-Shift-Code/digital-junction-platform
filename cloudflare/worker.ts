@@ -6,6 +6,7 @@ import { createWorkerContext } from "../server/_core/workerContext";
 import { consumeOneTimeDeliveryEntitlement, markPaypalPaymentPaid, markPayrexPaymentPaid, registerPaypalWebhookEvent, registerPayrexWebhookEvent } from "../server/db";
 import { sha256, verifyPayrexWebhook } from "../server/payrex";
 import { verifyPaypalWebhook } from "../server/paypal";
+import { sendPaymentDeliveryEmail } from "../server/resend";
 
 type WorkerBindings = Record<string, unknown> & {
   digital_junction_db?: unknown;
@@ -30,7 +31,7 @@ function webhookResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
 
-async function handlePayrexWebhook(request: Request) {
+async function handlePayrexWebhook(request: Request, ctx: ExecutionContext) {
   try {
     if (request.method !== "POST") return webhookResponse({ error: "Method not allowed" }, 405);
     const rawBody = await request.text();
@@ -40,7 +41,8 @@ async function handlePayrexWebhook(request: Request) {
     const isNew = await registerPayrexWebhookEvent({ providerEventId: event.id, eventType: event.type, providerPaymentIntentId: paymentIntentId, payloadHash: await sha256(rawBody) });
     if (!isNew) return webhookResponse({ received: true, duplicate: true });
     if (event.type === "payment_intent.succeeded" && paymentIntentId) {
-      await markPayrexPaymentPaid(paymentIntentId, event.data?.resource?.latest_payment || null);
+      const transaction = await markPayrexPaymentPaid(paymentIntentId, event.data?.resource?.latest_payment || null);
+      if (transaction) ctx.waitUntil(sendPaymentDeliveryEmail(transaction.orderId));
     }
     return webhookResponse({ received: true });
   } catch (error) {
@@ -49,7 +51,7 @@ async function handlePayrexWebhook(request: Request) {
   }
 }
 
-async function handlePaypalWebhook(request: Request) {
+async function handlePaypalWebhook(request: Request, ctx: ExecutionContext) {
   try {
     if (request.method !== "POST") return webhookResponse({ error: "Method not allowed" }, 405);
     const rawBody = await request.text();
@@ -58,7 +60,10 @@ async function handlePaypalWebhook(request: Request) {
     const providerOrderId = event.resource?.supplementary_data?.related_ids?.order_id || null;
     const isNew = await registerPaypalWebhookEvent({ providerEventId: event.id, eventType: event.event_type, providerOrderId, payloadHash: await sha256(rawBody) });
     if (!isNew) return webhookResponse({ received: true, duplicate: true });
-    if (event.event_type === "PAYMENT.CAPTURE.COMPLETED" && providerOrderId) await markPaypalPaymentPaid(providerOrderId, event.resource?.id || null);
+    if (event.event_type === "PAYMENT.CAPTURE.COMPLETED" && providerOrderId) {
+      const transaction = await markPaypalPaymentPaid(providerOrderId, event.resource?.id || null);
+      if (transaction) ctx.waitUntil(sendPaymentDeliveryEmail(transaction.orderId));
+    }
     return webhookResponse({ received: true });
   } catch (error) {
     console.error("[paypal-webhook] rejected", error);
@@ -95,8 +100,8 @@ export default {
     configureCloudinaryStorage(configuredCloudinaryStorage(bindings));
 
     const pathname = new URL(request.url).pathname;
-    if (pathname === "/api/payrex/webhook") return handlePayrexWebhook(request);
-    if (pathname === "/api/paypal/webhook") return handlePaypalWebhook(request);
+    if (pathname === "/api/payrex/webhook") return handlePayrexWebhook(request, ctx);
+    if (pathname === "/api/paypal/webhook") return handlePaypalWebhook(request, ctx);
     if (request.method === "GET" && pathname.startsWith("/api/delivery/")) {
       const token = pathname.slice("/api/delivery/".length);
       if (/^[0-9a-f-]{36}$/i.test(token)) return handleOneTimeDelivery(token);
