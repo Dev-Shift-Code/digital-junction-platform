@@ -273,3 +273,9 @@
 - [ ] Configure PayPal Sandbox Worker secrets and a `PAYMENT.CAPTURE.COMPLETED` webhook, deploy the Worker/Pages changes, and non-destructively verify a real sandbox checkout.
 - [x] Refine the buyer checkout and Owner Payment Methods screens so PayRex GCash and PayPal are visibly separate, selected-state messaging is accurate, and deployment status is understandable.
 - [x] Unify all production toast notifications, inline success/error/info alerts, and shared alert variants in the Digital Junction cream, dark-green, teal, and mint visual system.
+- [ ] Replace the public header/footer, owner header, and browser-tab favicon with the supplied DJDC logo asset.
+- [x] Add D1-backed owner voucher creation, selected-product or general scope, discount limits, activation controls, and buyer-side voucher validation.
+- [x] Add owner-controlled enabled/disabled states for PayRex GCash and PayPal Sandbox so disabled providers are not offered to buyers.
+- [x] Add owner-managed manual payment methods with a custom display name, Cloudinary-hosted QR image, instructions, and manual order payment review.
+- [x] Show only enabled payment methods at checkout and apply a validated server-side voucher adjustment without trusting buyer-entered totals.
+- [x] Replace the Owner Vouchers placeholder with voucher management and the Owner Support placeholder with real contact-inquiry records and status controls.

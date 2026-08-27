@@ -21,8 +21,9 @@ describe("provider-backed payment workflow safeguards", () => {
     const paypal = readFileSync(resolve(root, "server/paypal.ts"), "utf8");
     expect(router).toContain("createPayrexCheckout: publicProcedure");
     expect(router).toContain("createPaypalCheckout: publicProcedure");
-    expect(router).toContain("const unitAmountCents = priceToCents(product.price)");
-    expect(router).toContain("amountCents: unitAmountCents * input.quantity");
+    expect(router).toContain("resolveCheckoutTotal");
+    expect(router).toContain("subtotalCents = priceToCents(product.price) * input.quantity");
+    expect(router).toContain("amountCents: total.totalCents");
     expect(router).toContain("createPaypalOrder({ orderReference");
     expect(payrex).toContain('"payment_methods[]": "gcash"');
     expect(payrex).toContain("payment_methods");
@@ -31,13 +32,15 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(paypal).toContain('category: "DIGITAL_GOODS"');
   });
 
-  it("removes manual screenshot and frontend payment-reference confirmation from public checkout", () => {
+  it("keeps provider checkout separate from an owner-reviewed manual QR alternative", () => {
     const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
     expect(checkout).toContain("createPayrexCheckout.useMutation");
     expect(checkout).toContain("createPaypalCheckout.useMutation");
+    expect(checkout).toContain("createManualCheckout.useMutation");
     expect(checkout).toContain("capturePaypalCheckout.useMutation");
-    expect(checkout).toContain("window.location.assign(checkout.checkoutUrl)");
-    expect(checkout).toContain("No screenshot or “I paid” button is used");
+    expect(checkout).toContain("window.location.assign(result.checkoutUrl)");
+    expect(checkout).toContain("manual QR payment needs owner review");
+    expect(checkout).toContain("Files are not released until the payment is manually verified");
     expect(checkout).not.toContain("paymentProofBase64");
     expect(checkout).not.toContain("paymentReference");
     expect(checkout).not.toMatch(/accountNumber|account_name|bankAccount|gcashNumber/i);
@@ -88,15 +91,13 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("single-use download link");
   });
 
-  it("keeps owner provider guidance aligned with PayRex GCash and PayPal Sandbox", () => {
+  it("gives the owner payment toggles and manual QR method controls", () => {
     const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
-    expect(paymentMethods).toContain("Payment providers");
-    expect(paymentMethods).toContain("PayRex GCash");
+    expect(paymentMethods).toContain("Payment methods");
+    expect(paymentMethods).toContain("GCash via PayRex");
     expect(paymentMethods).toContain("PayPal Sandbox");
-    expect(paymentMethods).toContain("No manual approval");
-    expect(paymentMethods).toContain("payment_intent.succeeded");
-    expect(paymentMethods).toContain("PAYMENT.CAPTURE.COMPLETED");
-    expect(paymentMethods).toContain("/api/paypal/webhook");
-    expect(paymentMethods).not.toContain("Upload QR code");
+    expect(paymentMethods).toContain("Disable for buyers");
+    expect(paymentMethods).toContain("Manual QR payment");
+    expect(paymentMethods).toContain("uploadQrCode.useMutation");
   });
 });

@@ -1,7 +1,7 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../drizzle/schema";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEntitlements, paymentMethods, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -252,6 +252,18 @@ export async function createInquiry(values: typeof inquiries.$inferInsert) {
   return created[0];
 }
 
+export async function getAllInquiries() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(inquiries).orderBy(desc(inquiries.createdAt));
+}
+
+export async function updateInquiryStatus(inquiryId: number, status: "new" | "contacted" | "closed") {
+  const db = requireDatabase(await getDb());
+  await db.update(inquiries).set({ status }).where(eq(inquiries.id, inquiryId));
+  const updated = await db.select().from(inquiries).where(eq(inquiries.id, inquiryId)).limit(1);
+  return updated[0] || null;
+}
+
 export async function getAdminProjectDetail(projectId: number) {
   const db = requireDatabase(await getDb());
   const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -434,26 +446,30 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
 }
 
 type PaymentProvider = "payrex" | "paypal";
-type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; paymentMethodName: string; paymentMethodType: string };
+type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken?: string | null; paymentReference?: string | null; paymentMethodId?: number | null; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot?: string | null; paymentQrCodeUrlSnapshot?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number };
 
 async function createProviderCheckoutOrder(input: ProviderCheckoutOrderInput) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values({
     productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
-    status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken,
-    paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentReference: input.paymentReference, paymentStatus: "awaiting_payment",
+    status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken || null,
+    paymentMethodId: input.paymentMethodId || null, paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentInstructionsSnapshot: input.paymentInstructionsSnapshot || null, paymentQrCodeUrlSnapshot: input.paymentQrCodeUrlSnapshot || null, paymentReference: input.paymentReference || null, voucherId: input.voucherId || null, voucherCodeSnapshot: input.voucherCodeSnapshot || null, subtotalCents: input.subtotalCents, discountCents: input.discountCents, totalCents: input.totalCents, paymentStatus: "awaiting_payment",
   });
   const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
   if (!created[0]) throw new Error("Unable to create checkout order");
   return created[0];
 }
 
-export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
   return createProviderCheckoutOrder({ ...input, paymentMethodName: "GCash", paymentMethodType: "GCash" });
 }
 
-export async function createPaypalCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+export async function createPaypalCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
   return createProviderCheckoutOrder({ ...input, paymentMethodName: "PayPal", paymentMethodType: "PayPal" });
+}
+
+export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+  return createProviderCheckoutOrder(input);
 }
 
 type ProviderTransactionInput = { provider: PaymentProvider; paymentMethod: string; orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null };
@@ -513,6 +529,8 @@ async function markProviderPaymentPaid(input: { provider: PaymentProvider; match
     const paidAt = new Date();
     await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: input.providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
     await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
+    const orders = await db.select({ voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, transaction.orderId)).limit(1);
+    await incrementVoucherRedemption(orders[0]?.voucherId || null);
   }
   return transaction;
 }
@@ -602,6 +620,77 @@ export async function savePaymentMethod(values: typeof paymentMethods.$inferInse
   return created[0];
 }
 
+export async function getPaymentProviderSettings() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(paymentProviderSettings).orderBy(asc(paymentProviderSettings.provider));
+}
+
+export async function getPaymentProviderSetting(provider: "payrex" | "paypal") {
+  const db = requireDatabase(await getDb());
+  const setting = await db.select().from(paymentProviderSettings).where(eq(paymentProviderSettings.provider, provider)).limit(1);
+  return setting[0] || null;
+}
+
+export async function setPaymentProviderActive(provider: "payrex" | "paypal", isActive: boolean) {
+  const db = requireDatabase(await getDb());
+  await db.insert(paymentProviderSettings).values({ provider, isActive }).onConflictDoUpdate({ target: paymentProviderSettings.provider, set: { isActive, updatedAt: new Date() } });
+  return getPaymentProviderSetting(provider);
+}
+
+export async function getAllVouchers() {
+  const db = requireDatabase(await getDb());
+  const [rows, scopes] = await Promise.all([
+    db.select().from(vouchers).orderBy(desc(vouchers.createdAt)),
+    db.select().from(voucherProducts),
+  ]);
+  return rows.map(voucher => ({ ...voucher, productIds: scopes.filter(scope => scope.voucherId === voucher.id).map(scope => scope.productId) }));
+}
+
+export async function saveVoucher(input: { voucherId?: number; code: string; label: string; scope: "general" | "selected_products"; discountKind: "percent" | "fixed"; discountValue: number; maxRedemptions?: number | null; startsAt?: Date | null; endsAt?: Date | null; isActive: boolean; productIds: number[] }) {
+  const db = requireDatabase(await getDb());
+  const values = { code: input.code.trim().toUpperCase(), label: input.label.trim(), scope: input.scope, discountKind: input.discountKind, discountValue: input.discountValue, maxRedemptions: input.maxRedemptions || null, startsAt: input.startsAt || null, endsAt: input.endsAt || null, isActive: input.isActive };
+  let voucherId = input.voucherId;
+  if (voucherId) {
+    await db.update(vouchers).set({ ...values, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
+    await db.delete(voucherProducts).where(eq(voucherProducts.voucherId, voucherId));
+  } else {
+    const result = await db.insert(vouchers).values(values);
+    voucherId = Number(result.meta.last_row_id);
+  }
+  if (!voucherId) throw new Error("Voucher could not be saved.");
+  const productIds = input.scope === "selected_products" ? Array.from(new Set(input.productIds)) : [];
+  for (const productId of productIds) await db.insert(voucherProducts).values({ voucherId, productId });
+  const voucher = await db.select().from(vouchers).where(eq(vouchers.id, voucherId)).limit(1);
+  return { ...voucher[0], productIds };
+}
+
+export async function setVoucherActive(voucherId: number, isActive: boolean) {
+  const db = requireDatabase(await getDb());
+  await db.update(vouchers).set({ isActive, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
+  const voucher = await db.select().from(vouchers).where(eq(vouchers.id, voucherId)).limit(1);
+  return voucher[0] || null;
+}
+
+export async function getVoucherDiscount(input: { code: string; productId: number; subtotalCents: number; now?: Date }) {
+  const db = requireDatabase(await getDb());
+  const now = input.now || new Date();
+  const found = await db.select().from(vouchers).where(eq(vouchers.code, input.code.trim().toUpperCase())).limit(1);
+  const voucher = found[0];
+  if (!voucher || !voucher.isActive || (voucher.startsAt && voucher.startsAt > now) || (voucher.endsAt && voucher.endsAt < now) || (voucher.maxRedemptions !== null && voucher.redemptionCount >= voucher.maxRedemptions)) return null;
+  if (voucher.scope === "selected_products") {
+    const scoped = await db.select({ id: voucherProducts.id }).from(voucherProducts).where(and(eq(voucherProducts.voucherId, voucher.id), eq(voucherProducts.productId, input.productId))).limit(1);
+    if (!scoped[0]) return null;
+  }
+  const discountCents = voucher.discountKind === "percent" ? Math.floor(input.subtotalCents * voucher.discountValue / 100) : Math.min(input.subtotalCents, voucher.discountValue);
+  return { voucher, discountCents: Math.max(0, discountCents), totalCents: Math.max(0, input.subtotalCents - discountCents) };
+}
+
+async function incrementVoucherRedemption(voucherId: number | null) {
+  if (!voucherId) return;
+  const db = requireDatabase(await getDb());
+  await db.update(vouchers).set({ redemptionCount: sql`${vouchers.redemptionCount} + 1`, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
+}
+
 export async function deletePaymentMethod(paymentMethodId: number) {
   const db = requireDatabase(await getDb());
   const referencedOrder = await db.select({ id: guestCheckoutRequests.id }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.paymentMethodId, paymentMethodId)).limit(1);
@@ -650,7 +739,12 @@ export async function updateGuestCheckoutRequestStatus(orderId: number, status: 
 
 export async function updateGuestCheckoutPaymentReview(orderId: number, paymentStatus: "verified" | "rejected", paymentReviewNote?: string | null) {
   const db = requireDatabase(await getDb());
-  await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: new Date(), paymentReviewNote: paymentReviewNote || null }).where(eq(guestCheckoutRequests.id, orderId));
+  const existing = await db.select({ paymentStatus: guestCheckoutRequests.paymentStatus, voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const transaction = await db.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.orderId, orderId)).limit(1);
+  if (transaction[0]) throw new Error("Provider payments can be marked paid only by verified provider webhook processing.");
+  const reviewedAt = new Date();
+  await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: reviewedAt, paymentReviewNote: paymentReviewNote || null, commerceStatus: paymentStatus === "verified" ? "paid" : "pending_payment", paidAt: paymentStatus === "verified" ? reviewedAt : null }).where(eq(guestCheckoutRequests.id, orderId));
+  if (paymentStatus === "verified" && existing[0]?.paymentStatus !== "verified") await incrementVoucherRedemption(existing[0]?.voucherId || null);
   const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
   return updated[0];
 }

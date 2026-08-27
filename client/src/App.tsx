@@ -14,7 +14,9 @@ import OwnerProductAccess from "@/pages/OwnerProductAccess";
 import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
 import OwnerPaymentMethods from "@/pages/OwnerPaymentMethods";
 import OwnerSalesManagement from "@/pages/OwnerSalesManagement";
-import { OwnerCustomers, OwnerSettings, OwnerSupport, OwnerVouchers } from "@/pages/OwnerWorkspaceViews";
+import OwnerInquiries from "@/pages/OwnerInquiries";
+import OwnerVouchers from "@/pages/OwnerVouchers";
+import { OwnerCustomers, OwnerSettings } from "@/pages/OwnerWorkspaceViews";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import { OwnerLoginEntry } from "@/pages/AuthEntry";
 import Services from "@/pages/Services";
@@ -47,7 +49,7 @@ function Router() {
       <Route path={"/owner/vouchers"} component={OwnerVouchers} />
       <Route path={"/owner/settings"} component={OwnerSettings} />
       <Route path={"/owner/payment-methods"} component={OwnerPaymentMethods} />
-      <Route path={"/owner/support"} component={OwnerSupport} />
+      <Route path={"/owner/support"} component={OwnerInquiries} />
       <Route path={"/owner"} component={OwnerDashboard} />
       <Route path={"/owner/products"} component={OwnerProducts} />
       <Route path={"/owner/product-access"} component={OwnerProductAccess} />
