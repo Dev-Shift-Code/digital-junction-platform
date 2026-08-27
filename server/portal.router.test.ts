@@ -52,6 +52,11 @@ describe("portal router access control", () => {
     await expect(caller.portal.products.inquire({ productId: 0, name: "A", email: "bad-email", message: "short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
+  it("validates a guest checkout request before any database operation", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.portal.products.guestCheckout({ productId: 0, name: "A", email: "bad-email" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("protects owner-granted product download access from non-admin clients", async () => {
     const caller = appRouter.createCaller(createContext("user"));
     await expect(caller.portal.admin.productAccess.grant({ productId: 1, userId: 2, deliveryUrl: "https://example.com/product.zip", deliveryFileName: "product.zip" })).rejects.toMatchObject({ code: "FORBIDDEN" });

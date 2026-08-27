@@ -3,27 +3,216 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { ownerNavigation } from "@/data/ownerNavigation";
 import { sampleProducts } from "@/data/samplePreview";
 import { trpc } from "@/lib/trpc";
-import { Archive, Check, Eye, KeyRound, LayoutDashboard, Loader2, PackageOpen, Pencil, Plus, ShieldAlert, SlidersHorizontal, Sparkles, Store } from "lucide-react";
-import { FormEvent, useState } from "react";
+import {
+  Archive,
+  Check,
+  Eye,
+  FolderArchive,
+  Loader2,
+  PackageOpen,
+  Pencil,
+  Plus,
+  Search,
+  ShieldAlert,
+  SlidersHorizontal,
+  Sparkles,
+  Store,
+  X,
+} from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
 
+type ProductValues = {
+  id: number;
+  title: string;
+  slug: string;
+  category: string;
+  summary: string;
+  description: string | null;
+  deliveryNotes: string | null;
+  price: string;
+  coverImageUrl: string | null;
+  isPublished: boolean;
+  isFeatured: boolean;
+  isArchived: boolean;
+  sortOrder: number;
+};
 
-type ProductValues = { id: number; title: string; slug: string; category: string; summary: string; description: string | null; deliveryNotes: string | null; price: string; coverImageUrl: string | null; isPublished: boolean; isFeatured: boolean; isArchived: boolean; sortOrder: number };
+type InventoryStatus = "all" | "active" | "draft" | "archived";
+
+type InventoryRow = {
+  id: number | string;
+  title: string;
+  category: string;
+  summary: string;
+  price: number;
+  status: "Active" | "Draft" | "Archived" | "Preview only";
+  detail: string;
+  isSample: boolean;
+  source?: ProductValues;
+};
+
+function money(value: number) {
+  return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(value);
+}
 
 function ProductFields({ product }: { product?: ProductValues }) {
-  return <div className="grid gap-3"><div className="grid gap-3 sm:grid-cols-2"><input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" /><input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" /></div><textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Short public summary" /><textarea name="description" defaultValue={product?.description ?? ""} className="form-field min-h-24 resize-y text-sm" placeholder="Full product description (optional)" /><textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Delivery or fulfilment notes (optional)" /><div className="grid gap-3 sm:grid-cols-2"><input required min="0" step="0.01" type="number" name="price" defaultValue={product?.price ?? ""} className="form-field text-sm" placeholder="Price in PHP" /><input type="url" name="coverImageUrl" defaultValue={product?.coverImageUrl ?? ""} className="form-field text-sm" placeholder="Cover image URL (optional)" /></div><div className="flex flex-wrap items-center gap-x-5 gap-y-3"><input name="sortOrder" type="number" min="0" defaultValue={product?.sortOrder ?? 0} className="form-field !w-20 text-sm" /><label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isPublished" type="checkbox" defaultChecked={product?.isPublished ?? false} />Publish publicly</label><label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured ?? false} />Feature on catalogue</label></div></div>;
+  return (
+    <div className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
+        <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
+      </div>
+      <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Short public summary" />
+      <textarea name="description" defaultValue={product?.description ?? ""} className="form-field min-h-24 resize-y text-sm" placeholder="Full product description (optional)" />
+      <textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Delivery or fulfilment notes (optional)" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <input required min="0" step="0.01" type="number" name="price" defaultValue={product?.price ?? ""} className="form-field text-sm" placeholder="Price in PHP" />
+        <input type="url" name="coverImageUrl" defaultValue={product?.coverImageUrl ?? ""} className="form-field text-sm" placeholder="Cover image URL (optional)" />
+      </div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isPublished" type="checkbox" defaultChecked={product?.isPublished ?? false} />Publish publicly</label>
+        <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured ?? false} />Feature on catalogue</label>
+        <label className="flex items-center gap-2 text-sm text-[#1A312C]/70">Order <input name="sortOrder" type="number" min="0" defaultValue={product?.sortOrder ?? 0} className="form-field !h-9 !w-18 !py-1 text-sm" /></label>
+      </div>
+    </div>
+  );
 }
 
 export default function OwnerProducts() {
   const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const products = trpc.portal.admin.products.list.useQuery(undefined, { enabled: isOwner });
-  const usingSamples = !products.isLoading && !products.data?.length;
+  const saveProduct = trpc.portal.admin.products.save.useMutation({
+    onSuccess: async () => {
+      setNotice("Product listing saved.");
+      setEditor(null);
+      await products.refetch();
+    },
+  });
+  const [status, setStatus] = useState<InventoryStatus>("all");
+  const [category, setCategory] = useState("all");
+  const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [editor, setEditor] = useState<ProductValues | "new" | null>(null);
   const [notice, setNotice] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const saveProduct = trpc.portal.admin.products.save.useMutation({ onSuccess: async () => { setNotice("Product listing saved."); setEditingId(null); await products.refetch(); } });
-  const payloadFromForm = (form: FormData, product?: ProductValues) => { const title = String(form.get("title") ?? "").trim(); return { ...(product ? { productId: product.id, slug: product.slug, isArchived: product.isArchived } : { slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), isArchived: false }), title, category: String(form.get("category")), summary: String(form.get("summary")), description: String(form.get("description")) || null, deliveryNotes: String(form.get("deliveryNotes")) || null, price: Number(form.get("price")), coverImageUrl: String(form.get("coverImageUrl")) || null, isPublished: form.get("isPublished") === "on", isFeatured: form.get("isFeatured") === "on", sortOrder: Number(form.get("sortOrder")) || 0 }; };
-  const submitCreate = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); saveProduct.mutate(payloadFromForm(new FormData(event.currentTarget))); event.currentTarget.reset(); };
-  const submitEdit = (event: FormEvent<HTMLFormElement>, product: ProductValues) => { event.preventDefault(); saveProduct.mutate(payloadFromForm(new FormData(event.currentTarget), product)); };
-  const updateProduct = (product: ProductValues, changes: Partial<Pick<ProductValues, "isPublished" | "isFeatured" | "isArchived">>) => saveProduct.mutate({ productId: product.id, slug: product.slug, title: product.title, category: product.category, summary: product.summary, description: product.description, deliveryNotes: product.deliveryNotes, price: Number(product.price), coverImageUrl: product.coverImageUrl, isPublished: changes.isPublished ?? product.isPublished, isFeatured: changes.isFeatured ?? product.isFeatured, isArchived: changes.isArchived ?? product.isArchived, sortOrder: product.sortOrder });
-  return <DashboardLayout navigation={ownerNavigation} title="DJDC Owner"><div className="mx-auto max-w-7xl space-y-6 py-2">{!isOwner ? <section className="grid min-h-[60vh] place-items-center"><div className="max-w-md rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the Digital Junction owner can manage product listings.</p></div></section> : <><header className="rounded-[1.35rem] bg-[#1A312C] px-6 py-8 text-[#FFF4E1] sm:px-8"><p className="font-mono text-[0.64rem] uppercase tracking-[0.14em] text-[#89D7B7]">Owner-only commerce</p><h1 className="display mt-3 text-4xl">Your product catalogue, entirely under your control.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#FFF4E1]/70">Create, edit, publish, feature, and archive Digital Junction listings in one internal workspace. This is not a marketplace: no other seller can add products.</p></header>{notice && <div className="flex items-center gap-2 rounded-xl bg-[#89D7B7]/35 px-4 py-3 text-sm text-[#1A312C]"><Check className="size-4" />{notice}</div>}<section className="grid gap-6 xl:grid-cols-[.92fr_1.08fr]"><form onSubmit={submitCreate} className="rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-6"><div className="flex items-center gap-2"><Plus className="size-4 text-[#428475]" /><h2 className="display text-3xl text-[#1A312C]">Create a listing</h2></div><p className="mt-2 text-sm leading-6 text-[#1A312C]/60">Only owner-created listings can be published to the public product catalogue.</p><div className="mt-5"><ProductFields /><button className="button-primary mt-4 w-fit disabled:opacity-60" disabled={saveProduct.isPending}>{saveProduct.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}Save product</button></div></form><section className="rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-6"><div className="flex items-center gap-2"><PackageOpen className="size-4 text-[#428475]" /><div><p className="eyebrow">Catalogue control</p><h2 className="display mt-1 text-3xl text-[#1A312C]">Your listings</h2></div></div>{usingSamples && <div className="mt-5 rounded-xl border border-[#428475]/20 bg-[#89D7B7]/18 px-4 py-3 text-xs leading-5 text-[#1A312C]/72"><strong className="text-[#1A312C]">Sample preview mode:</strong> these read-only product cards are not saved listings and cannot be edited, published, featured, or archived.</div>}{products.isLoading ? <div className="grid min-h-36 place-items-center"><Loader2 className="size-6 animate-spin text-[#428475]" /></div> : products.data?.length ? <div className="mt-6 grid gap-3">{products.data.map(product => { const item = product as ProductValues; return <article key={item.id} className={`rounded-xl border p-4 ${item.isArchived ? "border-[#1A312C]/8 bg-[#1A312C]/[0.035] opacity-75" : "border-[#1A312C]/10 bg-[#FFF4E1]/70"}`}><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[#428475]">{item.category}</p><h3 className="mt-1 text-sm font-bold text-[#1A312C]">{item.title}</h3><p className="mt-2 text-sm leading-5 text-[#1A312C]/60">{item.summary}</p></div><p className="font-mono text-xs font-bold text-[#1A312C]">PHP {Number(item.price).toFixed(2)}</p></div><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => setEditingId(editingId === item.id ? null : item.id)} className="button-quiet !min-h-8 !px-3 text-xs"><Pencil className="size-3.5" />Edit</button><button type="button" onClick={() => updateProduct(item, { isPublished: !item.isPublished })} className="button-quiet !min-h-8 !px-3 text-xs" disabled={item.isArchived}><Eye className="size-3.5" />{item.isPublished ? "Unpublish" : "Publish"}</button><button type="button" onClick={() => updateProduct(item, { isFeatured: !item.isFeatured })} className={`button-quiet !min-h-8 !px-3 text-xs ${item.isFeatured ? "!border-[#428475] !bg-[#89D7B7]/25" : ""}`} disabled={item.isArchived}><Sparkles className="size-3.5" />{item.isFeatured ? "Featured" : "Feature"}</button><button type="button" onClick={() => updateProduct(item, { isArchived: !item.isArchived, isPublished: item.isArchived ? item.isPublished : false })} className="button-quiet !min-h-8 !px-3 text-xs"><Archive className="size-3.5" />{item.isArchived ? "Restore" : "Archive"}</button></div>{editingId === item.id ? <form onSubmit={event => submitEdit(event, item)} className="mt-4 border-t border-[#1A312C]/10 pt-4"><ProductFields product={item} /><div className="mt-4 flex gap-3"><button className="button-primary w-fit disabled:opacity-60" disabled={saveProduct.isPending}>Save changes</button><button type="button" className="button-quiet" onClick={() => setEditingId(null)}>Cancel</button></div></form> : null}</article>; })}</div> : <div className="mt-5 grid gap-3">{sampleProducts.map(item => <article key={item.id} className="rounded-xl border border-dashed border-[#1A312C]/15 bg-[#FFF4E1]/45 p-4"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[#428475]">Sample preview · {item.category}</p><h3 className="mt-1 text-sm font-bold text-[#1A312C]">{item.title}</h3><p className="mt-2 text-sm leading-5 text-[#1A312C]/60">{item.summary}</p></div><p className="font-mono text-xs font-bold text-[#1A312C]">PHP {Number(item.price).toFixed(2)}</p></div><div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-[#89D7B7]/35 px-2.5 py-1 font-mono text-[0.56rem] uppercase text-[#1A312C]/70">Read-only sample</span></div></article>)}</div>}</section></section></>}</div></DashboardLayout>;
+
+  const realRows = useMemo<InventoryRow[]>(() => (products.data ?? []).map(raw => {
+    const item = raw as ProductValues;
+    const itemStatus: InventoryRow["status"] = item.isArchived ? "Archived" : item.isPublished ? "Active" : "Draft";
+    return { id: item.id, title: item.title, category: item.category, summary: item.summary, price: Number(item.price), status: itemStatus, detail: item.deliveryNotes?.slice(0, 52) || "Digital product listing", isSample: false, source: item };
+  }), [products.data]);
+  const sampleRows = useMemo<InventoryRow[]>(() => sampleProducts.map(item => ({
+    id: `sample-${item.id}`,
+    title: item.title,
+    category: item.category,
+    summary: item.summary,
+    price: Number(item.price),
+    status: "Preview only",
+    detail: "Sample inventory metadata · not a live listing",
+    isSample: true,
+  })), []);
+  const usingSamples = !products.isLoading && realRows.length === 0;
+  const sourceRows = usingSamples ? sampleRows : realRows;
+  const categories = useMemo(() => Array.from(new Set(sourceRows.map(row => row.category))).sort(), [sourceRows]);
+  const filteredRows = useMemo(() => sourceRows.filter(row => {
+    const matchesStatus = status === "all" || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
+    const matchesCategory = category === "all" || row.category === category;
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || `${row.title} ${row.category} ${row.summary}`.toLowerCase().includes(query);
+    return matchesStatus && matchesCategory && matchesSearch;
+  }), [category, search, sourceRows, status]);
+  const counts = useMemo(() => ({
+    all: realRows.length,
+    active: realRows.filter(row => row.status === "Active").length,
+    draft: realRows.filter(row => row.status === "Draft").length,
+    archived: realRows.filter(row => row.status === "Archived").length,
+  }), [realRows]);
+
+  const payloadFromForm = (form: FormData, product?: ProductValues) => {
+    const title = String(form.get("title") ?? "").trim();
+    return {
+      ...(product ? { productId: product.id, slug: product.slug, isArchived: product.isArchived } : { slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), isArchived: false }),
+      title,
+      category: String(form.get("category")),
+      summary: String(form.get("summary")),
+      description: String(form.get("description")) || null,
+      deliveryNotes: String(form.get("deliveryNotes")) || null,
+      price: Number(form.get("price")),
+      coverImageUrl: String(form.get("coverImageUrl")) || null,
+      isPublished: form.get("isPublished") === "on",
+      isFeatured: form.get("isFeatured") === "on",
+      sortOrder: Number(form.get("sortOrder")) || 0,
+    };
+  };
+  const submitProduct = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    saveProduct.mutate(payloadFromForm(new FormData(event.currentTarget), editor === "new" ? undefined : editor ?? undefined));
+  };
+  const updateProduct = (product: ProductValues, changes: Partial<Pick<ProductValues, "isPublished" | "isFeatured" | "isArchived">>) => {
+    saveProduct.mutate({
+      productId: product.id,
+      slug: product.slug,
+      title: product.title,
+      category: product.category,
+      summary: product.summary,
+      description: product.description,
+      deliveryNotes: product.deliveryNotes,
+      price: Number(product.price),
+      coverImageUrl: product.coverImageUrl,
+      isPublished: changes.isPublished ?? product.isPublished,
+      isFeatured: changes.isFeatured ?? product.isFeatured,
+      isArchived: changes.isArchived ?? product.isArchived,
+      sortOrder: product.sortOrder,
+    });
+  };
+
+  const statusTabs: Array<{ id: InventoryStatus; label: string; count: number }> = [
+    { id: "all", label: "All products", count: counts.all },
+    { id: "active", label: "Active", count: counts.active },
+    { id: "draft", label: "Drafts", count: counts.draft },
+    { id: "archived", label: "Archived", count: counts.archived },
+  ];
+
+  return (
+    <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
+      <div className="mx-auto max-w-7xl space-y-6 py-2">
+        {!isOwner ? (
+          <section className="grid min-h-[60vh] place-items-center"><div className="max-w-md rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the Digital Junction owner can manage the inventory.</p></div></section>
+        ) : (
+          <>
+            <header className="flex flex-col gap-5 rounded-[1.5rem] border border-[#1A312C]/10 bg-white p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
+              <div><p className="eyebrow">DJDC owner operations</p><h1 className="display mt-2 text-4xl text-[#1A312C]">Inventory management</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#1A312C]/62">Track and manage every digital offering from your owner-only Digital Junction catalogue.</p></div>
+              <button type="button" onClick={() => setEditor("new")} className="button-primary w-fit"><Plus className="size-4" />Add new product</button>
+            </header>
+
+            {notice ? <div className="flex items-center justify-between gap-3 rounded-xl bg-[#89D7B7]/30 px-4 py-3 text-sm text-[#1A312C]"><span className="flex items-center gap-2"><Check className="size-4" />{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss notification"><X className="size-4" /></button></div> : null}
+
+            {editor ? <section className="rounded-[1.4rem] border border-[#428475]/25 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.08)] sm:p-7"><div className="flex items-start justify-between gap-5"><div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Only you can publish, archive, and manage listings from this workspace.</p></div><button onClick={() => setEditor(null)} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button></div><form onSubmit={submitProduct} className="mt-6"><ProductFields product={editor === "new" ? undefined : editor} /><div className="mt-5 flex flex-wrap gap-3"><button className="button-primary disabled:opacity-60" disabled={saveProduct.isPending}>{saveProduct.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button><button type="button" className="button-quiet" onClick={() => setEditor(null)}>Cancel</button></div></form></section> : null}
+
+            <section className="overflow-hidden rounded-[1.45rem] border border-[#1A312C]/10 bg-white shadow-[0_14px_35px_rgba(26,49,44,.04)]">
+              <div className="flex flex-col gap-4 border-b border-[#1A312C]/10 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-2">{statusTabs.map(tab => <button key={tab.id} type="button" onClick={() => setStatus(tab.id)} className={`rounded-lg px-3.5 py-2 text-xs font-bold transition ${status === tab.id ? "bg-[#428475] text-[#FFF4E1]" : "border border-[#1A312C]/10 bg-[#FFF4E1]/35 text-[#1A312C]/66 hover:bg-[#89D7B7]/25"}`}>{tab.label} <span className="ml-1 opacity-70">({tab.count})</span></button>)}</div>
+                <div className="flex flex-wrap items-center gap-2"><label className="relative min-w-48 flex-1 sm:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#428475]" /><input value={search} onChange={event => setSearch(event.target.value)} className="form-field !h-9 !py-1.5 !pl-9 text-xs" placeholder="Search inventory" /></label><button type="button" onClick={() => setShowFilters(value => !value)} className={`button-quiet !min-h-9 !px-3 text-xs ${showFilters ? "!border-[#428475] !bg-[#89D7B7]/20" : ""}`}><SlidersHorizontal className="size-3.5" />More filters</button></div>
+              </div>
+              {showFilters ? <div className="flex flex-wrap items-center gap-2 border-b border-[#1A312C]/10 bg-[#FFF4E1]/38 p-4"><span className="mr-1 font-mono text-[.58rem] uppercase tracking-[.11em] text-[#1A312C]/46">Category</span><button onClick={() => setCategory("all")} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === "all" ? "bg-[#1A312C] text-[#FFF4E1]" : "bg-white text-[#1A312C]/65"}`}>All categories</button>{categories.map(item => <button key={item} onClick={() => setCategory(item)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === item ? "bg-[#1A312C] text-[#FFF4E1]" : "bg-white text-[#1A312C]/65"}`}>{item}</button>)}</div> : null}
+              {usingSamples ? <div className="mx-4 mt-4 rounded-xl border border-dashed border-[#428475]/28 bg-[#89D7B7]/13 px-4 py-3 text-xs leading-5 text-[#1A312C]/70"><strong className="text-[#1A312C]">Sample inventory preview:</strong> these products and prices are design-only placeholders. They are not saved, active, purchasable, editable, or archived listings.</div> : null}
+              <div className="overflow-x-auto"><table className="w-full min-w-[860px] border-collapse text-left"><thead><tr className="border-b border-[#1A312C]/10 bg-[#FFF4E1]/43 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/48"><th className="px-5 py-4 font-medium">Product name</th><th className="px-4 py-4 font-medium">Category</th><th className="px-4 py-4 font-medium">Product details</th><th className="px-4 py-4 font-medium">Price</th><th className="px-4 py-4 font-medium">Status</th><th className="px-5 py-4 text-right font-medium">Actions</th></tr></thead><tbody>{products.isLoading ? <tr><td colSpan={6} className="py-16 text-center"><Loader2 className="mx-auto size-6 animate-spin text-[#428475]" /></td></tr> : filteredRows.length ? filteredRows.map(row => <tr key={row.id} className="border-b border-[#1A312C]/8 last:border-0 hover:bg-[#FFF4E1]/32"><td className="px-5 py-4"><div className="flex items-center gap-3"><span className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${row.isSample ? "bg-[#89D7B7]/26 text-[#428475]" : "bg-[#1A312C] text-[#89D7B7]"}`}>{row.title.slice(0, 1).toUpperCase()}</span><div><p className="text-sm font-bold text-[#1A312C]">{row.title}</p><p className="mt-1 max-w-64 truncate text-xs text-[#1A312C]/52">{row.summary}</p></div></div></td><td className="px-4 py-4"><span className="rounded-full bg-[#1A312C]/6 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/65">{row.category}</span></td><td className="max-w-52 px-4 py-4 text-xs leading-5 text-[#1A312C]/57">{row.detail}</td><td className="px-4 py-4"><p className="text-sm font-bold text-[#1A312C]">{money(row.price)}</p>{row.isSample ? <p className="mt-1 font-mono text-[.5rem] uppercase text-[#1A312C]/42">Preview price</p> : null}</td><td className="px-4 py-4"><StatusPill status={row.status} /></td><td className="px-5 py-4"><div className="flex justify-end gap-1.5">{row.isSample ? <><button disabled title="Sample previews cannot be edited" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Pencil className="size-3.5" /></button><button disabled title="Sample previews cannot be archived" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Archive className="size-3.5" /></button></> : <><button title={`Edit ${row.title}`} onClick={() => setEditor(row.source ?? null)} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25"><Pencil className="size-3.5" /></button><button title={row.source?.isPublished ? "Unpublish listing" : "Publish listing"} onClick={() => row.source && updateProduct(row.source, { isPublished: !row.source.isPublished })} disabled={row.source?.isArchived} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25 disabled:opacity-35"><Eye className="size-3.5" /></button><button title={row.source?.isArchived ? "Restore listing" : "Archive listing"} onClick={() => row.source && updateProduct(row.source, { isArchived: !row.source.isArchived, isPublished: row.source.isArchived ? row.source.isPublished : false })} className="grid size-8 place-items-center rounded-lg text-[#1A312C]/58 transition hover:bg-[#89D7B7]/25"><Archive className="size-3.5" /></button></>}</div></td></tr>) : <tr><td colSpan={6} className="px-5 py-16 text-center"><PackageOpen className="mx-auto size-6 text-[#428475]" /><p className="mt-3 text-sm font-bold text-[#1A312C]">No inventory matches these filters.</p><button className="mt-3 text-xs font-bold text-[#428475]" onClick={() => { setSearch(""); setCategory("all"); setStatus("all"); }}>Clear filters</button></td></tr>}</tbody></table></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#1A312C]/10 px-5 py-4 text-xs text-[#1A312C]/55"><span>Showing {filteredRows.length} of {sourceRows.length} {usingSamples ? "sample preview" : "inventory"} products</span><span className="rounded-lg border border-[#1A312C]/10 bg-[#FFF4E1]/45 px-3 py-1.5 font-mono text-[.58rem] uppercase tracking-[.08em] text-[#1A312C]/55">Page 1 of 1</span></div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-3"><SummaryCard icon={<Store className="size-5" />} label="Published listings" value={String(counts.active)} detail="Real products visible on the public catalogue" /><SummaryCard icon={<Sparkles className="size-5" />} label="Draft products" value={String(counts.draft)} detail="Owner-only listings still being prepared" /><SummaryCard icon={<FolderArchive className="size-5" />} label="Archived listings" value={String(counts.archived)} detail="Kept out of public product browsing" /></section>
+          </>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+function StatusPill({ status }: { status: InventoryRow["status"] }) {
+  const tone = status === "Active" ? "bg-[#89D7B7]/32 text-[#1A312C]" : status === "Draft" ? "bg-[#FFF4E1] text-[#1A312C]/67" : status === "Archived" ? "bg-[#1A312C]/8 text-[#1A312C]/58" : "bg-[#89D7B7]/18 text-[#1A312C]/62";
+  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] ${tone}`}><span className={`size-1.5 rounded-full ${status === "Active" ? "bg-emerald-500" : status === "Draft" ? "bg-amber-400" : "bg-[#428475]/60"}`} />{status}</span>;
+}
+
+function SummaryCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
+  return <article className="rounded-[1.25rem] border border-[#1A312C]/10 bg-white p-5"><span className="grid size-10 place-items-center rounded-xl bg-[#89D7B7]/26 text-[#428475]">{icon}</span><p className="mt-4 font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">{label}</p><p className="mt-1 text-2xl font-bold text-[#1A312C]">{value}</p><p className="mt-1 text-xs leading-5 text-[#1A312C]/57">{detail}</p></article>;
 }

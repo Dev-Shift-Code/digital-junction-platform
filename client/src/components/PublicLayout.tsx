@@ -16,7 +16,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     const updateScroll = () => setScrolled(window.scrollY > 12);
@@ -26,11 +25,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   }, []);
 
   const closeMenu = () => setMenuOpen(false);
-  const clientAction = () => {
-    if (isAuthenticated) window.location.assign("/client");
-    else window.location.assign("/login");
-  };
-
   return (
     <div className="site-shell">
       <header className={`site-nav sticky top-0 z-40 transition-[box-shadow,background-color] duration-200 ${scrolled ? "bg-[#FFF4E1]/95 shadow-[0_10px_30px_rgba(26,49,44,0.1)] backdrop-blur" : ""}`}>
@@ -52,11 +46,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            <Link href="/login" className="button-primary buttonlike !min-h-10 !px-3.5">
-              Log in
+            <Link href="/shop" className="button-primary buttonlike !min-h-10 !px-3.5">
+              Browse products
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </Link>
-            <Link href="/signup" className="button-quiet buttonlike !min-h-10 !px-3.5">Sign up</Link>
+            <Link href="/contact" className="button-quiet buttonlike !min-h-10 !px-3.5">Contact</Link>
           </div>
 
           <div className="flex items-center gap-1.5 md:hidden">
@@ -73,10 +67,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   {label}
                 </Link>
               ))}
-              <Link href="/login" onClick={closeMenu} className="button-primary buttonlike mt-2 w-full">
-                Log in
-              </Link>
-              <Link href="/signup" onClick={closeMenu} className="button-quiet buttonlike mt-1 w-full">Sign up</Link>
+              <Link href="/shop" onClick={closeMenu} className="button-primary buttonlike mt-2 w-full">Browse products</Link>
+              <Link href="/contact" onClick={closeMenu} className="button-quiet buttonlike mt-1 w-full">Contact</Link>
             </div>
           </nav>
         )}
@@ -94,7 +86,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <p className="mt-5 max-w-sm text-sm leading-6 text-[#FFF4E1]/70">Connecting ideas with practical, thoughtful digital experiences—built for the work ahead.</p>
           </div>
           <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Company</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/about" className="hover:text-[#89D7B7]">About</Link><Link href="/services" className="hover:text-[#89D7B7]">Services</Link><Link href="/work" className="hover:text-[#89D7B7]">Projects</Link><Link href="/contact" className="hover:text-[#89D7B7]">Contact</Link></div></div>
-          <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Digital products</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/shop" className="hover:text-[#89D7B7]">All products</Link><Link href="/shop" className="hover:text-[#89D7B7]">UI kits</Link><Link href="/shop" className="hover:text-[#89D7B7]">Business resources</Link><button type="button" onClick={clientAction} className="text-left hover:text-[#89D7B7]">Client sign in</button></div><p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Client side</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><button type="button" onClick={clientAction} className="text-left hover:text-[#89D7B7]">My projects</button><button type="button" onClick={clientAction} className="text-left hover:text-[#89D7B7]">Orders & requests</button><Link href="/contact" className="hover:text-[#89D7B7]">Support</Link></div></div>
+          <div><p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Digital products</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/shop" className="hover:text-[#89D7B7]">All products</Link><Link href="/shop" className="hover:text-[#89D7B7]">UI kits</Link><Link href="/shop" className="hover:text-[#89D7B7]">Business resources</Link><Link href="/shop" className="hover:text-[#89D7B7]">Guest checkout</Link></div><p className="mt-7 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Product help</p><div className="mt-4 grid gap-2.5 text-sm text-[#FFF4E1]/76"><Link href="/contact" className="hover:text-[#89D7B7]">Order questions</Link><Link href="/contact" className="hover:text-[#89D7B7]">Delivery support</Link><Link href="/contact" className="hover:text-[#89D7B7]">Support</Link></div></div>
           <div>
             <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-[#89D7B7]">Start a conversation</p>
             <p className="mt-4 text-sm leading-6 text-[#FFF4E1]/76">Tell us what you are building, where you are stuck, and what success needs to look like.</p>

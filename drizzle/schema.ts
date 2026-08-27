@@ -200,3 +200,23 @@ export const productInquiries = mysqlTable(
   },
   table => [index("product_inquiries_product_idx").on(table.productId), index("product_inquiries_status_idx").on(table.status)],
 );
+
+/**
+ * A customer-submitted guest checkout request. This intentionally stores no
+ * payment method, payment confirmation, invoice, or delivery authorisation.
+ */
+export const guestCheckoutRequests = mysqlTable(
+  "guestCheckoutRequests",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    productId: int("productId").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    company: varchar("company", { length: 180 }),
+    message: text("message"),
+    status: mysqlEnum("status", ["submitted", "contacted", "fulfilled", "cancelled"]).default("submitted").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status)],
+);

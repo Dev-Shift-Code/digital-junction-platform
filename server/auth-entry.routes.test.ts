@@ -5,32 +5,25 @@ const appRoutes = readFileSync(new URL("../client/src/App.tsx", import.meta.url)
 const entryPage = readFileSync(new URL("../client/src/pages/AuthEntry.tsx", import.meta.url), "utf8");
 const publicLayout = readFileSync(new URL("../client/src/components/PublicLayout.tsx", import.meta.url), "utf8");
 const shopPage = readFileSync(new URL("../client/src/pages/Shop.tsx", import.meta.url), "utf8");
-const authHook = readFileSync(new URL("../client/src/_core/hooks/useAuth.ts", import.meta.url), "utf8");
-const authRouter = readFileSync(new URL("../server/routers.ts", import.meta.url), "utf8");
+const checkoutPage = readFileSync(new URL("../client/src/pages/GuestCheckout.tsx", import.meta.url), "utf8");
+const productDetail = readFileSync(new URL("../client/src/pages/ProductDetail.tsx", import.meta.url), "utf8");
+const portalRouter = readFileSync(new URL("../server/routers/portal.ts", import.meta.url), "utf8");
 
-describe("authentication entry styling", () => {
-  it("registers public login and signup routes with first-party authentication procedures", () => {
-    expect(appRoutes).toContain('path={"/login"}');
-    expect(appRoutes).toContain('path={"/signup"}');
-    expect(entryPage).toContain("trpc.auth.login.useMutation");
-    expect(entryPage).toContain("trpc.auth.register.useMutation");
-    expect(authRouter).toContain("auth: router({");
-    expect(authRouter).toContain("register: publicProcedure");
-    expect(authRouter).toContain("login: publicProcedure");
-  });
-
-  it("uses the requested local email and password form structure", () => {
-    expect(entryPage).toContain("Email address");
-    expect(entryPage).toContain('label="Password"');
-    expect(entryPage).toContain('label="Confirm password"');
-    expect(entryPage).toContain("Terms & conditions");
-    expect(publicLayout).toContain('href="/login"');
-    expect(publicLayout).toContain('href="/signup"');
-    expect(shopPage).not.toContain("startLogin(");
-    expect(authHook).toContain('scope === "owner" ? "/owner/login" : "/login"');
+describe("owner authentication and guest product access", () => {
+  it("keeps only direct owner sign-in routes in the public route map", () => {
     expect(appRoutes).toContain('path={"/owner/login"}');
     expect(appRoutes).toContain('path={"/owner/setup"}');
-    expect(authRouter).toContain("Owner password has not been set yet");
-    expect(authRouter).toContain("ownerSetup: publicProcedure");
+    expect(appRoutes).not.toContain('path={"/login"}');
+    expect(appRoutes).not.toContain('path={"/signup"}');
+    expect(entryPage).toContain("Owner sign in");
+  });
+
+  it("uses guest checkout without a Client Side account or payment claim", () => {
+    expect(publicLayout).not.toContain('href="/login"');
+    expect(publicLayout).not.toContain('Client side');
+    ["No account is required", "Submit checkout request", "No payment is taken at this step."].forEach(copy => expect(checkoutPage).toContain(copy));
+    ["Guest checkout", "Continue to checkout"].forEach(copy => expect(productDetail).toContain(copy));
+    ["No account is required to browse or start checkout.", "Guest checkout"].forEach(copy => expect(shopPage).toContain(copy));
+    expect(portalRouter).toContain("guestCheckout: publicProcedure");
   });
 });

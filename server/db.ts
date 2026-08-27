@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, digitalProducts, InsertUser, inquiries, milestones, portalContents, productAccess, productInquiries, projectClients, projects, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, portalContents, productAccess, productInquiries, projectClients, projects, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -292,6 +292,12 @@ export async function getDigitalProductBySlug(slug: string) {
   return product[0] ?? null;
 }
 
+export async function getPublishedDigitalProductById(productId: number) {
+  const db = requireDatabase(await getDb());
+  const product = await db.select().from(digitalProducts).where(and(eq(digitalProducts.id, productId), eq(digitalProducts.isPublished, true), eq(digitalProducts.isArchived, false))).limit(1);
+  return product[0] ?? null;
+}
+
 export async function getAllDigitalProducts() {
   const db = requireDatabase(await getDb());
   return db.select().from(digitalProducts).orderBy(asc(digitalProducts.sortOrder), desc(digitalProducts.createdAt));
@@ -358,5 +364,12 @@ export async function createProductInquiry(values: typeof productInquiries.$infe
   const db = requireDatabase(await getDb());
   const result = await db.insert(productInquiries).values(values);
   const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function createGuestCheckoutRequest(values: typeof guestCheckoutRequests.$inferInsert) {
+  const db = requireDatabase(await getDb());
+  const result = await db.insert(guestCheckoutRequests).values(values);
+  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result[0].insertId))).limit(1);
   return created[0];
 }

@@ -137,12 +137,19 @@
 - [ ] Verify the Owner Dashboard analytics layout, data safeguards, and responsive presentation.
 - [x] Save the Owner Dashboard analytics redesign checkpoint.
 - [ ] Inspect the rebuilt Owner Dashboard in a browser and document the requested analytics sections plus real-data safeguards.
-- [ ] Audit the dedicated owner-session loading behavior in embedded browsers and identify the cookie or transport gap.
-- [ ] Add a resilient owner-session fallback or bounded loading state without weakening separate customer and owner access controls.
+- [x] Audit the dedicated owner-session loading behavior in embedded browsers and identify the cookie or transport gap.
+- [x] Add a resilient owner-session fallback or bounded loading state without weakening separate customer and owner access controls.
 - [ ] Verify authenticated owner dashboard rendering and owner-sign-in fallback behavior in the connected browser.
-- [ ] Save the owner-session rendering reliability fix checkpoint.
+- [x] Save the owner-session rendering reliability fix checkpoint.
 - [x] Define clearly labelled sample values for Sales Overview, Weekly Sales, and Monthly Revenue chart hover states.
 - [x] Add accessible hover and keyboard-focus tooltips to every Owner Dashboard analytics chart point or bar.
 - [ ] Verify chart tooltip content, data-safe labels, and mobile interaction fallback.
 - [x] Save the Owner Dashboard chart-tooltip update checkpoint.
 - [ ] Inspect hover and keyboard-focus tooltips for Sales Overview, Weekly Sales, and Monthly Revenue in a browser, including a mobile interaction fallback.
+- [x] Audit inventory management, public product browsing, customer-auth guards, and existing product enquiry or checkout paths.
+- [x] Redesign Owner Inventory with requested status tabs, product categories, table columns, filters, edit/archive actions, pagination, and safely labelled previews.
+- [x] Remove Client Side account requirements and navigation from the public product flow.
+- [x] Build a public guest product browsing and on-site guest checkout request flow without fabricated payment, order, invoice, or delivery records.
+- [ ] Verify guest browsing and guest checkout pathways alongside owner-only inventory controls at desktop and mobile widths.
+- [ ] Save the Owner Inventory and guest-checkout update checkpoint.
+- [ ] Submit a real published product through guest checkout and verify the request is recorded without a payment, invoice, or automatic delivery claim.

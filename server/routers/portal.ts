@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   assignClientToProject,
   createDeliverable,
+  createGuestCheckoutRequest,
   createInquiry,
   createMilestone,
   createProductInquiry,
@@ -18,6 +19,7 @@ import {
   getAuthorizedProductDownload,
   getAllDigitalProducts,
   getDigitalProductBySlug,
+  getPublishedDigitalProductById,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
   getPublishedPortalContent,
@@ -104,6 +106,19 @@ export const portalRouter = router({
         try {
           return createProductInquiry(input);
         } catch (error) {
+          return unavailable(error);
+        }
+      }),
+    guestCheckout: publicProcedure
+      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional() }))
+      .mutation(async ({ input }) => {
+        try {
+          const product = await getPublishedDigitalProductById(input.productId);
+          if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "This product is not available for guest checkout." });
+          const request = await createGuestCheckoutRequest({ ...input, company: input.company || null, message: input.message || null });
+          return { requestId: request.id, status: request.status, productTitle: product.title };
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
           return unavailable(error);
         }
       }),
