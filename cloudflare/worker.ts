@@ -1,7 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "../server/routers";
 import { configureD1 } from "../server/db";
-import { configureCloudinaryQrStorage, configureD1OnlyFileMode } from "../server/storage";
+import { configureCloudinaryStorage, configureD1OnlyFileMode } from "../server/storage";
 import { createWorkerContext } from "../server/_core/workerContext";
 
 type WorkerBindings = Record<string, unknown> & {
@@ -18,7 +18,7 @@ function hydrateEnvironment(bindings: WorkerBindings) {
   }
 }
 
-function configuredCloudinaryQrStorage(bindings: WorkerBindings) {
+function configuredCloudinaryStorage(bindings: WorkerBindings) {
   const cloudName = typeof bindings.CLOUDINARY_CLOUD_NAME === "string" ? bindings.CLOUDINARY_CLOUD_NAME : "";
   const apiKey = typeof bindings.CLOUDINARY_API_KEY === "string" ? bindings.CLOUDINARY_API_KEY : "";
   const apiSecret = typeof bindings.CLOUDINARY_API_SECRET === "string" ? bindings.CLOUDINARY_API_SECRET : "";
@@ -34,7 +34,7 @@ export default {
 
     configureD1(bindings.digital_junction_db);
     configureD1OnlyFileMode();
-    configureCloudinaryQrStorage(configuredCloudinaryQrStorage(bindings));
+    configureCloudinaryStorage(configuredCloudinaryStorage(bindings));
 
     const pathname = new URL(request.url).pathname;
     if (pathname.startsWith("/api/trpc")) {

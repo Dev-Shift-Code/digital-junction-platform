@@ -256,3 +256,8 @@
 - [ ] Resolve the Cloudinary QR upload 403 caused by an API credential without create permission, without exposing or storing credentials in source control.
 - [x] Restyle the public Selected Work introduction section with the established dark-green background and readable mint/cream text contrast.
 - [x] Redesign Owner Sales as a real-data sales-management workspace with KPI summaries, filters, CSV export, and payment/fulfilment actions without fabricated transaction data.
+- [ ] Implement a GCash-only provider-backed payment flow with backend-calculated amounts, one unique payment transaction per order, verified webhook confirmation, and no screenshot-based automatic payment approval.
+- [ ] Confirm an authorized GCash provider and sandbox credentials before payment API or webhook implementation.
+- [ ] Verify PayRex pricing, transaction fees, and merchant onboarding requirements before enabling the selected GCash integration.
+- [ ] Verify Xendit GCash pricing and compare it with PayRex before confirming the payment provider.
+- [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
