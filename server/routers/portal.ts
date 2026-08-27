@@ -551,18 +551,6 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      uploadAsset: adminProcedure.input(z.object({ assetType: z.literal("qr-code"), fileName: z.string().trim().min(1).max(255), mimeType: paymentImageMimeType, sizeBytes: z.number().int().min(1), base64: z.string().min(1) })).mutation(async ({ input }) => {
-        try {
-          const bytes = Buffer.from(input.base64, "base64");
-          if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty QR code image." });
-          const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-          const stored = await storagePut(`payment-method-assets/qr-code/${Date.now()}-${safeName}`, bytes, input.mimeType);
-          return { key: stored.key, url: stored.url };
-        } catch (error) {
-          if (error instanceof TRPCError) throw error;
-          return unavailable(error);
-        }
-      }),
       remove: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive() })).mutation(async ({ input }) => {
         try {
           return deletePaymentMethod(input.paymentMethodId);

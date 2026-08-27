@@ -249,3 +249,5 @@
 - [x] Make token-gated owner recovery cover an absent D1 owner record and an incorrectly assigned customer role without requiring an optional owner-email variable.
 - [ ] Add owner-created vouchers with a general all-product scope or a selected-digital-products scope, backed by D1 and enforced at guest checkout.
 - [x] Remove the optional payment-method logo upload and its public checkout dependency, and remove the QR-code image file-size limit while retaining image-type validation.
+- [x] Diagnose and resolve the reported live QR-code upload failure in the D1-only Cloudflare deployment without modifying existing payment records.
+- [x] Replace unsupported D1-only QR binary upload with an owner-saved external HTTPS QR image URL field, preserving the QR display at checkout without adding R2.
