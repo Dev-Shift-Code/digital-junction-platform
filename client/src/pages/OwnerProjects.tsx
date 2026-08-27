@@ -149,7 +149,7 @@ export default function OwnerProjects() {
       open={Boolean(pendingDelete)}
       onOpenChange={open => { if (!open) setPendingDelete(null); }}
       title={pendingDelete ? `Delete “${pendingDelete.title}”?` : "Delete project?"}
-      description="This project case study cannot be recovered after deletion. Archive it instead if you may need it later."
+      description="This project case study will be permanently deleted and cannot be recovered."
       confirmLabel="Delete project"
       destructive
       onConfirm={confirmDelete}

@@ -282,3 +282,4 @@
 - [x] Replace the Owner Vouchers placeholder with voucher management and the Owner Support placeholder with real contact-inquiry records and status controls.
 - [x] Replace all native browser confirmation popups with the shared modern Digital Junction confirmation dialog.
 - [x] Apply the supplied DJDC logo asset to public header/footer, owner sidebar branding, and browser-tab favicon.
+- [x] Allow an owner to remove public projects and sold-out/ended catalogue listings at any time while preserving historical purchase, payment, and entitled-delivery records.

@@ -671,9 +671,7 @@ export const portalRouter = router({
       }),
       delete: adminProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(async ({ input }) => {
         try {
-          const result = await deleteDigitalProduct(input.productId);
-          if (!result.deleted) throw new TRPCError({ code: "BAD_REQUEST", message: result.reason });
-          return result;
+          return deleteDigitalProduct(input.productId);
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           return unavailable(error);

@@ -271,14 +271,14 @@ export default function OwnerProducts() {
   const sourceRows = realRows;
   const categories = useMemo(() => Array.from(new Set(sourceRows.map(row => row.category))).sort(), [sourceRows]);
   const filteredRows = useMemo(() => sourceRows.filter(row => {
-    const matchesStatus = status === "all" || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
+    const matchesStatus = (status === "all" && row.status !== "Archived") || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
     const matchesCategory = category === "all" || row.category === category;
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || `${row.title} ${row.category} ${row.summary}`.toLowerCase().includes(query);
     return matchesStatus && matchesCategory && matchesSearch;
   }), [category, search, sourceRows, status]);
   const counts = useMemo(() => ({
-    all: realRows.length,
+    all: realRows.filter(row => row.status !== "Archived").length,
     active: realRows.filter(row => row.status === "Active").length,
     draft: realRows.filter(row => row.status === "Draft").length,
     archived: realRows.filter(row => row.status === "Archived").length,
@@ -445,16 +445,16 @@ export default function OwnerProducts() {
       return;
     }
     deleteProduct.mutate({ productId: pending.id }, {
-      onSuccess: async () => {
-        setNotice("Product deleted.");
+      onSuccess: async result => {
+        setNotice(result.preservedHistory ? "Product removed from the public catalogue. Existing buyer history and delivery records were kept." : "Product permanently deleted.");
         await products.refetch();
       },
-      onError: error => setNotice(error.message || "This product could not be deleted. Archive it instead."),
+      onError: error => setNotice(error.message || "This product could not be removed right now. Please try again."),
     });
   };
 
   const statusTabs: Array<{ id: InventoryStatus; label: string; count: number }> = [
-    { id: "all", label: "All products", count: counts.all },
+    { id: "all", label: "Current listings", count: counts.all },
     { id: "active", label: "Active", count: counts.active },
     { id: "draft", label: "Drafts", count: counts.draft },
     { id: "archived", label: "Archived", count: counts.archived },
@@ -468,8 +468,8 @@ export default function OwnerProducts() {
           open={Boolean(pendingDelete)}
           onOpenChange={open => { if (!open) setPendingDelete(null); }}
           title={pendingDelete?.kind === "product" ? `Delete “${pendingDelete.label}”?` : `Remove “${pendingDelete?.label ?? "this file"}”?`}
-          description={pendingDelete?.kind === "product" ? "This cannot be undone. Products with buyer records cannot be deleted and must be archived instead." : "This buyer delivery file will be removed from the product. The action cannot be undone."}
-          confirmLabel={pendingDelete?.kind === "product" ? "Delete product" : "Remove file"}
+          description={pendingDelete?.kind === "product" ? "The listing will be removed from the public catalogue immediately. If it has existing buyer records, its historical order and delivery information will be retained privately in Owner Sales." : "This buyer delivery file will be removed from the product. The action cannot be undone."}
+          confirmLabel={pendingDelete?.kind === "product" ? "Remove listing" : "Remove file"}
           destructive
           onConfirm={confirmDelete}
         />

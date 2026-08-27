@@ -14,7 +14,7 @@ describe("DJDC owner inventory and public commerce routes", () => {
   });
 
   it("keeps inventory owner-only and provides the requested table-management controls", () => {
-    ["Inventory management", "All products", "Active", "Drafts", "Archived", "More filters", "Product name", "Product details", "Add new product", "Sample inventory preview"].forEach(copy => expect(inventory).toContain(copy));
+    ["Inventory management", "Current listings", "Active", "Drafts", "Archived", "More filters", "Product name", "Product details", "Add new product", "Sample inventory preview"].forEach(copy => expect(inventory).toContain(copy));
     expect(ownerDashboard).toContain("No real sales recorded");
   });
 });

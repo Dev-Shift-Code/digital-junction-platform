@@ -378,11 +378,12 @@ export async function deleteDigitalProduct(productId: number) {
     db.select({ id: productInquiries.id }).from(productInquiries).where(eq(productInquiries.productId, productId)).limit(1),
   ]);
   if (order[0] || access[0] || inquiry[0]) {
-    return { deleted: false as const, reason: "This product has related buyer records and cannot be deleted. Archive it instead." };
+    await db.update(digitalProducts).set({ isPublished: false, isFeatured: false, isArchived: true }).where(eq(digitalProducts.id, productId));
+    return { deleted: true as const, preservedHistory: true as const };
   }
   await db.delete(productFiles).where(eq(productFiles.productId, productId));
   await db.delete(digitalProducts).where(eq(digitalProducts.id, productId));
-  return { deleted: true as const };
+  return { deleted: true as const, preservedHistory: false as const };
 }
 
 export async function getUserProductAccess(userId: number) {
