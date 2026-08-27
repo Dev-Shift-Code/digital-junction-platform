@@ -6,7 +6,7 @@ import { createWorkerContext } from "../server/_core/workerContext";
 import { consumeOneTimeDeliveryEntitlement, markPaypalPaymentPaid, markPayrexPaymentPaid, registerPaypalWebhookEvent, registerPayrexWebhookEvent } from "../server/db";
 import { sha256, verifyPayrexWebhook } from "../server/payrex";
 import { verifyPaypalWebhook } from "../server/paypal";
-import { sendPaymentDeliveryEmail } from "../server/gmail";
+import { sendPaymentDeliveryEmail } from "../server/brevo";
 
 type WorkerBindings = Record<string, unknown> & {
   digital_junction_db?: unknown;

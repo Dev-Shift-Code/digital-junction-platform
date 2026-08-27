@@ -292,5 +292,7 @@
 - [x] Redesign the buyer delivery email into a polished DJDC-branded transactional template with a strong hierarchy, clear one-time download buttons, security guidance, and responsive email-client-safe layout.
 - [x] Update the manual payment order-created screen to clearly explain that Digital Junction Development Co. will send purchased files by email after owner verification, with a buyer-friendly thank-you message.
 - [x] Confirm that the owner-authorized Gmail API sender can deliver to arbitrary buyer checkout email addresses; Google OAuth Testing mode restricts sender authorization accounts, not email recipients.
-- [ ] Consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
+- [x] Superseded: consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
+- [x] Superseded: prepare and complete the Google OAuth production authorization path for the owner Gmail sender so refresh-token renewal is not a recurring operating task, subject to Google’s approval requirements.
+- [x] Replace the temporary Google OAuth sender with a durable API-key transactional email provider that verifies devshiftcode2025@gmail.com by email and does not require a custom sending domain or recurring refresh-token replacement.
 - [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.

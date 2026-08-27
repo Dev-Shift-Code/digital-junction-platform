@@ -2,7 +2,7 @@ import { createOwnerOneTimeDeliveryEntitlement, claimManualPaymentRejectionEmail
 import { ENV } from "./_core/env";
 
 const deliveryLinkLifetimeMs = 15 * 60 * 1000;
-const gmailSendScope = "https://www.googleapis.com/auth/gmail.send";
+const brevoTransactionalEndpoint = "https://api.brevo.com/v3/smtp/email";
 const brandLogoUrl = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663920827301/UriSGgVGQZmuEDZB.png";
 
 function escapeHtml(value: string) {
@@ -19,25 +19,6 @@ function safeEmail(value: string, field: string) {
   const email = safeHeaderValue(value, field);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`${field} must be a valid email address.`);
   return email;
-}
-
-function base64Url(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function base64Mime(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
-  return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trim();
-}
-
-function mimeHeader(value: string) {
-  const safe = safeHeaderValue(value, "Email subject");
-  return /^[\x20-\x7E]*$/.test(safe) ? safe : `=?UTF-8?B?${base64Mime(safe).replace(/[\r\n]/g, "")}?=`;
 }
 
 async function hashDeliveryToken(value: string) {
@@ -71,47 +52,29 @@ export function buildManualPaymentRejectedEmail(input: { buyerName: string; prod
   };
 }
 
-export function buildGmailRawMessage(input: { from: string; to: string; replyTo?: string; subject: string; text: string; html: string; orderId: number; messageType?: "delivery" | "rejection" }) {
-  const messageKey = `${paymentDeliveryEmailIdempotencyKey(input.orderId)}-${input.messageType || "delivery"}`;
-  const boundary = `djdc-${messageKey}`;
-  return [
-    `From: ${safeEmail(input.from, "GMAIL_SENDER_EMAIL")}`,
-    `To: ${safeEmail(input.to, "buyer email")}`,
-    ...(input.replyTo ? [`Reply-To: ${safeEmail(input.replyTo, "GMAIL_REPLY_TO")}`] : []),
-    `Subject: ${mimeHeader(input.subject)}`,
-    `Message-ID: <${messageKey}@digital-junction-platform.local>`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    base64Mime(input.text),
-    `--${boundary}`,
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    base64Mime(input.html),
-    `--${boundary}--`,
-    "",
-  ].join("\r\n");
+export function buildBrevoPayload(input: { senderEmail: string; to: string; replyTo?: string; subject: string; text: string; html: string; orderId: number; messageType: "delivery" | "rejection"; buyerName: string }) {
+  const senderEmail = safeEmail(input.senderEmail, "BREVO_SENDER_EMAIL");
+  const recipientEmail = safeEmail(input.to, "buyer email");
+  return {
+    sender: { name: "Digital Junction Development Co.", email: senderEmail },
+    to: [{ email: recipientEmail, name: safeHeaderValue(input.buyerName || "Buyer", "buyer name") }],
+    ...(input.replyTo ? { replyTo: { email: safeEmail(input.replyTo, "BREVO_REPLY_TO") } } : {}),
+    subject: safeHeaderValue(input.subject, "Email subject"),
+    htmlContent: input.html,
+    textContent: input.text,
+    tags: ["djdc-transactional", input.messageType],
+    headers: { "X-Mailin-custom": `djdc_order:${input.orderId}|message_type:${input.messageType}|audit_key:${paymentDeliveryEmailIdempotencyKey(input.orderId)}` },
+  };
 }
 
-async function getGmailAccessToken() {
-  const clientId = safeHeaderValue(ENV.gmailClientId, "GMAIL_CLIENT_ID");
-  const clientSecret = safeHeaderValue(ENV.gmailClientSecret, "GMAIL_CLIENT_SECRET");
-  const refreshToken = safeHeaderValue(ENV.gmailRefreshToken, "GMAIL_REFRESH_TOKEN");
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }),
-  });
-  const text = await response.text();
-  let payload: { access_token?: string; error?: string; error_description?: string } | null = null;
-  try { payload = text ? JSON.parse(text) : null; } catch { /* Do not expose untrusted response body in audit records. */ }
-  if (!response.ok || !payload?.access_token) throw new Error(`Google OAuth token refresh failed (${response.status}): ${payload?.error_description || payload?.error || "no access token returned"}`);
-  return payload.access_token;
+async function sendBrevoTransactionalEmail(payload: ReturnType<typeof buildBrevoPayload>) {
+  const apiKey = safeHeaderValue(ENV.brevoApiKey, "BREVO_API_KEY");
+  const response = await fetch(brevoTransactionalEndpoint, { method: "POST", headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const responseText = await response.text();
+  let result: { messageId?: string; code?: string; message?: string } | null = null;
+  try { result = responseText ? JSON.parse(responseText) : null; } catch { /* Do not place untrusted provider response body in the email audit. */ }
+  if (!response.ok || !result?.messageId) throw new Error(`Brevo delivery request failed (${response.status}): ${result?.message || result?.code || "no message ID returned"}`);
+  return result.messageId;
 }
 
 export async function sendPaymentDeliveryEmail(orderId: number) {
@@ -130,15 +93,9 @@ export async function sendPaymentDeliveryEmail(orderId: number) {
       return { fileName: file.fileName, url: `${appOrigin}/api/delivery/${token}` };
     }));
     const content = buildPaymentDeliveryEmail({ buyerName: claimed.order.name, productTitle: claimed.product.title, links, orderId: claimed.order.id });
-    const raw = buildGmailRawMessage({ from: ENV.gmailSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.gmailReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id });
-    const accessToken = await getGmailAccessToken();
-    const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ raw: base64Url(raw) }) });
-    const responseText = await response.text();
-    let payload: { id?: string; error?: { message?: string } } | null = null;
-    try { payload = responseText ? JSON.parse(responseText) : null; } catch { /* Preserve only a generic response error below. */ }
-    if (!response.ok || !payload?.id) throw new Error(`Gmail delivery request failed (${response.status}): ${payload?.error?.message || "no message ID returned"}`);
-    await markPaymentDeliveryEmailSent(claimed.email.id, payload.id);
-    return { status: "sent" as const, gmailMessageId: payload.id, scope: gmailSendScope };
+    const messageId = await sendBrevoTransactionalEmail(buildBrevoPayload({ senderEmail: ENV.brevoSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.brevoReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "delivery", buyerName: claimed.order.name }));
+    await markPaymentDeliveryEmailSent(claimed.email.id, messageId);
+    return { status: "sent" as const, brevoMessageId: messageId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected transactional email failure.";
     await markPaymentDeliveryEmailFailed(claimed.email.id, message);
@@ -152,15 +109,9 @@ export async function sendManualPaymentRejectedEmail(orderId: number) {
   if (!claimed) return { status: "not_due" as const };
   try {
     const content = buildManualPaymentRejectedEmail({ buyerName: claimed.order.name, productTitle: claimed.product.title, orderId: claimed.order.id });
-    const raw = buildGmailRawMessage({ from: ENV.gmailSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.gmailReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "rejection" });
-    const accessToken = await getGmailAccessToken();
-    const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ raw: base64Url(raw) }) });
-    const responseText = await response.text();
-    let payload: { id?: string; error?: { message?: string } } | null = null;
-    try { payload = responseText ? JSON.parse(responseText) : null; } catch { /* Preserve only a generic response error below. */ }
-    if (!response.ok || !payload?.id) throw new Error(`Gmail rejection notice failed (${response.status}): ${payload?.error?.message || "no message ID returned"}`);
-    await markManualPaymentRejectionEmailSent(claimed.email.id, payload.id);
-    return { status: "sent" as const, gmailMessageId: payload.id };
+    const messageId = await sendBrevoTransactionalEmail(buildBrevoPayload({ senderEmail: ENV.brevoSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.brevoReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id, messageType: "rejection", buyerName: claimed.order.name }));
+    await markManualPaymentRejectionEmailSent(claimed.email.id, messageId);
+    return { status: "sent" as const, brevoMessageId: messageId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected rejection-email failure.";
     await markManualPaymentRejectionEmailFailed(claimed.email.id, message);

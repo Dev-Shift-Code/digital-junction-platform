@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildGmailRawMessage, buildManualPaymentRejectedEmail, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./gmail";
+import { buildBrevoPayload, buildManualPaymentRejectedEmail, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./brevo";
 
 describe("transactional payment delivery email", () => {
   it("uses a deterministic order-scoped idempotency key", () => {
@@ -33,21 +33,21 @@ describe("transactional payment delivery email", () => {
     expect(email.text).toContain("Download guide.pdf:");
     expect(email.text).toContain("Download assets.zip:");
 
-    const source = readFileSync(resolve(import.meta.dirname, "gmail.ts"), "utf8");
-    expect(source).toContain('fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send"');
-    expect(source).toContain('fetch("https://oauth2.googleapis.com/token"');
-    expect(source).toContain("https://www.googleapis.com/auth/gmail.send");
+    const source = readFileSync(resolve(import.meta.dirname, "brevo.ts"), "utf8");
+    expect(source).toContain('"https://api.brevo.com/v3/smtp/email"');
+    expect(source).toContain('"api-key": apiKey');
+    expect(source).not.toContain("oauth2.googleapis.com");
     expect(source).not.toMatch(/attachments\s*:/);
   });
 
-  it("builds a base64url Gmail API message with HTML and text alternatives but no attachments", () => {
-    const raw = buildGmailRawMessage({ from: "devshiftcode2025@gmail.com", to: "buyer@example.com", replyTo: "devshiftcode2025@gmail.com", subject: "Your downloads", text: "Plain delivery message", html: "<p>HTML delivery message</p>", orderId: 12 });
-    expect(raw).toContain("From: devshiftcode2025@gmail.com");
-    expect(raw).toContain("To: buyer@example.com");
-    expect(raw).toContain("Reply-To: devshiftcode2025@gmail.com");
-    expect(raw).toContain("Content-Type: multipart/alternative");
-    expect(raw).toContain("Content-Transfer-Encoding: base64");
-    expect(raw).not.toContain("Content-Disposition: attachment");
+  it("builds a Brevo transactional payload with a verified individual sender and no attachments", () => {
+    const payload = buildBrevoPayload({ senderEmail: "devshiftcode2025@gmail.com", to: "buyer@example.com", replyTo: "devshiftcode2025@gmail.com", subject: "Your downloads", text: "Plain delivery message", html: "<p>HTML delivery message</p>", orderId: 12, messageType: "delivery", buyerName: "Buyer" });
+    expect(payload.sender).toEqual({ name: "Digital Junction Development Co.", email: "devshiftcode2025@gmail.com" });
+    expect(payload.to).toEqual([{ email: "buyer@example.com", name: "Buyer" }]);
+    expect(payload.replyTo).toEqual({ email: "devshiftcode2025@gmail.com" });
+    expect(payload.tags).toEqual(["djdc-transactional", "delivery"]);
+    expect(payload.headers["X-Mailin-custom"]).toContain("djdc_order:12");
+    expect(JSON.stringify(payload)).not.toContain("attachment");
   });
 
   it("builds a branded manual-payment rejection notice without buyer files or download links", () => {
