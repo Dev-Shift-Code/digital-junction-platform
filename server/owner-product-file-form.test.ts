@@ -6,6 +6,7 @@ const detail = readFileSync(new URL("../client/src/pages/ProductDetail.tsx", imp
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../client/src/pages/OwnerWorkspaceViews.tsx", import.meta.url), "utf8");
 const portalRouter = readFileSync(new URL("../server/routers/portal.ts", import.meta.url), "utf8");
+const serverEntry = readFileSync(new URL("../server/_core/index.ts", import.meta.url), "utf8");
 
 describe("owner product form delivery-file workflow", () => {
   it("keeps local buyer-file upload and removal inside the Add/Edit Product form", () => {
@@ -20,10 +21,13 @@ describe("owner product form delivery-file workflow", () => {
     expect(inventory).toContain("queued. Save the new product");
   });
 
-  it("accepts PDF and ZIP buyer files through an unrestricted local file picker and protected upload contract", () => {
+  it("accepts PDF, ZIP, and other buyer files without the former 8 MB application limit", () => {
     expect(inventory).toContain('accept="*/*"');
     expect(inventory).toContain('mimeType: file.type || "application/octet-stream"');
-    expect(portalRouter).toContain('sizeBytes: z.number().int().min(0).max(8_000_000)');
+    expect(inventory).not.toContain("file.size <= 8_000_000");
+    expect(portalRouter).toContain('sizeBytes: z.number().int().min(0), base64: z.string().min(1)');
+    expect(portalRouter).not.toContain("Product files must be smaller than 8 MB.");
+    expect(serverEntry).toContain('express.json({ limit: "2gb" })');
     expect(portalRouter).not.toContain('productFiles: router({\n      upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional().refine');
   });
 

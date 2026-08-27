@@ -346,11 +346,8 @@ export default function OwnerProducts() {
     const selected = Array.from(event.target.files ?? []);
     event.currentTarget.value = "";
     if (!selected.length) return;
-    const validFiles = selected.filter(file => file.size <= 8_000_000);
-    if (validFiles.length !== selected.length) setNotice("Files larger than 8 MB were not added.");
-    if (!validFiles.length) return;
     try {
-      const staged = await Promise.all(validFiles.map(async file => ({
+      const staged = await Promise.all(selected.map(async file => ({
         id: `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).slice(2)}`,
         fileName: file.name,
         mimeType: file.type || "application/octet-stream",
@@ -359,19 +356,21 @@ export default function OwnerProducts() {
       })));
       if (editor && editor !== "new") {
         const failedFiles: PendingBuyerFile[] = [];
+        let failureDetail = "";
         let uploadedCount = 0;
         for (const file of staged) {
           try {
             await uploadBuyerFile.mutateAsync({ productId: editor.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
             uploadedCount += 1;
-          } catch {
+          } catch (error) {
             failedFiles.push(file);
+            failureDetail ||= error instanceof Error ? error.message : "The server did not accept the file.";
           }
         }
         await attachedBuyerFiles.refetch();
         if (failedFiles.length) {
           setPendingBuyerFiles(current => [...current, ...failedFiles]);
-          setNotice(uploadedCount ? `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} uploaded. Retry the remaining file${failedFiles.length === 1 ? "" : "s"} below.` : "We could not upload those files. Retry the queued file below.");
+          setNotice(uploadedCount ? `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} uploaded. Retry the remaining file${failedFiles.length === 1 ? "" : "s"} below. ${failureDetail}` : `We could not upload those files. ${failureDetail}`);
           return;
         }
         setNotice(`${uploadedCount} buyer file${uploadedCount === 1 ? "" : "s"} uploaded.`);

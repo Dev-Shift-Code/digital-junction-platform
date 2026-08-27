@@ -8,11 +8,13 @@ import {
   createMilestone,
   createProductInquiry,
   createProject,
+  deleteCaseStudy,
   deleteDigitalProduct,
   deletePaymentMethod,
   deleteProductFile,
   getAdminProjectDetail,
   getAllCaseStudies,
+  getCaseStudyById,
   getAllPortalContent,
   getAllPaymentMethods,
   getAllProjects,
@@ -43,6 +45,7 @@ import {
   savePublicSiteContent,
   savePortalContent,
   updateDeliverable,
+  updateCaseStudyCover,
   updateDigitalProductCover,
   updateGuestCheckoutRequestStatus,
   updateGuestCheckoutPaymentReview,
@@ -443,6 +446,37 @@ export const portalRouter = router({
             return unavailable(error);
           }
       }),
+      delete: adminProcedure.input(z.object({ caseStudyId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          return deleteCaseStudy(input.caseStudyId);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      uploadCover: adminProcedure.input(z.object({ caseStudyId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().min(1).max(160).refine(value => value.startsWith("image/"), "Project covers must be image files."), sizeBytes: z.number().int().min(1), base64: z.string().min(1) })).mutation(async ({ input }) => {
+        try {
+          const project = await getCaseStudyById(input.caseStudyId);
+          if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+          const bytes = Buffer.from(input.base64, "base64");
+          if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty project cover image." });
+          const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const stored = await storagePut(`project-covers/${project.id}/${Date.now()}-${safeName}`, bytes, input.mimeType);
+          return updateCaseStudyCover(project.id, stored.url);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+      removeCover: adminProcedure.input(z.object({ caseStudyId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          const project = await getCaseStudyById(input.caseStudyId);
+          if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+          return updateCaseStudyCover(project.id, null);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
     }),
     products: router({
       list: adminProcedure.query(async () => {
@@ -541,12 +575,12 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), sizeBytes: z.number().int().min(0).max(8_000_000), base64: z.string().min(1).max(11_000_000) })).mutation(async ({ input }) => {
+      upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), sizeBytes: z.number().int().min(0), base64: z.string().min(1) })).mutation(async ({ input }) => {
         try {
           const product = await getDigitalProductById(input.productId);
           if (!product || product.isArchived) throw new TRPCError({ code: "NOT_FOUND", message: "An active product is required before attaching files." });
           const bytes = Buffer.from(input.base64, "base64");
-          if (!bytes.length || bytes.length > 8_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Product files must be smaller than 8 MB." });
+          if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty buyer delivery file." });
           const stored = await storagePut(`product-files/${product.id}/${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
           return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.key, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
         } catch (error) {

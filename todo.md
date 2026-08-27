@@ -209,3 +209,10 @@
 - [x] Add PDF and ZIP upload validation coverage and verify clear file-picker feedback without modifying the owner’s real files.
 - [x] Restore the established DJDC cream-grid, dark-green, teal, and mint Digital Products composition while retaining the cleaned real-product catalogue.
 - [x] Verify restored public product styling and owner file-upload controls without modifying owner data.
+- [x] Remove the artificial size limit from owner buyer delivery-file selection and upload validation while retaining safe storage handling.
+- [ ] Diagnose and repair the reported Owner Inventory buyer-file upload failure without modifying or deleting existing owner files.
+- [x] Add an Owner Projects sidebar entry and protected project-management workspace.
+- [x] Extend public project records with local removable cover upload, Project Title, Project Description, Problem Addressed, Key Features, My Contribution, and Tech Stack fields.
+- [x] Add owner-only project create, edit, publish, and safe delete controls without seeding project data.
+- [x] Remove the app-level project-cover file-size limit while keeping upload processing and storage references secure.
+- [x] Add regression coverage and non-destructively verify the new Owner Projects page at desktop and mobile widths.

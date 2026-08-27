@@ -269,6 +269,12 @@ export async function getAllCaseStudies() {
   return db.select().from(caseStudies).orderBy(asc(caseStudies.sortOrder), desc(caseStudies.createdAt));
 }
 
+export async function getCaseStudyById(caseStudyId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(caseStudies).where(eq(caseStudies.id, caseStudyId)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, caseStudyId?: number) {
   const db = requireDatabase(await getDb());
   if (caseStudyId) {
@@ -279,6 +285,19 @@ export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, cas
   const result = await db.insert(caseStudies).values(values);
   const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result[0].insertId))).limit(1);
   return created[0];
+}
+
+export async function updateCaseStudyCover(caseStudyId: number, coverImageUrl: string | null) {
+  const db = requireDatabase(await getDb());
+  await db.update(caseStudies).set({ coverImageUrl }).where(eq(caseStudies.id, caseStudyId));
+  const updated = await db.select().from(caseStudies).where(eq(caseStudies.id, caseStudyId)).limit(1);
+  return updated[0];
+}
+
+export async function deleteCaseStudy(caseStudyId: number) {
+  const db = requireDatabase(await getDb());
+  await db.delete(caseStudies).where(eq(caseStudies.id, caseStudyId));
+  return { deleted: true as const };
 }
 
 export async function getPublishedDigitalProducts() {

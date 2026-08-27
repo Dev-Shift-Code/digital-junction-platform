@@ -8,6 +8,7 @@ import GuestCheckout from "@/pages/GuestCheckout";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import OwnerPublicContent from "@/pages/OwnerPublicContent";
 import OwnerProducts from "@/pages/OwnerProducts";
+import OwnerProjects from "@/pages/OwnerProjects";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
 import OwnerProductAccess from "@/pages/OwnerProductAccess";
 import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
@@ -38,6 +39,7 @@ function Router() {
       <Route path={"/owner/login"} component={OwnerLoginEntry} />
       <Route path={"/owner/setup"} component={OwnerPasswordSetup} />
       <Route path={"/owner/inventory"} component={OwnerProducts} />
+      <Route path={"/owner/projects"} component={OwnerProjects} />
       <Route path={"/owner/sales"} component={OwnerSales} />
       <Route path={"/owner/customers"} component={OwnerCustomers} />
       <Route path={"/owner/content"} component={OwnerPublicContent} />

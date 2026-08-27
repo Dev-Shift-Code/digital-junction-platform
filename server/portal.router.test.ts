@@ -48,6 +48,20 @@ describe("portal router access control", () => {
     await expect(caller.portal.admin.products.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("protects owner project management and project covers from non-admin users", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+    await expect(caller.portal.admin.caseStudies.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.caseStudies.save({ title: "Project title", slug: "project-title", category: "Project", summary: "A sufficiently detailed project description.", isPublished: false, sortOrder: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.caseStudies.uploadCover({ caseStudyId: 1, fileName: "project.png", mimeType: "image/png", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.caseStudies.removeCover({ caseStudyId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.caseStudies.delete({ caseStudyId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects a non-image project cover before storage access", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await expect(caller.portal.admin.caseStudies.uploadCover({ caseStudyId: 1, fileName: "project.txt", mimeType: "text/plain", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("protects product deletion and cover upload from non-admin users", async () => {
     const caller = appRouter.createCaller(createContext("user"));
     await expect(caller.portal.admin.products.delete({ productId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
