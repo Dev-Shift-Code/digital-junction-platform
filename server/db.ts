@@ -321,6 +321,28 @@ export async function saveDigitalProduct(values: typeof digitalProducts.$inferIn
   return created[0];
 }
 
+export async function updateDigitalProductCover(productId: number, coverImageUrl: string | null) {
+  const db = requireDatabase(await getDb());
+  await db.update(digitalProducts).set({ coverImageUrl }).where(eq(digitalProducts.id, productId));
+  const updated = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+  return updated[0];
+}
+
+export async function deleteDigitalProduct(productId: number) {
+  const db = requireDatabase(await getDb());
+  const [order, access, inquiry] = await Promise.all([
+    db.select({ id: guestCheckoutRequests.id }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.productId, productId)).limit(1),
+    db.select({ id: productAccess.id }).from(productAccess).where(eq(productAccess.productId, productId)).limit(1),
+    db.select({ id: productInquiries.id }).from(productInquiries).where(eq(productInquiries.productId, productId)).limit(1),
+  ]);
+  if (order[0] || access[0] || inquiry[0]) {
+    return { deleted: false as const, reason: "This product has related buyer records and cannot be deleted. Archive it instead." };
+  }
+  await db.delete(productFiles).where(eq(productFiles.productId, productId));
+  await db.delete(digitalProducts).where(eq(digitalProducts.id, productId));
+  return { deleted: true as const };
+}
+
 export async function getUserProductAccess(userId: number) {
   const db = requireDatabase(await getDb());
   return db

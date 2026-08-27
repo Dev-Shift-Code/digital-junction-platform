@@ -21,6 +21,7 @@ function createContext(role?: ContextUser["role"]): TrpcContext {
 
   return {
     user,
+    ownerUser: role === "admin" ? user : null,
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
     res: { clearCookie: () => undefined } as TrpcContext["res"],
   };
@@ -45,6 +46,18 @@ describe("portal router access control", () => {
   it("protects native product management from non-admin users", async () => {
     const caller = appRouter.createCaller(createContext("user"));
     await expect(caller.portal.admin.products.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("protects product deletion and cover upload from non-admin users", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+    await expect(caller.portal.admin.products.delete({ productId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.productCovers.upload({ productId: 1, fileName: "cover.png", mimeType: "image/png", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("validates product cover and delivery file inputs before storage access", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+    await expect(caller.portal.admin.productCovers.upload({ productId: 0, fileName: "cover.txt", mimeType: "text/plain", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.portal.admin.productFiles.remove({ productFileId: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("validates a product enquiry before any database operation", async () => {

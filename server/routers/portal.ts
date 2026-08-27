@@ -8,6 +8,7 @@ import {
   createMilestone,
   createProductInquiry,
   createProject,
+  deleteDigitalProduct,
   deleteProductFile,
   getAdminProjectDetail,
   getAllCaseStudies,
@@ -37,6 +38,7 @@ import {
   savePublicSiteContent,
   savePortalContent,
   updateDeliverable,
+  updateDigitalProductCover,
   updateGuestCheckoutRequestStatus,
   updateMilestone,
   updateProject,
@@ -433,6 +435,16 @@ export const portalRouter = router({
             return unavailable(error);
           }
       }),
+      delete: adminProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          const result = await deleteDigitalProduct(input.productId);
+          if (!result.deleted) throw new TRPCError({ code: "BAD_REQUEST", message: result.reason });
+          return result;
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
     }),
     orders: router({
       list: adminProcedure.query(async () => {
@@ -476,6 +488,33 @@ export const portalRouter = router({
           await deleteProductFile(input.productFileId);
           return { success: true } as const;
         } catch (error) {
+          return unavailable(error);
+        }
+      }),
+    }),
+    productCovers: router({
+      upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
+        try {
+          if (input.mimeType && !input.mimeType.startsWith("image/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Product covers must be image files." });
+          const product = await getDigitalProductById(input.productId);
+          if (!product || product.isArchived) throw new TRPCError({ code: "NOT_FOUND", message: "An active product is required before adding a cover." });
+          const bytes = Buffer.from(input.base64, "base64");
+          if (!bytes.length || bytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Product covers must be smaller than 5 MB." });
+          const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const stored = await storagePut(`product-covers/${product.id}/${Date.now()}-${safeName}`, bytes, input.mimeType || "application/octet-stream");
+          return updateDigitalProductCover(product.id, stored.url);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+      remove: adminProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          const product = await getDigitalProductById(input.productId);
+          if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
+          return updateDigitalProductCover(product.id, null);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
           return unavailable(error);
         }
       }),

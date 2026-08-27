@@ -153,13 +153,20 @@
 - [ ] Verify guest browsing and guest checkout pathways alongside owner-only inventory controls at desktop and mobile widths.
 - [x] Save the Owner Inventory and guest-checkout update checkpoint.
 - [ ] Submit a real published product through guest checkout and verify the request is recorded without a payment, invoice, or automatic delivery claim.
-- [ ] Allow sample product checkout URLs to render the clearly non-submittable guest checkout preview instead of a false unavailable-product state.
+- [x] Allow sample product checkout URLs to render the clearly non-submittable guest checkout preview instead of a false unavailable-product state.
 - [x] Audit the existing product, guest checkout, file delivery, owner fulfilment, and public-content data structures.
 - [x] Replace generic guest checkout messaging with full product detail and direct purchase pathways for published products.
 - [x] Add owner-managed product inclusions and controlled file delivery metadata for common product file types without exposing paid files publicly.
 - [x] Add owner purchase fulfilment controls for genuine submitted orders, without fabricating payment, invoice, or delivery confirmations.
 - [x] Extend Owner Content so the owner can edit public page text, media URLs, calls-to-action, services, work, and product-facing content without editing application code.
 - [ ] Verify direct purchase pages, file safeguards, owner fulfilment, and public-content controls at desktop and mobile widths.
-- [ ] Save the direct purchase and full public-content editor update checkpoint.
+- [x] Save the direct purchase and full public-content editor update checkpoint.
 - [ ] Publish one real product with genuine content and files, then verify its public Product Name, Description, Price, Inclusions, and Buy now journey without submitting a fake order.
 - [ ] Save a real public-section edit through Owner Content and verify the matching visitor-facing section updates without inventing copy or media.
+- [x] Audit existing Product cover metadata, owner upload routes, product-file storage, purchase dependencies, and deletion constraints.
+- [x] Add local Product Cover upload with replace and remove controls, storing only the cover reference in product metadata.
+- [x] Make Inclusions a text-only product field separate from the buyer delivery-file upload manager.
+- [x] Add owner delivery-file remove controls for every uploaded buyer file without exposing protected file links publicly.
+- [x] Add a safe owner-only Delete Product action that removes the product record only when no genuine orders depend on it.
+- [ ] Verify local cover upload/removal, buyer-file removal, text inclusions, product deletion safeguards, and public product display.
+- [ ] Save the Owner Inventory upload and deletion update checkpoint.
