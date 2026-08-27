@@ -610,9 +610,9 @@ export async function claimPaymentDeliveryEmail(orderId: number) {
   return { email: { id: audit.id, orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
 }
 
-export async function markPaymentDeliveryEmailSent(emailId: number, resendEmailId: string) {
+export async function markPaymentDeliveryEmailSent(emailId: number, providerMessageId: string) {
   const db = requireDatabase(await getDb());
-  await db.update(paymentDeliveryEmails).set({ status: "sent", resendEmailId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+  await db.update(paymentDeliveryEmails).set({ status: "sent", providerMessageId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
 }
 
 export async function markPaymentDeliveryEmailFailed(emailId: number, error: string) {
@@ -760,7 +760,7 @@ export async function getGuestCheckoutRequests() {
     const entries = entitlements.filter(entry => entry.orderId === row.order.id);
     const transaction = transactions.find(candidate => candidate.orderId === row.order.id) || null;
     const deliveryEmail = deliveryEmails.find(candidate => candidate.orderId === row.order.id) || null;
-    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, resendEmailId: deliveryEmail.resendEmailId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
+    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, providerMessageId: deliveryEmail.providerMessageId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
   });
 }
 

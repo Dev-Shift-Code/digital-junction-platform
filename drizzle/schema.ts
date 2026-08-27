@@ -85,7 +85,7 @@ export const paymentDeliveryEntitlements = sqliteTable("paymentDeliveryEntitleme
 }, table => [uniqueIndex("payment_delivery_entitlement_token_unique").on(table.tokenHash), index("payment_delivery_entitlement_order_idx").on(table.orderId), index("payment_delivery_entitlement_transaction_idx").on(table.paymentTransactionId), index("payment_delivery_entitlement_status_idx").on(table.status, table.expiresAt)]);
 
 export const paymentDeliveryEmails = sqliteTable("paymentDeliveryEmails", {
-  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), paymentTransactionId: integer().notNull(), recipientEmail: text().notNull(), status: text({ enum: ["sending", "sent", "failed", "skipped"] }).notNull().default("sending"), resendEmailId: text(), attempts: integer().notNull().default(0), lastError: text(), sentAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), paymentTransactionId: integer().notNull(), recipientEmail: text().notNull(), status: text({ enum: ["sending", "sent", "failed", "skipped"] }).notNull().default("sending"), providerMessageId: text(), attempts: integer().notNull().default(0), lastError: text(), sentAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
 }, table => [uniqueIndex("payment_delivery_emails_order_unique").on(table.orderId), index("payment_delivery_emails_transaction_idx").on(table.paymentTransactionId), index("payment_delivery_emails_status_idx").on(table.status)]);
 
 export const productFiles = sqliteTable("productFiles", {

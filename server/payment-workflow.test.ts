@@ -91,13 +91,13 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("single-use download link");
   });
 
-  it("prepares a D1-audited Resend delivery only after a verified provider webhook or manual owner approval", () => {
+  it("prepares a D1-audited Gmail delivery only after a verified provider webhook or manual owner approval", () => {
     const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
     const migration = readFileSync(resolve(root, "cloudflare/migrations/0005_transactional_delivery_email.sql"), "utf8");
     const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
     const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
     const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
-    const resend = readFileSync(resolve(root, "server/resend.ts"), "utf8");
+    const gmail = readFileSync(resolve(root, "server/gmail.ts"), "utf8");
     expect(schema).toContain("export const paymentDeliveryEmails");
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentDeliveryEmails");
     expect(migration).toContain("paymentDeliveryEmails (orderId)");
@@ -111,10 +111,11 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(router).toContain('if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id)');
     expect(router).toContain("retryDeliveryEmail: adminProcedure");
     expect(router).not.toMatch(/capturePaypalCheckout[\s\S]{0,1000}sendPaymentDeliveryEmail/);
-    expect(resend).toContain("createOwnerOneTimeDeliveryEntitlement");
-    expect(resend).toContain("tokenHash: await hashDeliveryToken(token)");
-    expect(resend).toContain('status: "failed"');
-    expect(resend).toContain("markPaymentDeliveryEmailFailed");
+    expect(gmail).toContain("createOwnerOneTimeDeliveryEntitlement");
+    expect(gmail).toContain("tokenHash: await hashDeliveryToken(token)");
+    expect(gmail).toContain('status: "failed"');
+    expect(gmail).toContain("markPaymentDeliveryEmailFailed");
+    expect(gmail).toContain('https://www.googleapis.com/auth/gmail.send');
   });
 
   it("gives the owner payment toggles and manual QR method controls", () => {

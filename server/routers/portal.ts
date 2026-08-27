@@ -76,7 +76,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "../
 import { isD1OnlyFileMode, storagePut, storagePutPaymentQr, storagePutPrivateDeliveryFile } from "../storage";
 import { createPayrexGcashCheckout } from "../payrex";
 import { capturePaypalOrder, createPaypalOrder } from "../paypal";
-import { sendPaymentDeliveryEmail } from "../resend";
+import { sendPaymentDeliveryEmail } from "../gmail";
 import { ENV } from "../_core/env";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);

@@ -12,7 +12,7 @@ type SalesOrder = {
   order: { id: number; name: string; email: string; status: FulfilmentStatus; paymentStatus: PaymentStatus; paymentMethodName: string | null; paymentReference: string | null; paymentProofUrl: string | null; totalCents: number | null; createdAt: Date };
   product: { title: string; category: string; price: string };
   paymentTransaction: { provider: string; status: "pending" | "paid" | "failed" | "expired" | "cancelled" | "refunded"; amountCents: number; currency: string; paidAt: Date | null; expiresAt: Date | null } | null;
-  deliveryEmail: { status: "sending" | "sent" | "failed" | "skipped"; recipientEmail: string; attempts: number; lastError: string | null; resendEmailId: string | null; sentAt: Date | null; updatedAt: Date } | null;
+  deliveryEmail: { status: "sending" | "sent" | "failed" | "skipped"; recipientEmail: string; attempts: number; lastError: string | null; providerMessageId: string | null; sentAt: Date | null; updatedAt: Date } | null;
   delivery: { eligibleFileCount: number; activeLinkCount: number; usedLinkCount: number; revokedLinkCount: number; latestExpiresAt: Date | null; files: { id: number; fileName: string; mimeType: string | null; sizeBytes: number | null }[] };
 };
 

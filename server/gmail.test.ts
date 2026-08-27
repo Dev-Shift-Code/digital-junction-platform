@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./resend";
+import { buildGmailRawMessage, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./gmail";
 
 describe("transactional payment delivery email", () => {
   it("uses a deterministic order-scoped idempotency key", () => {
@@ -29,9 +29,20 @@ describe("transactional payment delivery email", () => {
     expect(email.text).toContain("Download guide.pdf:");
     expect(email.text).toContain("Download assets.zip:");
 
-    const source = readFileSync(resolve(import.meta.dirname, "resend.ts"), "utf8");
-    expect(source).toContain('fetch("https://api.resend.com/emails"');
-    expect(source).toContain('"Idempotency-Key": paymentDeliveryEmailIdempotencyKey(orderId)');
+    const source = readFileSync(resolve(import.meta.dirname, "gmail.ts"), "utf8");
+    expect(source).toContain('fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send"');
+    expect(source).toContain('fetch("https://oauth2.googleapis.com/token"');
+    expect(source).toContain("https://www.googleapis.com/auth/gmail.send");
     expect(source).not.toMatch(/attachments\s*:/);
+  });
+
+  it("builds a base64url Gmail API message with HTML and text alternatives but no attachments", () => {
+    const raw = buildGmailRawMessage({ from: "devshiftcode2025@gmail.com", to: "buyer@example.com", replyTo: "devshiftcode2025@gmail.com", subject: "Your downloads", text: "Plain delivery message", html: "<p>HTML delivery message</p>", orderId: 12 });
+    expect(raw).toContain("From: devshiftcode2025@gmail.com");
+    expect(raw).toContain("To: buyer@example.com");
+    expect(raw).toContain("Reply-To: devshiftcode2025@gmail.com");
+    expect(raw).toContain("Content-Type: multipart/alternative");
+    expect(raw).toContain("Content-Transfer-Encoding: base64");
+    expect(raw).not.toContain("Content-Disposition: attachment");
   });
 });

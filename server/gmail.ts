@@ -2,6 +2,7 @@ import { createOwnerOneTimeDeliveryEntitlement, claimPaymentDeliveryEmail, markP
 import { ENV } from "./_core/env";
 
 const deliveryLinkLifetimeMs = 15 * 60 * 1000;
+const gmailSendScope = "https://www.googleapis.com/auth/gmail.send";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
@@ -11,6 +12,31 @@ function safeHeaderValue(value: string, field: string) {
   const normalized = value.trim();
   if (!normalized || /[\r\n]/.test(normalized)) throw new Error(`${field} must be configured without line breaks.`);
   return normalized;
+}
+
+function safeEmail(value: string, field: string) {
+  const email = safeHeaderValue(value, field);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`${field} must be a valid email address.`);
+  return email;
+}
+
+function base64Url(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64Mime(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trim();
+}
+
+function mimeHeader(value: string) {
+  const safe = safeHeaderValue(value, "Email subject");
+  return /^[\x20-\x7E]*$/.test(safe) ? safe : `=?UTF-8?B?${base64Mime(safe).replace(/[\r\n]/g, "")}?=`;
 }
 
 async function hashDeliveryToken(value: string) {
@@ -34,6 +60,48 @@ export function buildPaymentDeliveryEmail(input: { buyerName: string; productTit
   };
 }
 
+export function buildGmailRawMessage(input: { from: string; to: string; replyTo?: string; subject: string; text: string; html: string; orderId: number }) {
+  const boundary = `djdc-${paymentDeliveryEmailIdempotencyKey(input.orderId)}`;
+  return [
+    `From: ${safeEmail(input.from, "GMAIL_SENDER_EMAIL")}`,
+    `To: ${safeEmail(input.to, "buyer email")}`,
+    ...(input.replyTo ? [`Reply-To: ${safeEmail(input.replyTo, "GMAIL_REPLY_TO")}`] : []),
+    `Subject: ${mimeHeader(input.subject)}`,
+    `Message-ID: <${paymentDeliveryEmailIdempotencyKey(input.orderId)}@digital-junction-platform.local>`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64Mime(input.text),
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64Mime(input.html),
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+}
+
+async function getGmailAccessToken() {
+  const clientId = safeHeaderValue(ENV.gmailClientId, "GMAIL_CLIENT_ID");
+  const clientSecret = safeHeaderValue(ENV.gmailClientSecret, "GMAIL_CLIENT_SECRET");
+  const refreshToken = safeHeaderValue(ENV.gmailRefreshToken, "GMAIL_REFRESH_TOKEN");
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }),
+  });
+  const text = await response.text();
+  let payload: { access_token?: string; error?: string; error_description?: string } | null = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { /* Do not expose untrusted response body in audit records. */ }
+  if (!response.ok || !payload?.access_token) throw new Error(`Google OAuth token refresh failed (${response.status}): ${payload?.error_description || payload?.error || "no access token returned"}`);
+  return payload.access_token;
+}
+
 export async function sendPaymentDeliveryEmail(orderId: number) {
   const claimed = await claimPaymentDeliveryEmail(orderId);
   if (!claimed) return { status: "not_due" as const };
@@ -49,21 +117,16 @@ export async function sendPaymentDeliveryEmail(orderId: number) {
       if (!entitlement) throw new Error(`Could not create a secure delivery link for ${file.fileName}.`);
       return { fileName: file.fileName, url: `${appOrigin}/api/delivery/${token}` };
     }));
-    const apiKey = safeHeaderValue(ENV.resendApiKey, "RESEND_API_KEY");
-    const from = safeHeaderValue(ENV.resendFromEmail, "RESEND_FROM_EMAIL");
-    const to = safeHeaderValue(claimed.email.recipientEmail, "buyer email");
     const content = buildPaymentDeliveryEmail({ buyerName: claimed.order.name, productTitle: claimed.product.title, links, orderId: claimed.order.id });
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": paymentDeliveryEmailIdempotencyKey(orderId) },
-      body: JSON.stringify({ from, to: [to], ...(ENV.resendReplyToEmail ? { reply_to: safeHeaderValue(ENV.resendReplyToEmail, "RESEND_REPLY_TO") } : {}), subject: content.subject, html: content.html, text: content.text }),
-    });
+    const raw = buildGmailRawMessage({ from: ENV.gmailSenderEmail, to: claimed.email.recipientEmail, replyTo: ENV.gmailReplyToEmail || undefined, subject: content.subject, text: content.text, html: content.html, orderId: claimed.order.id });
+    const accessToken = await getGmailAccessToken();
+    const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ raw: base64Url(raw) }) });
     const responseText = await response.text();
-    let payload: { id?: string; message?: string } | null = null;
+    let payload: { id?: string; error?: { message?: string } } | null = null;
     try { payload = responseText ? JSON.parse(responseText) : null; } catch { /* Preserve only a generic response error below. */ }
-    if (!response.ok || !payload?.id) throw new Error(`Resend delivery request failed (${response.status}): ${payload?.message || "no message ID returned"}`);
+    if (!response.ok || !payload?.id) throw new Error(`Gmail delivery request failed (${response.status}): ${payload?.error?.message || "no message ID returned"}`);
     await markPaymentDeliveryEmailSent(claimed.email.id, payload.id);
-    return { status: "sent" as const, resendEmailId: payload.id };
+    return { status: "sent" as const, gmailMessageId: payload.id, scope: gmailSendScope };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected transactional email failure.";
     await markPaymentDeliveryEmailFailed(claimed.email.id, message);
