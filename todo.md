@@ -239,3 +239,5 @@
 - [x] Remove the misleading D1-only public banner and forced file-input disablement from the live website while retaining Cloudflare D1 as the application database.
 - [x] Repair the clipped responsive hero illustration so the Digital Operations card remains fully visible.
 - [x] Configure the Cloudflare Pages project name and deployment command for the requested `digital-junction-platform.pages.dev` URL.
+- [x] Repair owner-session cookie handoff between the Cloudflare Pages frontend and D1-backed Worker API so valid owner credentials remain authenticated on the Pages domain.
+- [x] Preserve all Worker `Set-Cookie` headers through the Pages API proxy so owner login sessions are stored on `digital-junction-platform.pages.dev`.

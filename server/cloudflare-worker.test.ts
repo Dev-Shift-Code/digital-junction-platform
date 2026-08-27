@@ -27,6 +27,8 @@ describe("Cloudflare Worker deployment wiring", () => {
   it("connects the requested Pages hostname to the D1-backed Worker API", () => {
     expect(pagesProxy).toContain("WORKER_ORIGIN");
     expect(pagesProxy).toContain("new Request(targetUrl, context.request)");
+    expect(pagesProxy).toContain("getSetCookie?.()");
+    expect(pagesProxy).toContain('headers.append("Set-Cookie", cookie)');
     expect(pagesProxy).toContain("Pages API proxy is not configured.");
   });
 });

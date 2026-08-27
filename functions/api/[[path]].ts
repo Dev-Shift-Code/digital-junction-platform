@@ -16,6 +16,10 @@ export const onRequest: PagesFunction<PagesEnvironment> = async (context) => {
   const targetUrl = new URL(`${inboundUrl.pathname}${inboundUrl.search}`, workerOrigin);
   const upstream = await fetch(new Request(targetUrl, context.request));
   const headers = new Headers(upstream.headers);
+  const upstreamHeaders = upstream.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookies = upstreamHeaders.getSetCookie?.() ?? (upstream.headers.get("Set-Cookie") ? [upstream.headers.get("Set-Cookie")!] : []);
+  headers.delete("Set-Cookie");
+  for (const cookie of setCookies) headers.append("Set-Cookie", cookie);
   headers.delete("content-encoding");
   headers.delete("content-length");
   return new Response(upstream.body, { status: upstream.status, headers });
