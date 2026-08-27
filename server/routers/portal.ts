@@ -76,7 +76,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "../
 import { isD1OnlyFileMode, storagePut, storagePutPaymentQr, storagePutPrivateDeliveryFile } from "../storage";
 import { createPayrexGcashCheckout } from "../payrex";
 import { capturePaypalOrder, createPaypalOrder } from "../paypal";
-import { sendPaymentDeliveryEmail } from "../gmail";
+import { sendManualPaymentRejectedEmail, sendPaymentDeliveryEmail } from "../gmail";
 import { ENV } from "../_core/env";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
@@ -699,6 +699,7 @@ export const portalRouter = router({
         try {
           const reviewed = await updateGuestCheckoutPaymentReview(input.orderId, input.paymentStatus, input.paymentReviewNote);
           if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id);
+          if (input.paymentStatus === "rejected" && reviewed) await sendManualPaymentRejectedEmail(reviewed.id);
           return reviewed;
         } catch (error) {
           return unavailable(error);
@@ -725,6 +726,13 @@ export const portalRouter = router({
       retryDeliveryEmail: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(async ({ input }) => {
         try {
           return sendPaymentDeliveryEmail(input.orderId);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      retryRejectionEmail: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          return sendManualPaymentRejectedEmail(input.orderId);
         } catch (error) {
           return unavailable(error);
         }

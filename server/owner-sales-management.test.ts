@@ -18,6 +18,9 @@ describe("Owner Sales management workspace", () => {
     expect(sales).toContain("revokeDeliveryLinks.useMutation");
     expect(sales).toContain("createReplacementDeliveryLink.useMutation");
     expect(sales).toContain("retryDeliveryEmail.useMutation");
+    expect(sales).toContain("retryRejectionEmail.useMutation");
+    expect(sales).toContain("Payment review email:");
+    expect(sales).toContain("Retry payment email");
     expect(sales).toContain("Email:");
     expect(sales).toContain("Revoke unused links");
     expect(sales).toContain("New link");

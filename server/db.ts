@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../drizzle/schema";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEmails, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEmails, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentRejectionEmails, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -625,6 +625,33 @@ export async function markPaymentDeliveryEmailSkipped(emailId: number, reason: s
   await db.update(paymentDeliveryEmails).set({ status: "skipped", lastError: reason.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
 }
 
+export async function claimManualPaymentRejectionEmail(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const delivery = rows[0];
+  if (!delivery || delivery.order.paymentStatus !== "rejected") return null;
+  const transaction = await db.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.orderId, orderId)).limit(1);
+  if (transaction[0]) return null;
+  const inserted = await db.insert(paymentRejectionEmails).values({ orderId, recipientEmail: delivery.order.email, status: "sending", attempts: 1 }).onConflictDoNothing();
+  if (Number(inserted.meta.changes || 0) === 1) return { email: { id: Number(inserted.meta.last_row_id), recipientEmail: delivery.order.email }, ...delivery };
+  const existing = await db.select().from(paymentRejectionEmails).where(eq(paymentRejectionEmails.orderId, orderId)).limit(1);
+  const audit = existing[0];
+  if (!audit || audit.status !== "failed") return null;
+  const claimed = await db.update(paymentRejectionEmails).set({ status: "sending", attempts: sql`${paymentRejectionEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, audit.id), eq(paymentRejectionEmails.status, "failed")));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return { email: { id: audit.id, recipientEmail: delivery.order.email }, ...delivery };
+}
+
+export async function markManualPaymentRejectionEmailSent(emailId: number, providerMessageId: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentRejectionEmails).set({ status: "sent", providerMessageId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, emailId), eq(paymentRejectionEmails.status, "sending")));
+}
+
+export async function markManualPaymentRejectionEmailFailed(emailId: number, error: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentRejectionEmails).set({ status: "failed", lastError: error.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, emailId), eq(paymentRejectionEmails.status, "sending")));
+}
+
 export async function consumeOneTimeDeliveryEntitlement(tokenHash: string) {
   const db = requireDatabase(await getDb());
   const rows = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.tokenHash, tokenHash)).limit(1);
@@ -755,12 +782,14 @@ export async function getGuestCheckoutRequests() {
   const entitlements = await db.select().from(paymentDeliveryEntitlements);
   const transactions = await db.select().from(paymentTransactions);
   const deliveryEmails = await db.select().from(paymentDeliveryEmails);
+  const rejectionEmails = await db.select().from(paymentRejectionEmails);
   return rows.map(row => {
     const files = privateFiles.filter(file => file.productId === row.order.productId);
     const entries = entitlements.filter(entry => entry.orderId === row.order.id);
     const transaction = transactions.find(candidate => candidate.orderId === row.order.id) || null;
     const deliveryEmail = deliveryEmails.find(candidate => candidate.orderId === row.order.id) || null;
-    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, providerMessageId: deliveryEmail.providerMessageId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
+    const rejectionEmail = rejectionEmails.find(candidate => candidate.orderId === row.order.id) || null;
+    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, providerMessageId: deliveryEmail.providerMessageId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, rejectionEmail: rejectionEmail ? { status: rejectionEmail.status, recipientEmail: rejectionEmail.recipientEmail, attempts: rejectionEmail.attempts, lastError: rejectionEmail.lastError, providerMessageId: rejectionEmail.providerMessageId, sentAt: rejectionEmail.sentAt, updatedAt: rejectionEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
   });
 }
 

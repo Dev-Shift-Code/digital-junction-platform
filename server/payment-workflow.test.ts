@@ -120,6 +120,24 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(gmail).toContain('https://www.googleapis.com/auth/gmail.send');
   });
 
+  it("sends an audited rejection notice only after an owner rejects a manual payment and never releases buyer files", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const migration = readFileSync(resolve(root, "cloudflare/migrations/0007_manual_payment_rejection_email.sql"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const gmail = readFileSync(resolve(root, "server/gmail.ts"), "utf8");
+    expect(schema).toContain("export const paymentRejectionEmails");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentRejectionEmails");
+    expect(database).toContain("claimManualPaymentRejectionEmail");
+    expect(database).toContain('delivery.order.paymentStatus !== "rejected"');
+    expect(database).toContain("if (transaction[0]) return null");
+    expect(router).toContain('if (input.paymentStatus === "rejected" && reviewed) await sendManualPaymentRejectedEmail(reviewed.id)');
+    expect(router).toContain("retryRejectionEmail: adminProcedure");
+    expect(gmail).toContain("buildManualPaymentRejectedEmail");
+    expect(gmail).toContain("markManualPaymentRejectionEmailSent");
+    expect(gmail).not.toMatch(/buildManualPaymentRejectedEmail[\s\S]{0,2500}createOwnerOneTimeDeliveryEntitlement/);
+  });
+
   it("gives the owner payment toggles and manual QR method controls", () => {
     const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
     expect(paymentMethods).toContain("Payment methods");

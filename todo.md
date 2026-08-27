@@ -293,3 +293,4 @@
 - [x] Update the manual payment order-created screen to clearly explain that Digital Junction Development Co. will send purchased files by email after owner verification, with a buyer-friendly thank-you message.
 - [x] Confirm that the owner-authorized Gmail API sender can deliver to arbitrary buyer checkout email addresses; Google OAuth Testing mode restricts sender authorization accounts, not email recipients.
 - [ ] Consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
+- [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.

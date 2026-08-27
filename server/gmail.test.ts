@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildGmailRawMessage, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./gmail";
+import { buildGmailRawMessage, buildManualPaymentRejectedEmail, buildPaymentDeliveryEmail, paymentDeliveryEmailIdempotencyKey } from "./gmail";
 
 describe("transactional payment delivery email", () => {
   it("uses a deterministic order-scoped idempotency key", () => {
@@ -48,5 +48,17 @@ describe("transactional payment delivery email", () => {
     expect(raw).toContain("Content-Type: multipart/alternative");
     expect(raw).toContain("Content-Transfer-Encoding: base64");
     expect(raw).not.toContain("Content-Disposition: attachment");
+  });
+
+  it("builds a branded manual-payment rejection notice without buyer files or download links", () => {
+    const email = buildManualPaymentRejectedEmail({ buyerName: '<img src=x onerror=alert(1)>', productTitle: "Design package", orderId: 9 });
+    expect(email.subject).toBe("Payment review update — Digital Junction");
+    expect(email.html).toContain("UriSGgVGQZmuEDZB.png");
+    expect(email.html).toContain("Payment discrepancy policy");
+    expect(email.html).toContain("50% of the recorded payment");
+    expect(email.html).toContain("does not confirm that a refund has already been completed");
+    expect(email.html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+    expect(email.html).not.toContain("/api/delivery/");
+    expect(email.text).not.toContain("Download");
   });
 });
