@@ -297,4 +297,5 @@
 - [x] Replace the temporary Google OAuth sender with a durable API-key transactional email provider that verifies devshiftcode2025@gmail.com by email and does not require a custom sending domain or recurring refresh-token replacement.
 - [x] Replace the unavailable Brevo transport with a secured Google Apps Script relay that sends from devshiftcode2025@gmail.com without OAuth refresh-token maintenance or a custom domain.
 - [ ] Deploy the private Apps Script relay, configure its shared secret and Cloudflare Worker relay secrets, then confirm delivery from a real owner-approved or provider-verified order.
+- [x] Correct the Google Apps Script relay ParseError on save and revalidate the exact copy-paste script before the owner deploys it.
 - [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.

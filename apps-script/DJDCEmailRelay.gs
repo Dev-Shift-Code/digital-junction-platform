@@ -18,7 +18,7 @@ function doPost(e) {
     const payload = JSON.parse(payloadJson);
     validatePayload(payload);
     const lock = LockService.getScriptLock();
-    lock.waitLock(20_000);
+    lock.waitLock(20000);
     try {
       const properties = PropertiesService.getScriptProperties();
       removeExpiredSentRecords(properties);

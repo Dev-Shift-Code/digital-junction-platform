@@ -50,6 +50,14 @@ describe("transactional payment delivery email", () => {
     expect(JSON.stringify(payload)).not.toContain("attachment");
   });
 
+  it("keeps the owner copy-paste Apps Script relay free of numeric separators and requires signed requests", () => {
+    const script = readFileSync(resolve(import.meta.dirname, "../apps-script/DJDCEmailRelay.gs"), "utf8");
+    expect(script).toContain("function doPost(e)");
+    expect(script).toContain("Utilities.computeHmacSha256Signature");
+    expect(script).toContain("MailApp.sendEmail");
+    expect(script).not.toMatch(/\d+_\d+/);
+  });
+
   it("builds a branded manual-payment rejection notice without buyer files or download links", () => {
     const email = buildManualPaymentRejectedEmail({ buyerName: '<img src=x onerror=alert(1)>', productTitle: "Design package", orderId: 9 });
     expect(email.subject).toBe("Payment review update — Digital Junction");
