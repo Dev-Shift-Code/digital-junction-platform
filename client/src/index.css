@@ -89,5 +89,34 @@ button:not(:disabled):active, a[href].buttonlike:active { transform: scale(0.97)
 .form-field { width: 100%; border: 1px solid rgba(26, 49, 44, 0.18); border-radius: 0.68rem; padding: 0.78rem 0.9rem; background: rgba(255, 251, 241, 0.9); color: #1A312C; outline: none; transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 .form-field:focus { border-color: #428475; box-shadow: 0 0 0 3px rgba(137, 215, 183, 0.36); }
 .cart-panel { box-shadow: -20px 0 55px rgba(26, 49, 44, 0.22); }
+
+/* Shared notification language: cream surfaces, deep-green type, and muted teal state accents. */
+.notice { display: flex; align-items: flex-start; gap: 0.7rem; width: 100%; border: 1px solid rgba(66, 132, 117, 0.28); border-radius: 0.78rem; padding: 0.82rem 0.95rem; background: #FFF4E1; color: #1A312C; font-size: 0.875rem; line-height: 1.45; box-shadow: 0 10px 24px rgba(26, 49, 44, 0.06); }
+.notice::before { content: ""; flex: 0 0 auto; width: 0.48rem; height: 0.48rem; margin-top: 0.37rem; border-radius: 999px; background: #428475; box-shadow: 0 0 0 4px rgba(137, 215, 183, 0.22); }
+.notice-success { border-color: rgba(66, 132, 117, 0.32); background: rgba(137, 215, 183, 0.18); }
+.notice-info { border-color: rgba(66, 132, 117, 0.28); background: rgba(137, 215, 183, 0.12); }
+.notice-warning { border-color: rgba(158, 115, 39, 0.32); background: #FFF4E1; color: #58411C; }
+.notice-warning::before { background: #9E7327; box-shadow: 0 0 0 4px rgba(204, 169, 101, 0.18); }
+.notice-error { border-color: rgba(169, 72, 61, 0.34); background: #FFF4E1; color: #6A2F28; }
+.notice-error::before { background: #A9483D; box-shadow: 0 0 0 4px rgba(169, 72, 61, 0.12); }
+
+/* Legacy page feedback uses the same visual system until each page is converted to the shared Alert component. */
+:where(.bg-red-50, .bg-red-100) { background-color: #FFF4E1 !important; }
+:where(.border-red-300, .border-red-400) { border-color: rgba(169, 72, 61, 0.34) !important; }
+:where(.text-red-700, .text-red-800) { color: #6A2F28 !important; }
+
+.dj-toaster [data-sonner-toast].dj-toast { width: min(25rem, calc(100vw - 2rem)); min-height: 4.25rem; border: 1px solid rgba(66, 132, 117, 0.28) !important; border-radius: 0.9rem !important; background: #FFF4E1 !important; color: #1A312C !important; box-shadow: 0 18px 42px rgba(26, 49, 44, 0.16) !important; font-family: "DM Sans", sans-serif !important; }
+.dj-toaster [data-sonner-toast].dj-toast::before { content: ""; flex: 0 0 auto; width: 0.5rem; height: 0.5rem; margin: 0.43rem 0.12rem 0 0; border-radius: 999px; background: #428475; box-shadow: 0 0 0 4px rgba(137, 215, 183, 0.22); }
+.dj-toaster [data-sonner-toast].dj-toast--success { border-color: rgba(66, 132, 117, 0.36) !important; background: #F5FFF8 !important; }
+.dj-toaster [data-sonner-toast].dj-toast--error { border-color: rgba(169, 72, 61, 0.38) !important; background: #FFF7F3 !important; color: #6A2F28 !important; }
+.dj-toaster [data-sonner-toast].dj-toast--error::before { background: #A9483D; box-shadow: 0 0 0 4px rgba(169, 72, 61, 0.12); }
+.dj-toaster [data-sonner-toast].dj-toast--warning { border-color: rgba(158, 115, 39, 0.36) !important; background: #FFF9ED !important; color: #58411C !important; }
+.dj-toaster [data-sonner-toast].dj-toast--warning::before { background: #9E7327; box-shadow: 0 0 0 4px rgba(204, 169, 101, 0.18); }
+.dj-toaster [data-sonner-toast].dj-toast--info { background: #F2FBF6 !important; }
+.dj-toaster .dj-toast__title { color: inherit !important; font-family: "DM Sans", sans-serif !important; font-weight: 800 !important; }
+.dj-toaster .dj-toast__description { color: currentColor !important; opacity: 0.72; line-height: 1.45 !important; }
+.dj-toaster .dj-toast__close { border: 1px solid rgba(26, 49, 44, 0.15) !important; border-radius: 0.5rem !important; background: #FFF4E1 !important; color: #1A312C !important; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.dj-toaster .dj-toast__close:hover { background: #89D7B7 !important; }
+.dj-toaster .dj-toast__close:active { transform: scale(0.94); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 @media (max-width: 720px) { .site-container { width: min(100% - 1.5rem, 1180px); } .nav-link.active::after { display: none; } }

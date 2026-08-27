@@ -272,3 +272,4 @@
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
 - [ ] Configure PayPal Sandbox Worker secrets and a `PAYMENT.CAPTURE.COMPLETED` webhook, deploy the Worker/Pages changes, and non-destructively verify a real sandbox checkout.
 - [x] Refine the buyer checkout and Owner Payment Methods screens so PayRex GCash and PayPal are visibly separate, selected-state messaging is accurate, and deployment status is understandable.
+- [x] Unify all production toast notifications, inline success/error/info alerts, and shared alert variants in the Digital Junction cream, dark-green, teal, and mint visual system.
