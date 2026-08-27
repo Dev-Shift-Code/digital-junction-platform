@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentMethods, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -402,6 +402,42 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
   return created[0];
 }
 
+export async function getActivePaymentMethods() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(paymentMethods).where(eq(paymentMethods.isActive, true)).orderBy(asc(paymentMethods.sortOrder), asc(paymentMethods.createdAt));
+}
+
+export async function getAllPaymentMethods() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(paymentMethods).orderBy(asc(paymentMethods.sortOrder), asc(paymentMethods.createdAt));
+}
+
+export async function getPaymentMethodById(paymentMethodId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(paymentMethods).where(eq(paymentMethods.id, paymentMethodId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function savePaymentMethod(values: typeof paymentMethods.$inferInsert, paymentMethodId?: number) {
+  const db = requireDatabase(await getDb());
+  if (paymentMethodId) {
+    await db.update(paymentMethods).set(values).where(eq(paymentMethods.id, paymentMethodId));
+    const updated = await db.select().from(paymentMethods).where(eq(paymentMethods.id, paymentMethodId)).limit(1);
+    return updated[0];
+  }
+  const result = await db.insert(paymentMethods).values(values);
+  const created = await db.select().from(paymentMethods).where(eq(paymentMethods.id, Number(result[0].insertId))).limit(1);
+  return created[0];
+}
+
+export async function deletePaymentMethod(paymentMethodId: number) {
+  const db = requireDatabase(await getDb());
+  const referencedOrder = await db.select({ id: guestCheckoutRequests.id }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.paymentMethodId, paymentMethodId)).limit(1);
+  if (referencedOrder.length) throw new Error("This payment method has recorded order history and cannot be deleted.");
+  await db.delete(paymentMethods).where(eq(paymentMethods.id, paymentMethodId));
+  return { deleted: true as const };
+}
+
 export async function getGuestCheckoutRequests() {
   const db = requireDatabase(await getDb());
   return db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).orderBy(desc(guestCheckoutRequests.createdAt));
@@ -410,6 +446,13 @@ export async function getGuestCheckoutRequests() {
 export async function updateGuestCheckoutRequestStatus(orderId: number, status: "submitted" | "contacted" | "fulfilled" | "cancelled") {
   const db = requireDatabase(await getDb());
   await db.update(guestCheckoutRequests).set({ status }).where(eq(guestCheckoutRequests.id, orderId));
+  const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  return updated[0];
+}
+
+export async function updateGuestCheckoutPaymentReview(orderId: number, paymentStatus: "verified" | "rejected", paymentReviewNote?: string | null) {
+  const db = requireDatabase(await getDb());
+  await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: new Date(), paymentReviewNote: paymentReviewNote || null }).where(eq(guestCheckoutRequests.id, orderId));
   const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
   return updated[0];
 }

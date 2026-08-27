@@ -201,9 +201,30 @@ export const productInquiries = mysqlTable(
   table => [index("product_inquiries_product_idx").on(table.productId), index("product_inquiries_status_idx").on(table.status)],
 );
 
+/** Owner-configured manual payment methods. QR and logo bytes live in storage. */
+export const paymentMethods = mysqlTable(
+  "paymentMethods",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    methodType: varchar("methodType", { length: 64 }).notNull(),
+    displayName: varchar("displayName", { length: 120 }).notNull(),
+    logoUrl: text("logoUrl"),
+    logoKey: varchar("logoKey", { length: 512 }),
+    qrCodeUrl: text("qrCodeUrl"),
+    qrCodeKey: varchar("qrCodeKey", { length: 512 }),
+    instructions: text("instructions").notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("payment_methods_active_idx").on(table.isActive, table.sortOrder)],
+);
+
 /**
- * A customer-submitted guest checkout request. This intentionally stores no
- * payment method, payment confirmation, invoice, or delivery authorisation.
+ * A customer-submitted guest checkout request. Payment methods are copied into
+ * owner-only snapshot fields so later edits or deactivation do not rewrite the
+ * selected method on an existing order.
  */
 export const guestCheckoutRequests = mysqlTable(
   "guestCheckoutRequests",
@@ -215,10 +236,25 @@ export const guestCheckoutRequests = mysqlTable(
     company: varchar("company", { length: 180 }),
     message: text("message"),
     status: mysqlEnum("status", ["submitted", "contacted", "fulfilled", "cancelled"]).default("submitted").notNull(),
+    paymentMethodId: int("paymentMethodId"),
+    paymentMethodName: varchar("paymentMethodName", { length: 120 }),
+    paymentMethodType: varchar("paymentMethodType", { length: 64 }),
+    paymentInstructionsSnapshot: text("paymentInstructionsSnapshot"),
+    paymentLogoUrlSnapshot: text("paymentLogoUrlSnapshot"),
+    paymentQrCodeUrlSnapshot: text("paymentQrCodeUrlSnapshot"),
+    paymentReference: varchar("paymentReference", { length: 180 }),
+    paymentProofUrl: text("paymentProofUrl"),
+    paymentProofKey: varchar("paymentProofKey", { length: 512 }),
+    paymentProofFileName: varchar("paymentProofFileName", { length: 255 }),
+    paymentProofMimeType: varchar("paymentProofMimeType", { length: 160 }),
+    paymentProofSizeBytes: int("paymentProofSizeBytes"),
+    paymentStatus: mysqlEnum("paymentStatus", ["awaiting_payment", "submitted", "verified", "rejected"]).default("awaiting_payment").notNull(),
+    paymentReviewedAt: timestamp("paymentReviewedAt"),
+    paymentReviewNote: text("paymentReviewNote"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status)],
+  table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status), index("guest_checkout_payment_status_idx").on(table.paymentStatus)],
 );
 
 /** Owner-managed file metadata for a digital product. File bytes live in storage. */

@@ -55,6 +55,22 @@ describe("portal router access control", () => {
     await expect(caller.portal.admin.productFiles.upload({ productId: 1, fileName: "delivery.zip", mimeType: "application/zip", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("protects payment configuration and payment review from non-admin users", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+    await expect(caller.portal.admin.paymentMethods.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.paymentMethods.save({ methodType: "Wallet", displayName: "Personal wallet", instructions: "Scan the provided QR code.", isActive: true, sortOrder: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.paymentMethods.uploadAsset({ assetType: "logo", fileName: "logo.png", mimeType: "image/png", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.paymentMethods.remove({ paymentMethodId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.portal.admin.orders.reviewPayment({ orderId: 1, paymentStatus: "verified" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects non-image payment proofs and payment assets before database or storage access", async () => {
+    const publicCaller = appRouter.createCaller(createContext());
+    await expect(publicCaller.portal.products.guestCheckout({ productId: 1, name: "Buyer Name", email: "buyer@example.com", paymentMethodId: 1, paymentReference: "REF-123", paymentProofFileName: "proof.txt", paymentProofMimeType: "text/plain", paymentProofSizeBytes: 4, paymentProofBase64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const ownerCaller = appRouter.createCaller(createContext("admin"));
+    await expect(ownerCaller.portal.admin.paymentMethods.uploadAsset({ assetType: "qr-code", fileName: "method.txt", mimeType: "text/plain", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("validates product cover and delivery file inputs before storage access", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     await expect(caller.portal.admin.productCovers.upload({ productId: 0, fileName: "cover.txt", mimeType: "text/plain", sizeBytes: 4, base64: "YWJjZA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });

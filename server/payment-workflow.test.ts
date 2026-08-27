@@ -1,0 +1,34 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = resolve(import.meta.dirname, "..");
+
+describe("manual payment workflow safeguards", () => {
+  it("stores a selected payment method as an immutable order snapshot", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    expect(schema).toContain('paymentMethodName: varchar("paymentMethodName"');
+    expect(schema).toContain('paymentInstructionsSnapshot: text("paymentInstructionsSnapshot")');
+    expect(schema).toContain('paymentQrCodeUrlSnapshot: text("paymentQrCodeUrlSnapshot")');
+    expect(router).toContain("paymentMethodName: paymentMethod.displayName");
+    expect(router).toContain("paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl");
+    expect(router).toContain("!paymentMethod || !paymentMethod.isActive");
+  });
+
+  it("does not place seller account fields in the public checkout source", () => {
+    const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
+    expect(checkout).toContain("listActive.useQuery");
+    expect(checkout).toContain("paymentReference");
+    expect(checkout).toContain('accept="image/*"');
+    expect(checkout).not.toMatch(/accountNumber|account_name|bankAccount|gcashNumber/i);
+  });
+
+  it("keeps proof links inside the owner-only sales route", () => {
+    const publicRouter = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const ownerSales = readFileSync(resolve(root, "client/src/pages/OwnerWorkspaceViews.tsx"), "utf8");
+    expect(publicRouter).toContain("adminProcedure.query(async () => {");
+    expect(ownerSales).toContain("View proof");
+    expect(ownerSales).toContain("reviewPayment");
+  });
+});

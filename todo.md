@@ -194,13 +194,13 @@
 - [x] Add regression coverage and verify the revised Shop and product detail layouts without modifying product data.
 - [x] Remove the public product-detail Included files section, including file metadata and its empty state, while retaining text-only Inclusions.
 - [x] Update regression coverage and verify the simplified public product detail does not expose buyer-file metadata.
-- [ ] Add an owner-managed payment methods data model with active state, display order, logo, QR code, instructions, and timestamps.
-- [ ] Add immutable payment-method snapshots, reference number, payment proof storage metadata, and payment status to guest orders without storing payment account details.
-- [ ] Add owner-only Settings → Payment Methods management with local logo/QR upload, preview, create, edit, activate/deactivate, ordering, and guarded deletion.
-- [ ] Redesign guest checkout into the requested order-summary and payment flow with dynamic active methods, QR/instructions, required payment reference, and payment proof upload.
-- [ ] Add owner Sales payment-review controls to verify or reject submitted payment evidence while preserving historical payment snapshots.
-- [ ] Add authorization, input-validation, privacy, file-type/size, inactive-method, and historical-method regression coverage.
-- [ ] Validate responsive payment-management and checkout empty states without creating artificial payment methods or buyer payments.
+- [x] Add an owner-managed payment methods data model with active state, display order, logo, QR code, instructions, and timestamps.
+- [x] Add immutable payment-method snapshots, reference number, payment proof storage metadata, and payment status to guest orders without storing payment account details.
+- [x] Add owner-only Settings → Payment Methods management with local logo/QR upload, preview, create, edit, activate/deactivate, ordering, and guarded deletion.
+- [x] Redesign guest checkout into the requested order-summary and payment flow with dynamic active methods, QR/instructions, required payment reference, and payment proof upload.
+- [x] Add owner Sales payment-review controls to verify or reject submitted payment evidence while preserving historical payment snapshots.
+- [x] Add authorization, input-validation, privacy, file-type/size, inactive-method, and historical-method regression coverage.
+- [x] Validate responsive payment-management and checkout empty states without creating artificial payment methods or buyer payments.
 - [x] Retheme every public Digital Products page surface, card, control, and empty state from stark white to the established DJDC cream, dark-green, teal, and mint palette.
 - [x] Add regression coverage and validate the rethemed public Digital Products page at desktop and mobile widths.
 - [x] Diagnose and repair the Owner Add/Edit Product Add buyer files control so local file selection and upload work reliably for saved products.

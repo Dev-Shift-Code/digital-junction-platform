@@ -9,10 +9,12 @@ import {
   createProductInquiry,
   createProject,
   deleteDigitalProduct,
+  deletePaymentMethod,
   deleteProductFile,
   getAdminProjectDetail,
   getAllCaseStudies,
   getAllPortalContent,
+  getAllPaymentMethods,
   getAllProjects,
   getClientProjectDetail,
   getClientProjects,
@@ -24,6 +26,8 @@ import {
   getDigitalProductBySlug,
   getDigitalProductById,
   getGuestCheckoutRequests,
+  getActivePaymentMethods,
+  getPaymentMethodById,
   getPublishedDigitalProductById,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
@@ -34,12 +38,14 @@ import {
   grantProductAccess,
   saveCaseStudy,
   saveDigitalProduct,
+  savePaymentMethod,
   saveProductFile,
   savePublicSiteContent,
   savePortalContent,
   updateDeliverable,
   updateDigitalProductCover,
   updateGuestCheckoutRequestStatus,
+  updateGuestCheckoutPaymentReview,
   updateMilestone,
   updateProject,
 } from "../db";
@@ -94,6 +100,16 @@ export const portalRouter = router({
       }
     }),
   }),
+  paymentMethods: router({
+    listActive: publicProcedure.query(async () => {
+      try {
+        const methods = await getActivePaymentMethods();
+        return methods.map(({ id, methodType, displayName, logoUrl, qrCodeUrl, instructions }) => ({ id, methodType, displayName, logoUrl, qrCodeUrl, instructions }));
+      } catch (error) {
+        return unavailable(error);
+      }
+    }),
+  }),
   caseStudies: router({
     listPublished: publicProcedure.query(async () => {
       try {
@@ -142,13 +158,19 @@ export const portalRouter = router({
         }
       }),
     guestCheckout: publicProcedure
-      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional() }))
+      .input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255), paymentProofMimeType: z.string().trim().min(1).max(160).refine(value => value.startsWith("image/"), "Payment proof must be an image."), paymentProofSizeBytes: z.number().int().min(1).max(5_000_000), paymentProofBase64: z.string().min(1).max(7_000_000) }))
       .mutation(async ({ input }) => {
         try {
           const product = await getPublishedDigitalProductById(input.productId);
           if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "This product is not available for guest checkout." });
-          const request = await createGuestCheckoutRequest({ ...input, company: input.company || null, message: input.message || null });
-          return { requestId: request.id, status: request.status, productTitle: product.title };
+          const paymentMethod = await getPaymentMethodById(input.paymentMethodId);
+          if (!paymentMethod || !paymentMethod.isActive) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an active payment method before submitting your order." });
+          const proofBytes = Buffer.from(input.paymentProofBase64, "base64");
+          if (!proofBytes.length || proofBytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment proof must be an image smaller than 5 MB." });
+          const safeProofName = input.paymentProofFileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const proof = await storagePut(`payment-proofs/${Date.now()}-${safeProofName}`, proofBytes, input.paymentProofMimeType);
+          const request = await createGuestCheckoutRequest({ productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentLogoUrlSnapshot: paymentMethod.logoUrl, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl, paymentReference: input.paymentReference, paymentProofUrl: proof.url, paymentProofKey: proof.key, paymentProofFileName: input.paymentProofFileName, paymentProofMimeType: input.paymentProofMimeType, paymentProofSizeBytes: input.paymentProofSizeBytes, paymentStatus: "submitted" });
+          return { requestId: request.id, status: request.status, paymentStatus: request.paymentStatus, paymentMethodName: paymentMethod.displayName, productTitle: product.title };
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           return unavailable(error);
@@ -459,6 +481,50 @@ export const portalRouter = router({
           return updateGuestCheckoutRequestStatus(input.orderId, input.status);
         } catch (error) {
           return unavailable(error);
+        }
+      }),
+      reviewPayment: adminProcedure.input(z.object({ orderId: z.number().int().positive(), paymentStatus: z.enum(["verified", "rejected"]), paymentReviewNote: z.string().trim().max(1000).optional() })).mutation(async ({ input }) => {
+        try {
+          return updateGuestCheckoutPaymentReview(input.orderId, input.paymentStatus, input.paymentReviewNote);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+    }),
+    paymentMethods: router({
+      list: adminProcedure.query(async () => {
+        try {
+          return getAllPaymentMethods();
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      save: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive().optional(), methodType: z.string().trim().min(2).max(64), displayName: z.string().trim().min(2).max(120), logoUrl: z.string().trim().url().max(5000).optional().nullable(), logoKey: z.string().trim().max(512).optional().nullable(), qrCodeUrl: z.string().trim().url().max(5000).optional().nullable(), qrCodeKey: z.string().trim().max(512).optional().nullable(), instructions: z.string().trim().min(3).max(5000), isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0) })).mutation(async ({ input }) => {
+        try {
+          const { paymentMethodId, ...values } = input;
+          return savePaymentMethod(values, paymentMethodId);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      uploadAsset: adminProcedure.input(z.object({ assetType: z.enum(["logo", "qr-code"]), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().min(1).max(160).refine(value => value.startsWith("image/"), "Payment assets must be image files."), sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
+        try {
+          const bytes = Buffer.from(input.base64, "base64");
+          if (!bytes.length || bytes.length > 5_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment images must be smaller than 5 MB." });
+          const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const stored = await storagePut(`payment-method-assets/${input.assetType}/${Date.now()}-${safeName}`, bytes, input.mimeType);
+          return { key: stored.key, url: stored.url };
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          return unavailable(error);
+        }
+      }),
+      remove: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          return deletePaymentMethod(input.paymentMethodId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Payment method could not be deleted.";
+          throw new TRPCError({ code: "BAD_REQUEST", message });
         }
       }),
     }),
