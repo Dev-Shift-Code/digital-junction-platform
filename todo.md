@@ -246,3 +246,4 @@
 - [x] Add a token-protected owner password recovery path for an existing admin account when the current direct sign-in password cannot be verified.
 - [ ] Audit every live owner-login dependency: Pages proxy deployment, Worker secrets and variables, D1 owner account state, password verification, Set-Cookie delivery, and owner-session token verification.
 - [x] Remove the production dependency on a manually configured `VITE_APP_ID` for first-party owner and customer session validity while retaining JWT signature verification.
+- [x] Make token-gated owner recovery cover an absent D1 owner record and an incorrectly assigned customer role without requiring an optional owner-email variable.

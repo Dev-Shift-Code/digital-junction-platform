@@ -59,10 +59,8 @@ export const appRouter = router({
     ownerSetup: publicProcedure.input(ownerSetupInput).mutation(async ({ ctx, input }) => {
       if (!ENV.ownerSetupToken || input.setupToken !== ENV.ownerSetupToken) throw new Error("Invalid owner setup token.");
       const email = normalizeEmail(input.email);
-      if (ENV.ownerEmail && email !== normalizeEmail(ENV.ownerEmail)) throw new Error("This email is not the configured owner account.");
       let user = await db.getUserByEmail(email);
       if (!user) {
-        if (!ENV.ownerEmail) throw new Error("Set OWNER_EMAIL before creating the first owner account.");
         if (await db.hasAdminUser()) throw new Error("An owner account already exists. Use Owner sign in.");
         user = await db.createLocalUser({
           openId: `local-owner-${randomUUID()}`,
@@ -74,7 +72,7 @@ export const appRouter = router({
         await issueLocalSession(ctx, user, "owner");
         return { success: true } as const;
       }
-      if (user.role !== "admin") throw new Error("This email is not the configured owner account.");
+      if (user.role !== "admin") await db.promoteUserToAdmin(user.id);
       await db.setUserPassword(user.id, await hashPassword(input.password));
       await db.recordUserSignIn(user.openId);
       await issueLocalSession(ctx, user, "owner");

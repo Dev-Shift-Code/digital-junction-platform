@@ -127,6 +127,12 @@ export async function setUserPassword(userId: number, passwordHash: string) {
   await db.update(users).set({ passwordHash, loginMethod: "digital-junction" }).where(eq(users.id, userId));
 }
 
+/** Promotes a token-verified recovery account to the owner role without touching unrelated users. */
+export async function promoteUserToAdmin(userId: number) {
+  const db = requireDatabase(await getDb());
+  await db.update(users).set({ role: "admin" }).where(eq(users.id, userId));
+}
+
 function requireDatabase<T>(database: T | null): T {
   if (!database) throw new Error("Database is not available");
   return database;
