@@ -31,4 +31,12 @@ describe("manual payment workflow safeguards", () => {
     expect(ownerSales).toContain("View proof");
     expect(ownerSales).toContain("reviewPayment");
   });
+
+  it("limits owner payment-method selection to the requested configured providers", () => {
+    const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
+    const portalRouter = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    expect(paymentMethods).toContain('const paymentMethodTypes = ["GoTyme", "PayPal", "GCash", "MariBank"] as const;');
+    expect(paymentMethods).toContain("<select required");
+    expect(portalRouter).toContain('const paymentMethodType = z.enum(["GoTyme", "PayPal", "GCash", "MariBank"]);');
+  });
 });

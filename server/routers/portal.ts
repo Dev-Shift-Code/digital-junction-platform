@@ -57,6 +57,7 @@ import { storagePut } from "../storage";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
+const paymentMethodType = z.enum(["GoTyme", "PayPal", "GCash", "MariBank"]);
 const paymentImageMimeType = z.enum(["image/png", "image/jpeg", "image/webp"]);
 const paymentInstructions = z.string().trim().min(3).max(5000).refine(
   value => !/(?:account\s*(?:number|name)|bank\s*(?:number|account)|gcash\s*number|mobile\s*number|\b[\d][\d\s-]{8,}[\d]\b|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i.test(value),
@@ -538,7 +539,7 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      save: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive().optional(), methodType: z.string().trim().min(2).max(64), displayName: z.string().trim().min(2).max(120), logoUrl: z.string().trim().url().max(5000).optional().nullable(), logoKey: z.string().trim().max(512).optional().nullable(), qrCodeUrl: z.string().trim().url().max(5000).optional().nullable(), qrCodeKey: z.string().trim().max(512).optional().nullable(), instructions: paymentInstructions, isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0) })).mutation(async ({ input }) => {
+      save: adminProcedure.input(z.object({ paymentMethodId: z.number().int().positive().optional(), methodType: paymentMethodType, displayName: z.string().trim().min(2).max(120), logoUrl: z.string().trim().url().max(5000).optional().nullable(), logoKey: z.string().trim().max(512).optional().nullable(), qrCodeUrl: z.string().trim().url().max(5000).optional().nullable(), qrCodeKey: z.string().trim().max(512).optional().nullable(), instructions: paymentInstructions, isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0) })).mutation(async ({ input }) => {
         try {
           const { paymentMethodId, ...values } = input;
           return savePaymentMethod(values, paymentMethodId);

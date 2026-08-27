@@ -88,7 +88,7 @@ describe("portal router access control", () => {
 
   it("rejects payment instructions that contain likely public account details", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
-    await expect(caller.portal.admin.paymentMethods.save({ methodType: "Wallet", displayName: "QR payment", instructions: "Send to account number 0917 123 4567.", isActive: true, sortOrder: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.portal.admin.paymentMethods.save({ methodType: "GCash", displayName: "QR payment", instructions: "Send to account number 0917 123 4567.", isActive: true, sortOrder: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("validates product cover and delivery file inputs before storage access", async () => {

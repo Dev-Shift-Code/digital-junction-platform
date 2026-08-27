@@ -45,7 +45,7 @@ function Router() {
       <Route path={"/owner/content"} component={OwnerPublicContent} />
       <Route path={"/owner/vouchers"} component={OwnerVouchers} />
       <Route path={"/owner/settings"} component={OwnerSettings} />
-      <Route path={"/owner/settings/payment-methods"} component={OwnerPaymentMethods} />
+      <Route path={"/owner/payment-methods"} component={OwnerPaymentMethods} />
       <Route path={"/owner/support"} component={OwnerSupport} />
       <Route path={"/owner"} component={OwnerDashboard} />
       <Route path={"/owner/products"} component={OwnerProducts} />

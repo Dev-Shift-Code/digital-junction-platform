@@ -104,7 +104,7 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
                           : "Use the public Contact page to send an owner support request with the relevant product, customer, or content context."}
                     </p>
                     <div className="mt-7 flex flex-wrap gap-3">
-                      {kind === "settings" && <><Link href="/owner/settings/payment-methods" className="button-primary buttonlike">Payment methods <ArrowRight className="size-4" /></Link><Link href="/owner/setup" className="button-quiet buttonlike">Owner setup</Link></>}
+                      {kind === "settings" && <Link href="/owner/setup" className="button-quiet buttonlike">Owner setup</Link>}
                       {kind === "support" && <Link href="/contact" className="button-primary buttonlike">Contact support <ArrowRight className="size-4" /></Link>}
                     </div>
                   </article>

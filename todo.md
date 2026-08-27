@@ -216,3 +216,6 @@
 - [x] Add owner-only project create, edit, publish, and safe delete controls without seeding project data.
 - [x] Remove the app-level project-cover file-size limit while keeping upload processing and storage references secure.
 - [x] Add regression coverage and non-destructively verify the new Owner Projects page at desktop and mobile widths.
+- [x] Move Payment Methods from Owner Settings to a dedicated Owner sidebar item and route.
+- [x] Replace free-form payment method type entry with a GoTyme, PayPal, GCash, and MariBank dropdown in the owner form and server validation.
+- [x] Re-test owner payment method configuration without creating a payment method or exposing payment account details.
