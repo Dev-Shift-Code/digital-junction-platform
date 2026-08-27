@@ -1,7 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ownerNavigation } from "@/data/ownerNavigation";
-import { ownerWorkspacePreview } from "@/data/ownerSamplePreview";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
@@ -36,7 +35,7 @@ const copy: Record<ViewKind, { eyebrow: string; title: string; description: stri
   vouchers: {
     eyebrow: "Voucher workspace",
     title: "Prepare future promotions safely.",
-    description: "The preview panels below show voucher workspace structure only. No real code, campaign, or redemption has been configured.",
+    description: "No voucher code, campaign, or redemption has been configured yet.",
   },
   settings: {
     eyebrow: "Owner settings",
@@ -46,7 +45,7 @@ const copy: Record<ViewKind, { eyebrow: string; title: string; description: stri
   support: {
     eyebrow: "Owner support",
     title: "Keep operating notes in reach.",
-    description: "Use the existing Contact channel for support requests. This page shows workspace structure, not fabricated support history.",
+    description: "Use the existing Contact channel for support requests. Support history will appear here only when it exists.",
   },
 };
 
@@ -57,7 +56,6 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
   const orders = trpc.portal.admin.orders.list.useQuery(undefined, { enabled: isOwner && kind === "sales" });
   const updateOrder = trpc.portal.admin.orders.updateStatus.useMutation({ onSuccess: () => orders.refetch() });
   const title = copy[kind];
-  const previewPanels = kind === "customers" ? [] : ownerWorkspacePreview[kind];
   const icon =
     kind === "sales" ? <FileClock className="size-5" /> : kind === "vouchers" ? <BadgePercent className="size-5" /> : kind === "settings" ? <Settings2 className="size-5" /> : <CircleHelp className="size-5" />;
 
@@ -107,19 +105,10 @@ export function OwnerWorkspaceView({ kind }: { kind: ViewKind }) {
                     </div>
                   </article>
                   <aside className="rounded-[1.55rem] bg-[#89D7B7] p-6 text-[#1A312C]">
-                    <p className="eyebrow">Sample admin preview</p>
-                    <h2 className="display mt-3 text-3xl">Data-safe by design.</h2>
-                    <p className="mt-4 text-sm leading-6 text-[#1A312C]/70">The populated panels below are workflow layouts only. They never represent a real sale, payment, voucher, redemption, support outcome, or invoice.</p>
+                    <p className="eyebrow">Operational status</p>
+                    <h2 className="display mt-3 text-3xl">Ready when your records are.</h2>
+                    <p className="mt-4 text-sm leading-6 text-[#1A312C]/70">This area intentionally stays clear until there is genuine voucher, support, or operational information to show.</p>
                   </aside>
-                </section>
-                <section className="grid gap-4 md:grid-cols-3">
-                  {previewPanels.map(panel => (
-                    <article key={panel.label} className="rounded-[1.35rem] border border-dashed border-[#428475]/28 bg-white p-5">
-                      <p className="font-mono text-[0.58rem] uppercase tracking-[.1em] text-[#428475]">Sample preview · {panel.label}</p>
-                      <p className="display mt-4 text-2xl text-[#1A312C]">{panel.value}</p>
-                      <p className="mt-3 text-sm leading-6 text-[#1A312C]/65">{panel.detail}</p>
-                    </article>
-                  ))}
                 </section>
               </>
             )}
@@ -157,21 +146,12 @@ function CustomerWorkspace({ clients }: { clients: CustomerQueryView }) {
       ) : (
         <div className="mt-6 rounded-xl border border-dashed border-[#1A312C]/16 bg-[#FFF4E1]/60 p-6 text-sm leading-6 text-[#1A312C]/65">No customer accounts are available yet. When a person registers directly with Digital Junction, they will appear here for controlled product-access grants.</div>
       )}
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {["Account status layout", "Access-control layout", "Customer notes layout"].map(label => (
-          <div key={label} className="rounded-xl border border-dashed border-[#428475]/25 bg-[#89D7B7]/10 p-4">
-            <p className="font-mono text-[0.56rem] uppercase tracking-[.1em] text-[#428475]">Sample preview</p>
-            <p className="mt-2 font-bold text-[#1A312C]">{label}</p>
-            <p className="mt-2 text-xs leading-5 text-[#1A312C]/62">Structure only — no fictional customer activity is shown.</p>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
 
 function SalesWorkspace({ orders, onUpdate, updating }: { orders: OrderQueryView; onUpdate: (orderId: number, status: OrderSummary["order"]["status"]) => void; updating: boolean }) {
-  return <section className="rounded-[1.55rem] border border-[#1A312C]/12 bg-white p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Direct purchase orders</p><h2 className="display mt-1 text-3xl text-[#1A312C]">Order fulfilment</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#1A312C]/62">Review only genuine guest orders here. Update status after you have handled the real payment and delivery process; no payment confirmation or file delivery is created automatically.</p></div><Link href="/owner/inventory" className="button-quiet buttonlike w-fit">Manage files in Inventory</Link></div><p className="mt-4 text-xs leading-5 text-[#1A312C]/55">Buyer delivery files are added or removed inside each product’s Add/Edit Product form in Inventory.</p>{orders.isLoading ? <div className="grid min-h-36 place-items-center"><Loader2 className="size-6 animate-spin text-[#428475]" /></div> : orders.data?.length ? <div className="mt-6 overflow-x-auto rounded-xl border border-[#1A312C]/10"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[#FFF4E1]/55 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/50"><tr><th className="px-4 py-3 font-medium">Order</th><th className="px-4 py-3 font-medium">Buyer</th><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 text-right font-medium">Update</th></tr></thead><tbody>{orders.data.map(({ order, product }) => <tr key={order.id} className="border-t border-[#1A312C]/8"><td className="px-4 py-4"><p className="font-bold text-[#1A312C]">#{order.id}</p><p className="mt-1 text-xs text-[#1A312C]/52">{new Date(order.createdAt).toLocaleDateString()}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{order.name}</p><p className="mt-1 text-xs text-[#1A312C]/55">{order.email}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{product.title}</p><p className="mt-1 text-xs text-[#1A312C]/55">₱{product.price}</p></td><td className="px-4 py-4"><span className="rounded-full bg-[#89D7B7]/24 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/70">{order.status}</span></td><td className="px-4 py-4 text-right"><select value={order.status} disabled={updating} onChange={event => onUpdate(order.id, event.target.value as OrderSummary["order"]["status"])} className="form-field ml-auto !h-9 !w-30 !py-1 text-xs"><option value="submitted">Submitted</option><option value="contacted">Contacted</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></td></tr>)}</tbody></table></div> : <div className="mt-6 rounded-xl border border-dashed border-[#1A312C]/16 bg-[#FFF4E1]/55 p-7"><p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#428475]">No live orders</p><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Submitted guest purchases will appear here after a visitor places an order for a genuine published product. Sample products do not create an order record.</p></div>}</section>;
+  return <section className="rounded-[1.55rem] border border-[#1A312C]/12 bg-white p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Direct purchase orders</p><h2 className="display mt-1 text-3xl text-[#1A312C]">Order fulfilment</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#1A312C]/62">Review only genuine guest orders here. Update status after you have handled the real payment and delivery process; no payment confirmation or file delivery is created automatically.</p></div><Link href="/owner/inventory" className="button-quiet buttonlike w-fit">Manage files in Inventory</Link></div><p className="mt-4 text-xs leading-5 text-[#1A312C]/55">Buyer delivery files are added or removed inside each product’s Add/Edit Product form in Inventory.</p>{orders.isLoading ? <div className="grid min-h-36 place-items-center"><Loader2 className="size-6 animate-spin text-[#428475]" /></div> : orders.data?.length ? <div className="mt-6 overflow-x-auto rounded-xl border border-[#1A312C]/10"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[#FFF4E1]/55 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/50"><tr><th className="px-4 py-3 font-medium">Order</th><th className="px-4 py-3 font-medium">Buyer</th><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 text-right font-medium">Update</th></tr></thead><tbody>{orders.data.map(({ order, product }) => <tr key={order.id} className="border-t border-[#1A312C]/8"><td className="px-4 py-4"><p className="font-bold text-[#1A312C]">#{order.id}</p><p className="mt-1 text-xs text-[#1A312C]/52">{new Date(order.createdAt).toLocaleDateString()}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{order.name}</p><p className="mt-1 text-xs text-[#1A312C]/55">{order.email}</p></td><td className="px-4 py-4"><p className="font-semibold text-[#1A312C]">{product.title}</p><p className="mt-1 text-xs text-[#1A312C]/55">₱{product.price}</p></td><td className="px-4 py-4"><span className="rounded-full bg-[#89D7B7]/24 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/70">{order.status}</span></td><td className="px-4 py-4 text-right"><select value={order.status} disabled={updating} onChange={event => onUpdate(order.id, event.target.value as OrderSummary["order"]["status"])} className="form-field ml-auto !h-9 !w-30 !py-1 text-xs"><option value="submitted">Submitted</option><option value="contacted">Contacted</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></td></tr>)}</tbody></table></div> : <div className="mt-6 rounded-xl border border-dashed border-[#1A312C]/16 bg-[#FFF4E1]/55 p-7"><p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#428475]">No live orders</p><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Submitted guest purchases will appear here after a visitor places an order for a genuine published product.</p></div>}</section>;
 }
 
 export const OwnerSales = () => <OwnerWorkspaceView kind="sales" />;

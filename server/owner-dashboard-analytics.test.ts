@@ -6,10 +6,11 @@ const dashboard = readFileSync(new URL("../client/src/pages/OwnerDashboard.tsx",
 describe("owner dashboard analytics layout", () => {
   it("contains every requested analytics section with explicit real-data safeguards", () => {
     ["Total Revenue", "Total Projects", "Total Customers", "Avg. Order Value", "Sales Overview", "Recent Activities", "Weekly Sales", "Top Products", "Monthly Revenue", "Recent Transactions"].forEach(label => expect(dashboard).toContain(label));
-    ["Awaiting real sales", "Awaiting real orders", "Sample chart shape only", "No real transactions yet."].forEach(copy => expect(dashboard).toContain(copy));
+    ["Awaiting real sales", "Awaiting real orders", "No recorded data yet.", "No real transactions yet."].forEach(copy => expect(dashboard).toContain(copy));
   });
 
-  it("exposes sample chart values through hover and keyboard-focus tooltip components", () => {
-    ["PreviewBar", "PreviewPoint", "Sample value", "Not a recorded sale", "Not recorded revenue", "formatPreviewPeso"].forEach(copy => expect(dashboard).toContain(copy));
+  it("uses honest empty analytics states rather than fabricated chart values", () => {
+    expect(dashboard).toContain("EmptyAnalytics");
+    ["PreviewBar", "PreviewPoint", "Sample value", "formatPreviewPeso"].forEach(copy => expect(dashboard).not.toContain(copy));
   });
 });

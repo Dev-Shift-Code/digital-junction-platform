@@ -186,3 +186,26 @@
 - [x] Preload every detailed Owner Content field with the current visitor-facing default section values so the owner can edit or replace them directly.
 - [x] Preserve saved overrides while showing the current full default value in unsaved public sections, then verify the populated editing workspace without changing public content.
 - [x] Add a persisted editable eyebrow-label field to public sections, migrate the schema safely, and render the saved label on matching visitor-facing sections.
+- [x] Identify all dummy and sample-only UI data, placeholder records, and demonstration text without altering real owner-managed products, files, or public content.
+- [x] Remove dummy and sample-only product, project, dashboard, sales, customer, voucher, and public preview content while preserving real owner data.
+- [x] Validate clean empty states and real-product browsing after the dummy-data cleanup.
+- [x] Remove the oversized public Shop “Browse and checkout as a guest” promotional block.
+- [x] Render public product cover images in a compact 1:1 square container on the product detail page.
+- [x] Add regression coverage and verify the revised Shop and product detail layouts without modifying product data.
+- [x] Remove the public product-detail Included files section, including file metadata and its empty state, while retaining text-only Inclusions.
+- [x] Update regression coverage and verify the simplified public product detail does not expose buyer-file metadata.
+- [ ] Add an owner-managed payment methods data model with active state, display order, logo, QR code, instructions, and timestamps.
+- [ ] Add immutable payment-method snapshots, reference number, payment proof storage metadata, and payment status to guest orders without storing payment account details.
+- [ ] Add owner-only Settings → Payment Methods management with local logo/QR upload, preview, create, edit, activate/deactivate, ordering, and guarded deletion.
+- [ ] Redesign guest checkout into the requested order-summary and payment flow with dynamic active methods, QR/instructions, required payment reference, and payment proof upload.
+- [ ] Add owner Sales payment-review controls to verify or reject submitted payment evidence while preserving historical payment snapshots.
+- [ ] Add authorization, input-validation, privacy, file-type/size, inactive-method, and historical-method regression coverage.
+- [ ] Validate responsive payment-management and checkout empty states without creating artificial payment methods or buyer payments.
+- [x] Retheme every public Digital Products page surface, card, control, and empty state from stark white to the established DJDC cream, dark-green, teal, and mint palette.
+- [x] Add regression coverage and validate the rethemed public Digital Products page at desktop and mobile widths.
+- [x] Diagnose and repair the Owner Add/Edit Product Add buyer files control so local file selection and upload work reliably for saved products.
+- [x] Add regression coverage and non-destructive browser verification for buyer-file picker feedback, validation, and upload readiness.
+- [x] Repair buyer delivery-file upload support for PDF and ZIP files up to 8 MB in both the product form and protected server procedure.
+- [x] Add PDF and ZIP upload validation coverage and verify clear file-picker feedback without modifying the owner’s real files.
+- [x] Restore the established DJDC cream-grid, dark-green, teal, and mint Digital Products composition while retaining the cleaned real-product catalogue.
+- [x] Verify restored public product styling and owner file-upload controls without modifying owner data.

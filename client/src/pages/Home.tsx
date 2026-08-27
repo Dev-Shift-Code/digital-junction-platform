@@ -2,7 +2,6 @@ import { ArrowRight, Blocks, BriefcaseBusiness, Code2, FileText, Globe2, LayoutD
 import { Link } from "wouter";
 import PublicLayout from "@/components/PublicLayout";
 import { getPublicSectionDefault } from "@/data/publicContentDefaults";
-import { sampleProducts, sampleProjects } from "@/data/samplePreview";
 import { usePublicSection } from "@/hooks/usePublicSection";
 import { trpc } from "@/lib/trpc";
 
@@ -75,10 +74,10 @@ export default function Home() {
   const projectSection = usePublicSection("home", "projects", getPublicSectionDefault("home", "projects"));
   const story = usePublicSection("home", "story", getPublicSectionDefault("home", "story"));
   const finalCta = usePublicSection("home", "call-to-action", getPublicSectionDefault("home", "call-to-action"));
-  const usingSampleProducts = !products.isLoading && !products.data?.length;
-  const featuredProducts = usingSampleProducts ? sampleProducts.filter(product => product.isFeatured).slice(0, 3) : products.data?.filter(product => product.isFeatured).slice(0, 3) ?? products.data?.slice(0, 3) ?? [];
-  const usingSampleProjects = !projects.isLoading && !projects.data?.length;
-  const featuredProjects = usingSampleProjects ? sampleProjects.slice(0, 3) : projects.data?.slice(0, 3) ?? [];
+  const usingSampleProducts = false;
+  const featuredProducts = products.data?.filter(product => product.isFeatured).slice(0, 3) ?? products.data?.slice(0, 3) ?? [];
+  const usingSampleProjects = false;
+  const featuredProjects = projects.data?.slice(0, 3) ?? [];
 
   return <PublicLayout><main>
     {hero.isVisible && <section className="hero-grid relative isolate overflow-hidden bg-[#1A312C] text-[#FFF4E1]"><div className="hero-orb absolute -right-32 top-0 size-[42rem] opacity-80" /><div className="site-container relative grid min-h-[650px] items-center gap-14 py-20 lg:grid-cols-[1.03fr_.97fr] lg:py-24"><div className="max-w-xl"><p className="font-mono text-[0.69rem] uppercase tracking-[0.15em] text-[#89D7B7]">{hero.eyebrow}</p><h1 className="display mt-6 text-[3.2rem] leading-[0.96] sm:text-6xl lg:text-[4.5rem]">{hero.title}</h1><p className="mt-7 max-w-lg whitespace-pre-line text-base leading-7 text-[#FFF4E1]/72 sm:text-lg">{hero.body}</p><div className="mt-9 flex flex-wrap gap-3"><Link href={hero.ctaHref || "/contact"} className="button-primary buttonlike !bg-[#89D7B7] !text-[#1A312C] hover:!bg-[#FFF4E1]">{hero.ctaLabel || "Start a project"} <ArrowRight className="size-4" /></Link><Link href="/shop" className="button-secondary buttonlike">Explore digital products</Link></div><div className="mt-12 flex flex-wrap items-center gap-3 border-t border-[#FFF4E1]/15 pt-6 font-mono text-[0.65rem] uppercase tracking-[0.09em] text-[#FFF4E1]/55"><span>Technology-driven</span><span className="size-1 rounded-full bg-[#89D7B7]" /><span>Creative</span><span className="size-1 rounded-full bg-[#89D7B7]" /><span>Solution-oriented</span></div></div><div className="relative mx-auto w-full max-w-lg lg:mx-0"><HeroVisual imageUrl={hero.imageUrl} /></div></div></section>}

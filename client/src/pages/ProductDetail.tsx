@@ -1,7 +1,6 @@
 import PublicLayout from "@/components/PublicLayout";
-import { sampleProducts } from "@/data/samplePreview";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Check, FileBox, FileText, Loader2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, FileBox, Loader2, ShoppingBag } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useRoute } from "wouter";
 
@@ -9,46 +8,35 @@ function money(value: string | number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(Number(value));
 }
 
-function fileSize(sizeBytes: number | null) {
-  if (!sizeBytes) return "File size added by owner";
-  return sizeBytes < 1024 * 1024 ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export default function ProductDetail() {
   const [, params] = useRoute("/shop/:handle");
   const input = useMemo(() => ({ slug: params?.handle ?? "" }), [params?.handle]);
-  const sample = useMemo(() => sampleProducts.find(item => item.slug === input.slug), [input.slug]);
   const productQuery = trpc.portal.products.bySlug.useQuery(input, { enabled: Boolean(input.slug) });
-  const product = productQuery.data ?? sample;
-  const isSample = Boolean(sample && !productQuery.data);
-  const inclusionQuery = trpc.portal.products.inclusions.useQuery({ productId: productQuery.data?.id ?? 0 }, { enabled: Boolean(productQuery.data?.id) });
-  const featureList = sample?.features ?? ["Direct purchase without a customer account", "Owner-managed files and delivery", "Product support from Digital Junction"];
+  const product = productQuery.data;
   const textInclusions = productQuery.data?.deliveryNotes?.trim();
 
-  if (productQuery.isLoading && !sample) return <PublicLayout><main className="grid min-h-[60vh] place-items-center"><Loader2 className="size-7 animate-spin text-[#428475]" /></main></PublicLayout>;
-  if (!product || (productQuery.error && !sample)) return <PublicLayout><main className="site-container py-24"><Link href="/shop" className="inline-flex items-center gap-2 text-sm font-bold text-[#428475]"><ArrowLeft className="size-4" />Back to products</Link><h1 className="display mt-8 text-5xl text-[#1A312C]">This product is not available.</h1></main></PublicLayout>;
+  if (productQuery.isLoading) return <PublicLayout><main className="grid min-h-[60vh] place-items-center"><Loader2 className="size-7 animate-spin text-[#428475]" /></main></PublicLayout>;
+  if (!product || productQuery.error) return <PublicLayout><main className="site-container py-24"><Link href="/shop" className="inline-flex items-center gap-2 text-sm font-bold text-[#428475]"><ArrowLeft className="size-4" />Back to products</Link><h1 className="display mt-8 text-5xl text-[#1A312C]">This product is not available.</h1></main></PublicLayout>;
 
   return (
     <PublicLayout>
       <main className="section-grid py-10 sm:py-16">
         <div className="site-container">
           <Link href="/shop" className="inline-flex items-center gap-2 text-sm font-bold text-[#428475] hover:text-[#1A312C]"><ArrowLeft className="size-4" />Back to products</Link>
-          {isSample ? <div className="mt-6 rounded-xl border border-[#428475]/20 bg-[#89D7B7]/18 px-4 py-3 text-xs leading-5 text-[#1A312C]/72"><strong className="text-[#1A312C]">Sample product preview:</strong> this shows the product-detail layout only. It is not active or purchasable.</div> : null}
-          <div className="mt-8 grid gap-10 lg:grid-cols-[1.04fr_.96fr]">
-            <div className="overflow-hidden rounded-[1.5rem] bg-[#89D7B7]/25">
-              {product.coverImageUrl ? <img src={product.coverImageUrl} alt={product.title} className="aspect-[1.18] size-full object-cover" /> : <div className="relative aspect-[1.18] overflow-hidden bg-[linear-gradient(135deg,#1A312C,#428475)]"><span className="absolute left-5 top-5 rounded-full bg-[#FFF4E1]/14 px-3 py-1 font-mono text-[.58rem] uppercase tracking-[.1em] text-[#FFF4E1]">{product.category}</span><div className="absolute inset-x-6 bottom-6 rounded-2xl border border-[#FFF4E1]/16 bg-[#FFF4E1]/10 p-5 text-[#FFF4E1]"><FileBox className="size-6 text-[#89D7B7]" /><p className="mt-5 font-mono text-[.56rem] uppercase tracking-[.1em] text-[#89D7B7]">Digital Junction</p><p className="mt-2 text-xl font-bold">{product.title}</p></div></div>}
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)] lg:items-start">
+            <div className="mx-auto w-full max-w-[24rem] overflow-hidden rounded-[1.5rem] bg-[#89D7B7]/25">
+              {product.coverImageUrl ? <img src={product.coverImageUrl} alt={product.title} className="aspect-square size-full object-cover" /> : <div className="relative aspect-square overflow-hidden bg-[linear-gradient(135deg,#1A312C,#428475)]"><span className="absolute left-5 top-5 rounded-full bg-[#FFF4E1]/14 px-3 py-1 font-mono text-[.58rem] uppercase tracking-[.1em] text-[#FFF4E1]">{product.category}</span><div className="absolute inset-x-6 bottom-6 rounded-2xl border border-[#FFF4E1]/16 bg-[#FFF4E1]/10 p-5 text-[#FFF4E1]"><FileBox className="size-6 text-[#89D7B7]" /><p className="mt-5 font-mono text-[.56rem] uppercase tracking-[.1em] text-[#89D7B7]">Digital Junction</p><p className="mt-2 text-xl font-bold">{product.title}</p></div></div>}
             </div>
             <div className="lg:pt-4">
               <p className="font-mono text-[.66rem] uppercase tracking-[.12em] text-[#428475]">{product.category}</p>
               <h1 className="display mt-4 text-5xl leading-[.98] text-[#1A312C]">{product.title}</h1>
               <section className="mt-7"><p className="font-mono text-[.6rem] uppercase tracking-[.1em] text-[#428475]">Description</p><p className="mt-3 text-base leading-7 text-[#1A312C]/68">{product.description || product.summary}</p></section>
-              <div className="mt-8 flex items-center justify-between border-y border-[#1A312C]/12 py-5"><span className="text-sm text-[#1A312C]/65">{isSample ? "Sample price" : "Product price"}</span><strong className="font-display text-3xl text-[#1A312C]">{money(product.price)}</strong></div>
+              <div className="mt-8 flex items-center justify-between border-y border-[#1A312C]/12 py-5"><span className="text-sm text-[#1A312C]/65">Product price</span><strong className="font-display text-3xl text-[#1A312C]">{money(product.price)}</strong></div>
               <section className="mt-7">
                 <p className="font-mono text-[.6rem] uppercase tracking-[.1em] text-[#428475]">Inclusions</p>
-                {textInclusions ? <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#1A312C]/68">{textInclusions}</p> : isSample ? <div className="mt-3 grid gap-2">{featureList.map(item => <div key={item} className="flex items-center gap-3 text-sm text-[#1A312C]/67"><span className="grid size-5 place-items-center rounded-full bg-[#89D7B7]/35 text-[#1A312C]"><Check className="size-3" /></span>{item}</div>)}</div> : <div className="mt-3 rounded-xl border border-dashed border-[#1A312C]/15 bg-[#FFF4E1]/55 p-4 text-sm leading-6 text-[#1A312C]/63">The owner has not added text inclusions for this product yet.</div>}
+                {textInclusions ? <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#1A312C]/68">{textInclusions}</p> : <div className="mt-3 rounded-xl border border-dashed border-[#1A312C]/15 bg-[#FFF4E1]/55 p-4 text-sm leading-6 text-[#1A312C]/63">The owner has not added text inclusions for this product yet.</div>}
               </section>
-              {!isSample ? <section className="mt-6"><p className="font-mono text-[.6rem] uppercase tracking-[.1em] text-[#428475]">Included files</p>{inclusionQuery.isLoading ? <div className="mt-3 flex items-center gap-2 text-sm text-[#1A312C]/58"><Loader2 className="size-4 animate-spin" />Loading included files…</div> : inclusionQuery.data?.length ? <div className="mt-3 grid gap-2">{inclusionQuery.data.map(file => <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1A312C]/10 bg-white/70 px-3 py-3"><span className="flex min-w-0 items-center gap-2"><FileText className="size-4 shrink-0 text-[#428475]" /><span className="truncate text-sm font-semibold text-[#1A312C]">{file.fileName}</span></span><span className="shrink-0 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {fileSize(file.sizeBytes)}</span></div>)}</div> : <p className="mt-3 text-sm leading-6 text-[#1A312C]/60">No buyer delivery files are listed yet.</p>}<p className="mt-3 text-xs leading-5 text-[#1A312C]/52">File names and formats are shown for reference only. Stored delivery links remain protected.</p></section> : null}
-              {isSample ? <section className="mt-7 rounded-2xl border border-dashed border-[#1A312C]/16 bg-white/65 p-5"><p className="eyebrow">Preview only</p><h2 className="display mt-3 text-2xl text-[#1A312C]">A real product enables direct purchase.</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/64">Publish a real product from Owner Inventory to activate this purchase button.</p><Link href="/shop" className="button-primary buttonlike mt-5">Browse products</Link></section> : <section className="mt-7 rounded-2xl border border-[#1A312C]/12 bg-white/65 p-5"><span className="grid size-10 place-items-center rounded-xl bg-[#89D7B7]/28 text-[#1A312C]"><ShoppingBag className="size-5" /></span><p className="eyebrow mt-5">Direct purchase</p><h2 className="display mt-3 text-2xl text-[#1A312C]">Ready to buy?</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/64">No account required. Your order is created on the next step; payment and file delivery are confirmed by the owner.</p><Link href={`/checkout/${product.slug}`} className="button-primary buttonlike mt-5">Buy now</Link></section>}
+              <section className="mt-7 rounded-2xl border border-[#1A312C]/12 bg-[#FFF4E1]/78 p-5 shadow-[0_12px_30px_rgba(26,49,44,.04)]"><span className="grid size-10 place-items-center rounded-xl bg-[#89D7B7]/32 text-[#1A312C]"><ShoppingBag className="size-5" /></span><p className="eyebrow mt-5">Direct purchase</p><h2 className="display mt-3 text-2xl text-[#1A312C]">Ready to buy?</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/64">No account required. Your order is created on the next step; payment and file delivery are confirmed by the owner.</p><Link href={`/checkout/${product.slug}`} className="button-primary buttonlike mt-5">Buy now</Link></section>
             </div>
           </div>
         </div>

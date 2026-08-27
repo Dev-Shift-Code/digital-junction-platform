@@ -1,7 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ownerNavigation } from "@/data/ownerNavigation";
-import { sampleProducts } from "@/data/samplePreview";
 import { trpc } from "@/lib/trpc";
 import {
   Archive,
@@ -193,11 +192,13 @@ function BuyerFilesPanel({
           <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Upload PDFs, ZIPs, PNGs, documents, or any other file type here. These are separate from the text-only Inclusions above.</p>
         </div>
         {canAttachFiles ? (
-          <label className="button-primary w-fit cursor-pointer">
-            <Upload className="size-4" />
-            {isUploading ? "Uploading…" : "Add buyer files"}
-            <input type="file" multiple className="sr-only" onChange={onSelectFiles} disabled={isUploading} />
-          </label>
+          <div>
+            <input id={`buyer-delivery-files-${product?.id ?? "new"}`} type="file" multiple accept="*/*" className="sr-only" onChange={onSelectFiles} disabled={isUploading} />
+            <label htmlFor={`buyer-delivery-files-${product?.id ?? "new"}`} className={`button-primary w-fit cursor-pointer ${isUploading ? "pointer-events-none opacity-60" : ""}`}>
+              <Upload className="size-4" />
+              {isUploading ? "Uploading…" : "Add buyer files"}
+            </label>
+          </div>
         ) : null}
       </div>
 
@@ -264,18 +265,8 @@ export default function OwnerProducts() {
     const itemStatus: InventoryRow["status"] = item.isArchived ? "Archived" : item.isPublished ? "Active" : "Draft";
     return { id: item.id, title: item.title, category: item.category, summary: item.summary, price: Number(item.price), status: itemStatus, detail: item.deliveryNotes?.slice(0, 52) || "Digital product listing", isSample: false, source: item };
   }), [products.data]);
-  const sampleRows = useMemo<InventoryRow[]>(() => sampleProducts.map(item => ({
-    id: `sample-${item.id}`,
-    title: item.title,
-    category: item.category,
-    summary: item.summary,
-    price: Number(item.price),
-    status: "Preview only",
-    detail: "Sample inventory metadata · not a live listing",
-    isSample: true,
-  })), []);
-  const usingSamples = !products.isLoading && realRows.length === 0;
-  const sourceRows = usingSamples ? sampleRows : realRows;
+  const usingSamples = false;
+  const sourceRows = realRows;
   const categories = useMemo(() => Array.from(new Set(sourceRows.map(row => row.category))).sort(), [sourceRows]);
   const filteredRows = useMemo(() => sourceRows.filter(row => {
     const matchesStatus = status === "all" || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
@@ -366,7 +357,28 @@ export default function OwnerProducts() {
         sizeBytes: file.size,
         base64: await readFileAsBase64(file),
       })));
+      if (editor && editor !== "new") {
+        const failedFiles: PendingBuyerFile[] = [];
+        let uploadedCount = 0;
+        for (const file of staged) {
+          try {
+            await uploadBuyerFile.mutateAsync({ productId: editor.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
+            uploadedCount += 1;
+          } catch {
+            failedFiles.push(file);
+          }
+        }
+        await attachedBuyerFiles.refetch();
+        if (failedFiles.length) {
+          setPendingBuyerFiles(current => [...current, ...failedFiles]);
+          setNotice(uploadedCount ? `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} uploaded. Retry the remaining file${failedFiles.length === 1 ? "" : "s"} below.` : "We could not upload those files. Retry the queued file below.");
+          return;
+        }
+        setNotice(`${uploadedCount} buyer file${uploadedCount === 1 ? "" : "s"} uploaded.`);
+        return;
+      }
       setPendingBuyerFiles(current => [...current, ...staged]);
+      setNotice(`${staged.length} file${staged.length === 1 ? "" : "s"} queued. Save the new product to upload ${staged.length === 1 ? "it" : "them"}.`);
     } catch {
       setNotice("We could not read one of those files. Please try again.");
     }

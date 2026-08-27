@@ -6,7 +6,6 @@ import NotFound from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
 import GuestCheckout from "@/pages/GuestCheckout";
 import OwnerDashboard from "@/pages/OwnerDashboard";
-import OwnerContentManager from "@/pages/OwnerContentManager";
 import OwnerPublicContent from "@/pages/OwnerPublicContent";
 import OwnerProducts from "@/pages/OwnerProducts";
 import OwnerShopPreview from "@/pages/OwnerShopPreview";
@@ -45,7 +44,6 @@ function Router() {
       <Route path={"/owner/settings"} component={OwnerSettings} />
       <Route path={"/owner/support"} component={OwnerSupport} />
       <Route path={"/owner"} component={OwnerDashboard} />
-      <Route path={"/owner/manage"} component={OwnerContentManager} />
       <Route path={"/owner/products"} component={OwnerProducts} />
       <Route path={"/owner/product-access"} component={OwnerProductAccess} />
       <Route path={"/owner/shop-preview"} component={OwnerShopPreview} />
