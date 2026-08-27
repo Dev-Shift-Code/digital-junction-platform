@@ -169,4 +169,4 @@
 - [x] Add owner delivery-file remove controls for every uploaded buyer file without exposing protected file links publicly.
 - [x] Add a safe owner-only Delete Product action that removes the product record only when no genuine orders depend on it.
 - [ ] Verify local cover upload/removal, buyer-file removal, text inclusions, product deletion safeguards, and public product display.
-- [ ] Save the Owner Inventory upload and deletion update checkpoint.
+- [x] Save the Owner Inventory upload and deletion update checkpoint.
