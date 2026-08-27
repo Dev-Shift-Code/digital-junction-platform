@@ -144,5 +144,5 @@
 - [x] Define clearly labelled sample values for Sales Overview, Weekly Sales, and Monthly Revenue chart hover states.
 - [x] Add accessible hover and keyboard-focus tooltips to every Owner Dashboard analytics chart point or bar.
 - [ ] Verify chart tooltip content, data-safe labels, and mobile interaction fallback.
-- [ ] Save the Owner Dashboard chart-tooltip update checkpoint.
+- [x] Save the Owner Dashboard chart-tooltip update checkpoint.
 - [ ] Inspect hover and keyboard-focus tooltips for Sales Overview, Weekly Sales, and Monthly Revenue in a browser, including a mobile interaction fallback.

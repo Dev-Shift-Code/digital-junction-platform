@@ -20,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, RefreshCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -37,6 +37,7 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+const SESSION_LOADING_GRACE_MS = 3500;
 
 export default function DashboardLayout({
   children,
@@ -52,13 +53,23 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const authScope: "customer" | "owner" = navigation.some(item => item.path.startsWith("/owner")) ? "owner" : "customer";
-  const { loading, user } = useAuth({ scope: authScope });
+  const { loading, user, error, refresh } = useAuth({ scope: authScope });
+  const [sessionCheckTimedOut, setSessionCheckTimedOut] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading) {
+      setSessionCheckTimedOut(false);
+      return;
+    }
+    const timeout = window.setTimeout(() => setSessionCheckTimedOut(true), SESSION_LOADING_GRACE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [loading]);
+
+  if (loading && !sessionCheckTimedOut) {
     return <DashboardLayoutSkeleton />
   }
 
@@ -71,9 +82,15 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              {authScope === "owner" ? "Access to this area requires a Digital Junction owner account." : "Access to this area requires a Digital Junction customer account."}
+              {sessionCheckTimedOut
+                ? authScope === "owner"
+                  ? "We could not confirm the separate Owner session in this browser. Retry the check or use the direct Owner sign-in page."
+                  : "We could not confirm the customer session in this browser. Retry the check or sign in again."
+                : authScope === "owner" ? "Access to this area requires a Digital Junction owner account." : "Access to this area requires a Digital Junction customer account."}
             </p>
+            {error ? <p className="text-xs text-muted-foreground text-center">Session status is unavailable right now. Your credentials remain private.</p> : null}
           </div>
+          {sessionCheckTimedOut ? <Button onClick={() => { setSessionCheckTimedOut(false); void refresh(); }} variant="outline" size="lg" className="w-full"><RefreshCcw className="size-4" />Retry session check</Button> : null}
           <Button
             onClick={() => window.location.assign(authScope === "owner" ? "/owner/login" : "/login")}
             size="lg"
