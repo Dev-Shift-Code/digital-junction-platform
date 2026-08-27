@@ -271,3 +271,4 @@
 - [x] Implement PayPal Sandbox Orders checkout, provider approval/capture, verified PayPal webhook processing, buyer status return, and Owner Sales provider visibility.
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
 - [ ] Configure PayPal Sandbox Worker secrets and a `PAYMENT.CAPTURE.COMPLETED` webhook, deploy the Worker/Pages changes, and non-destructively verify a real sandbox checkout.
+- [x] Refine the buyer checkout and Owner Payment Methods screens so PayRex GCash and PayPal are visibly separate, selected-state messaging is accurate, and deployment status is understandable.

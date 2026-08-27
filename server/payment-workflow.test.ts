@@ -90,8 +90,10 @@ describe("provider-backed payment workflow safeguards", () => {
 
   it("keeps owner provider guidance aligned with PayRex GCash and PayPal Sandbox", () => {
     const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
-    expect(paymentMethods).toContain("PayRex + PayPal");
-    expect(paymentMethods).toContain("No manual QR or proof review");
+    expect(paymentMethods).toContain("Payment providers");
+    expect(paymentMethods).toContain("PayRex GCash");
+    expect(paymentMethods).toContain("PayPal Sandbox");
+    expect(paymentMethods).toContain("No manual approval");
     expect(paymentMethods).toContain("payment_intent.succeeded");
     expect(paymentMethods).toContain("PAYMENT.CAPTURE.COMPLETED");
     expect(paymentMethods).toContain("/api/paypal/webhook");
