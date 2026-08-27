@@ -17,8 +17,6 @@ describe("Cloudflare Worker deployment wiring", () => {
     expect(worker).toContain('endpoint: "/api/trpc"');
     expect(worker).not.toContain("httpServerHandler");
     expect(worker).not.toContain("DJDC_UPLOADS");
-    expect(worker).toContain('pathname === "/manus-storage/djdc-logo_228b68ab.png"');
-    expect(worker).toContain('"Content-Type": "image/svg+xml"');
     expect(worker).toContain("Binary file storage is disabled in this D1-only deployment.");
   });
 

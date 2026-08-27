@@ -12,8 +12,6 @@ type WorkerBindings = Record<string, unknown> & {
   ASSETS?: { fetch: (request: Request) => Promise<Response> };
 };
 
-const brandMarkSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Digital Junction"><rect width="64" height="64" rx="14" fill="#FFF4E1"/><path d="M17 18h10c10 0 17 5 17 14s-7 14-17 14h-3v8H17V18Zm7 7v14h3c6 0 10-2 10-7s-4-7-10-7h-3Z" fill="#1A312C"/><path d="M38 40h9v14h-9z" fill="#428475"/></svg>`;
-
 function hydrateEnvironment(bindings: WorkerBindings) {
   process.env.CLOUDFLARE_WORKER = "1";
   for (const [key, value] of Object.entries(bindings)) {
@@ -111,10 +109,6 @@ export default {
         router: appRouter,
         createContext: createWorkerContext,
       });
-    }
-
-    if (pathname === "/manus-storage/djdc-logo_228b68ab.png") {
-      return new Response(brandMarkSvg, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" } });
     }
 
     if (pathname.startsWith("/manus-storage/")) {

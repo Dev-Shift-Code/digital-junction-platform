@@ -21,7 +21,7 @@ describe("DJDC branded confirmation and logo system", () => {
   });
 
   it("uses the supplied DJDC asset for public, owner, and browser-tab branding", () => {
-    const logoPath = "/manus-storage/djdc-logo_228b68ab.png";
+    const logoPath = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663920827301/UriSGgVGQZmuEDZB.png";
     expect(publicLayout).toContain(logoPath);
     expect(dashboardLayout).toContain(logoPath);
     expect(documentHead).toContain(`<link rel="icon" type="image/png" href="${logoPath}"`);
