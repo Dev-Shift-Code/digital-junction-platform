@@ -227,7 +227,7 @@ export const portalRouter = router({
             successUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=success`,
             cancelUrl: `${appOrigin}/checkout/${encodeURIComponent(product.slug)}?payment=${encodeURIComponent(publicToken)}&result=cancelled`, expiresAt,
           });
-          const order = await createPayrexCheckoutOrder({ productId: product.id, quantity: input.quantity, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
+          const order = await createPayrexCheckoutOrder({ productId: product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentReference: orderReference });
           await createPayrexPaymentTransaction({ orderId: order.id, publicToken, amountCents: unitAmountCents * input.quantity, providerCheckoutSessionId: session.id, providerPaymentIntentId: session.payment_intent?.id || null, checkoutUrl: session.url, expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : expiresAt });
           return { publicToken, checkoutUrl: session.url, expiresAt: session.expires_at ? session.expires_at * 1000 : expiresAt.getTime(), amountCents: unitAmountCents * input.quantity, currency: "PHP" };
         } catch (error) {
@@ -681,7 +681,7 @@ export const portalRouter = router({
           const bytes = Buffer.from(input.base64, "base64");
           if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty buyer delivery file." });
           const stored = await storagePutPrivateDeliveryFile(`product-files/${product.id}/${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
-          return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.publicId, storageProvider: "cloudinary_private", resourceType: stored.resourceType, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
+          return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.publicId, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           return unavailable(error);

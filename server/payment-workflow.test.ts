@@ -51,14 +51,16 @@ describe("PayRex GCash payment workflow safeguards", () => {
     const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
     const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
     const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
     const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
     expect(schema).toContain("paymentDeliveryEntitlements");
-    expect(schema).toContain('storageProvider: text().notNull().default("legacy")');
+    expect(schema).toContain("paymentDeliveryEntitlements");
     expect(router).toContain("paidDeliveryFiles: publicProcedure");
     expect(router).toContain("createOneTimeDeliveryLink: publicProcedure");
     expect(worker).toContain('pathname.startsWith("/api/delivery/")');
     expect(worker).toContain("consumeOneTimeDeliveryEntitlement");
     expect(worker).toContain("storageGetPrivateDeliveryUrl");
+    expect(database).toContain('file.fileUrl.includes("/raw/private/")');
     expect(checkout).toContain("Download once");
     expect(checkout).toContain("single-use download link");
   });

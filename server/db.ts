@@ -433,10 +433,10 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
   return created[0];
 }
 
-export async function createPayrexCheckoutOrder(input: { productId: number; quantity: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
+export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string }) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values({
-    productId: input.productId, quantity: input.quantity, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
+    productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
     status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken,
     paymentMethodName: "GCash", paymentMethodType: "GCash", paymentReference: input.paymentReference, paymentStatus: "awaiting_payment",
   });
@@ -494,8 +494,8 @@ export async function listPaidDeliveryFiles(paymentPublicToken: string) {
     .where(eq(paymentTransactions.publicToken, paymentPublicToken)).limit(1);
   const record = transaction[0];
   if (!record || record.transaction.status !== "paid" || record.order.paymentStatus !== "verified") return null;
-  const files = await db.select({ id: productFiles.id, fileName: productFiles.fileName, mimeType: productFiles.mimeType, sizeBytes: productFiles.sizeBytes })
-    .from(productFiles).where(and(eq(productFiles.productId, record.order.productId), eq(productFiles.storageProvider, "cloudinary_private"))).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt));
+  const files = (await db.select({ id: productFiles.id, fileName: productFiles.fileName, fileUrl: productFiles.fileUrl, mimeType: productFiles.mimeType, sizeBytes: productFiles.sizeBytes })
+    .from(productFiles).where(eq(productFiles.productId, record.order.productId)).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt))).filter(file => file.fileUrl.includes("/raw/private/")).map(({ fileUrl: _fileUrl, ...file }) => file);
   return { transaction: record.transaction, order: record.order, files };
 }
 
@@ -569,7 +569,7 @@ export async function deletePaymentMethod(paymentMethodId: number) {
 export async function getGuestCheckoutRequests() {
   const db = requireDatabase(await getDb());
   const rows = await db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).orderBy(desc(guestCheckoutRequests.createdAt));
-  const privateFiles = await db.select().from(productFiles).where(eq(productFiles.storageProvider, "cloudinary_private"));
+  const privateFiles = (await db.select().from(productFiles)).filter(file => file.fileUrl.includes("/raw/private/"));
   const entitlements = await db.select().from(paymentDeliveryEntitlements);
   const transactions = await db.select().from(paymentTransactions);
   return rows.map(row => {
@@ -588,7 +588,7 @@ export async function createOwnerOneTimeDeliveryEntitlement(input: { orderId: nu
   const transactionRows = await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId, order.id)).limit(1);
   const transaction = transactionRows[0];
   if (!transaction || transaction.status !== "paid") return null;
-  const files = await db.select().from(productFiles).where(and(eq(productFiles.id, input.productFileId), eq(productFiles.productId, order.productId), eq(productFiles.storageProvider, "cloudinary_private"))).limit(1);
+  const files = (await db.select().from(productFiles).where(and(eq(productFiles.id, input.productFileId), eq(productFiles.productId, order.productId))).limit(1)).filter(file => file.fileUrl.includes("/raw/private/"));
   const file = files[0];
   if (!file?.fileKey) return null;
   await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.paymentTransactionId, transaction.id), eq(paymentDeliveryEntitlements.productFileId, file.id), eq(paymentDeliveryEntitlements.status, "active")));

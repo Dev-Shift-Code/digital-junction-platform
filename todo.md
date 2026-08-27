@@ -266,4 +266,5 @@
 - [x] Show paid buyers their eligible one-time delivery controls on the payment-success page and provide owner revoke controls.
 - [ ] Send an optional transactional buyer email containing the one-time delivery link after verified payment, using a configured email provider and without exposing delivery URLs publicly.
 - [x] Extend Owner Sales with real PayRex payment and one-time delivery entitlement statuses per order, plus safe revoke and regeneration controls.
+- [x] Preserve D1 migration compatibility by moving delivery-entitlement schema into a new forward-only migration and keeping post-release runtime changes compatible with databases that may have applied the earlier PayRex migration.
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
