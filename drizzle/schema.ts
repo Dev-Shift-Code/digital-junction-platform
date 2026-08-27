@@ -68,8 +68,12 @@ export const paymentWebhookEvents = sqliteTable("paymentWebhookEvents", {
   id: integer().primaryKey({ autoIncrement: true }), provider: text().notNull(), providerEventId: text().notNull(), eventType: text().notNull(), providerPaymentIntentId: text(), receivedAt: createdAt(), processedAt: integer({ mode: "timestamp_ms" }), payloadHash: text().notNull(),
 }, table => [uniqueIndex("payment_webhook_events_provider_event_unique").on(table.provider, table.providerEventId), index("payment_webhook_events_intent_idx").on(table.providerPaymentIntentId)]);
 
+export const paymentDeliveryEntitlements = sqliteTable("paymentDeliveryEntitlements", {
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), paymentTransactionId: integer().notNull(), productFileId: integer().notNull(), fileName: text().notNull(), fileKey: text().notNull(), fileMimeType: text(), tokenHash: text().notNull(), status: text({ enum: ["active", "used", "revoked", "expired"] }).notNull().default("active"), expiresAt: integer({ mode: "timestamp_ms" }).notNull(), usedAt: integer({ mode: "timestamp_ms" }), revokedAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(),
+}, table => [uniqueIndex("payment_delivery_entitlement_token_unique").on(table.tokenHash), index("payment_delivery_entitlement_order_idx").on(table.orderId), index("payment_delivery_entitlement_transaction_idx").on(table.paymentTransactionId), index("payment_delivery_entitlement_status_idx").on(table.status, table.expiresAt)]);
+
 export const productFiles = sqliteTable("productFiles", {
-  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), fileName: text().notNull(), fileUrl: text().notNull(), fileKey: text(), mimeType: text(), sizeBytes: integer(), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), fileName: text().notNull(), fileUrl: text().notNull(), fileKey: text(), storageProvider: text().notNull().default("legacy"), resourceType: text(), mimeType: text(), sizeBytes: integer(), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
 }, table => [index("product_files_product_idx").on(table.productId)]);
 
 export const publicSiteContent = sqliteTable("publicSiteContent", {

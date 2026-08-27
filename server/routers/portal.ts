@@ -4,6 +4,7 @@ import {
   assignClientToProject,
   createDeliverable,
   createGuestCheckoutRequest,
+  createOneTimeDeliveryEntitlement,
   createPayrexCheckoutOrder,
   createPayrexPaymentTransaction,
   createInquiry,
@@ -33,6 +34,7 @@ import {
   getActivePaymentMethods,
   getPaymentMethodById,
   getPayrexPaymentStatus,
+  listPaidDeliveryFiles,
   getPublishedDigitalProductById,
   getPublishedCaseStudies,
   getPublishedDigitalProducts,
@@ -54,9 +56,10 @@ import {
   updateGuestCheckoutPaymentReview,
   updateMilestone,
   updateProject,
+  revokeDeliveryEntitlementsForOrder,
 } from "../db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { isD1OnlyFileMode, storagePut, storagePutPaymentQr } from "../storage";
+import { isD1OnlyFileMode, storagePut, storagePutPaymentQr, storagePutPrivateDeliveryFile } from "../storage";
 import { createPayrexGcashCheckout } from "../payrex";
 import { ENV } from "../_core/env";
 
@@ -76,6 +79,11 @@ function priceToCents(value: string | number) {
   if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) throw new TRPCError({ code: "BAD_REQUEST", message: "The product price is invalid." });
   const [whole, decimal = ""] = normalized.split(".");
   return Number(whole) * 100 + Number(decimal.padEnd(2, "0"));
+}
+
+async function hashDeliveryToken(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function unavailable(error: unknown): never {
@@ -231,6 +239,27 @@ export const portalRouter = router({
         const result = await getPayrexPaymentStatus(input.publicToken);
         if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Payment status was not found." });
         return { orderId: result.order.id, productTitle: result.product.title, amountCents: result.transaction.amountCents, currency: result.transaction.currency, status: result.transaction.status, paidAt: result.transaction.paidAt, expiresAt: result.transaction.expiresAt, checkoutUrl: result.transaction.status === "pending" ? result.transaction.checkoutUrl : null };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
+    paidDeliveryFiles: publicProcedure.input(z.object({ publicToken: z.string().uuid() })).query(async ({ input }) => {
+      try {
+        const delivery = await listPaidDeliveryFiles(input.publicToken);
+        if (!delivery) throw new TRPCError({ code: "FORBIDDEN", message: "Delivery files become available after verified payment." });
+        return { orderId: delivery.order.id, files: delivery.files };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        return unavailable(error);
+      }
+    }),
+    createOneTimeDeliveryLink: publicProcedure.input(z.object({ publicToken: z.string().uuid(), productFileId: z.number().int().positive() })).mutation(async ({ input }) => {
+      try {
+        const token = crypto.randomUUID();
+        const entitlement = await createOneTimeDeliveryEntitlement({ paymentPublicToken: input.publicToken, productFileId: input.productFileId, tokenHash: await hashDeliveryToken(token), expiresAt: new Date(Date.now() + 15 * 60 * 1000) });
+        if (!entitlement) throw new TRPCError({ code: "FORBIDDEN", message: "This file is not available for this verified payment." });
+        return { url: `${ENV.publicAppOrigin.replace(/\/+$/, "")}/api/delivery/${token}`, expiresAt: entitlement.expiresAt };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         return unavailable(error);
@@ -581,6 +610,13 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
+      revokeDeliveryLinks: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          return revokeDeliveryEntitlementsForOrder(input.orderId);
+        } catch (error) {
+          return unavailable(error);
+        }
+      }),
     }),
     paymentMethods: router({
       list: adminProcedure.query(async () => {
@@ -632,8 +668,8 @@ export const portalRouter = router({
           if (!product || product.isArchived) throw new TRPCError({ code: "NOT_FOUND", message: "An active product is required before attaching files." });
           const bytes = Buffer.from(input.base64, "base64");
           if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty buyer delivery file." });
-          const stored = await storagePut(`product-files/${product.id}/${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
-          return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.key, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
+          const stored = await storagePutPrivateDeliveryFile(`product-files/${product.id}/${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
+          return saveProductFile({ productId: product.id, fileName: input.fileName, fileUrl: stored.url, fileKey: stored.publicId, storageProvider: "cloudinary_private", resourceType: stored.resourceType, mimeType: input.mimeType || null, sizeBytes: input.sizeBytes, sortOrder: 0 });
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           return unavailable(error);

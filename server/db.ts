@@ -1,7 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../drizzle/schema";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentMethods, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEntitlements, paymentMethods, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -485,6 +485,49 @@ export async function markPayrexPaymentPaid(providerPaymentIntentId: string, pro
     await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
   }
   return transaction;
+}
+
+export async function listPaidDeliveryFiles(paymentPublicToken: string) {
+  const db = requireDatabase(await getDb());
+  const transaction = await db.select({ transaction: paymentTransactions, order: guestCheckoutRequests }).from(paymentTransactions)
+    .innerJoin(guestCheckoutRequests, eq(paymentTransactions.orderId, guestCheckoutRequests.id))
+    .where(eq(paymentTransactions.publicToken, paymentPublicToken)).limit(1);
+  const record = transaction[0];
+  if (!record || record.transaction.status !== "paid" || record.order.paymentStatus !== "verified") return null;
+  const files = await db.select({ id: productFiles.id, fileName: productFiles.fileName, mimeType: productFiles.mimeType, sizeBytes: productFiles.sizeBytes })
+    .from(productFiles).where(and(eq(productFiles.productId, record.order.productId), eq(productFiles.storageProvider, "cloudinary_private"))).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt));
+  return { transaction: record.transaction, order: record.order, files };
+}
+
+export async function createOneTimeDeliveryEntitlement(input: { paymentPublicToken: string; productFileId: number; tokenHash: string; expiresAt: Date }) {
+  const db = requireDatabase(await getDb());
+  const delivery = await listPaidDeliveryFiles(input.paymentPublicToken);
+  if (!delivery) return null;
+  const file = delivery.files.find(candidate => candidate.id === input.productFileId);
+  if (!file) return null;
+  const fileRows = await db.select().from(productFiles).where(eq(productFiles.id, input.productFileId)).limit(1);
+  const productFile = fileRows[0];
+  if (!productFile?.fileKey) return null;
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.paymentTransactionId, delivery.transaction.id), eq(paymentDeliveryEntitlements.productFileId, productFile.id), eq(paymentDeliveryEntitlements.status, "active")));
+  const result = await db.insert(paymentDeliveryEntitlements).values({ orderId: delivery.order.id, paymentTransactionId: delivery.transaction.id, productFileId: productFile.id, fileName: productFile.fileName, fileKey: productFile.fileKey, fileMimeType: productFile.mimeType || null, tokenHash: input.tokenHash, status: "active", expiresAt: input.expiresAt });
+  const created = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.id, Number(result.meta.last_row_id))).limit(1);
+  return created[0] || null;
+}
+
+export async function consumeOneTimeDeliveryEntitlement(tokenHash: string) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.tokenHash, tokenHash)).limit(1);
+  const entitlement = rows[0];
+  if (!entitlement || entitlement.status !== "active" || entitlement.expiresAt.getTime() < Date.now()) return null;
+  const claimed = await db.update(paymentDeliveryEntitlements).set({ status: "used", usedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.id, entitlement.id), eq(paymentDeliveryEntitlements.status, "active")));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return entitlement;
+}
+
+export async function revokeDeliveryEntitlementsForOrder(orderId: number) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.orderId, orderId), eq(paymentDeliveryEntitlements.status, "active")));
+  return { revoked: true as const };
 }
 
 export async function getActivePaymentMethods() {

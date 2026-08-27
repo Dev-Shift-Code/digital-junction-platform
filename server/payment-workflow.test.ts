@@ -44,7 +44,23 @@ describe("PayRex GCash payment workflow safeguards", () => {
     expect(worker).toContain('event.type === "payment_intent.succeeded"');
     expect(worker).toContain('markPayrexPaymentPaid');
     expect(payrex).toContain('crypto.subtle.sign("HMAC"');
-    expect(payrex).toContain('constantTimeEquals');
+    expect(payrex).toContain("constantTimeEquals");
+  });
+
+  it("releases only private buyer files through a one-time D1 entitlement after verified payment", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
+    expect(schema).toContain("paymentDeliveryEntitlements");
+    expect(schema).toContain('storageProvider: text().notNull().default("legacy")');
+    expect(router).toContain("paidDeliveryFiles: publicProcedure");
+    expect(router).toContain("createOneTimeDeliveryLink: publicProcedure");
+    expect(worker).toContain('pathname.startsWith("/api/delivery/")');
+    expect(worker).toContain("consumeOneTimeDeliveryEntitlement");
+    expect(worker).toContain("storageGetPrivateDeliveryUrl");
+    expect(checkout).toContain("Download once");
+    expect(checkout).toContain("single-use download link");
   });
 
   it("keeps the owner payment screen aligned with the PayRex GCash-only flow", () => {

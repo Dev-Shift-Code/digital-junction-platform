@@ -262,4 +262,7 @@
 - [ ] Verify Xendit GCash pricing and compare it with PayRex before confirming the payment provider.
 - [x] Implement server-side PayRex GCash Checkout Session creation, D1 transaction records, and signature-verified webhook handling; live sandbox credentials and remote migration remain pending.
 - [x] Align the owner payment configuration screen with PayRex GCash-only checkout and remove legacy manual payment choices from the active buyer flow.
+- [x] Automatically release revocable one-time buyer download controls for each eligible private file only after a verified PayRex payment event, with D1 delivery audit records.
+- [x] Show paid buyers their eligible one-time delivery controls on the payment-success page and provide owner revoke controls.
+- [ ] Send an optional transactional buyer email containing the one-time delivery link after verified payment, using a configured email provider and without exposing delivery URLs publicly.
 - [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.

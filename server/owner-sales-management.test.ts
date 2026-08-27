@@ -15,6 +15,8 @@ describe("Owner Sales management workspace", () => {
     expect(sales).toContain("paymentStatus");
     expect(sales).toContain("reviewPayment.mutate");
     expect(sales).toContain("updateOrder.mutate");
+    expect(sales).toContain("revokeDeliveryLinks.useMutation");
+    expect(sales).toContain("Revoke download links");
     expect(sales).toContain("does not create sample sales");
     expect(app).toContain('path={"/owner/sales"} component={OwnerSalesManagement}');
   });

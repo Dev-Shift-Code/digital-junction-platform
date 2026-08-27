@@ -1,9 +1,9 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "../server/routers";
 import { configureD1 } from "../server/db";
-import { configureCloudinaryStorage, configureD1OnlyFileMode } from "../server/storage";
+import { configureCloudinaryStorage, configureD1OnlyFileMode, storageGetPrivateDeliveryUrl } from "../server/storage";
 import { createWorkerContext } from "../server/_core/workerContext";
-import { markPayrexPaymentPaid, registerPayrexWebhookEvent } from "../server/db";
+import { consumeOneTimeDeliveryEntitlement, markPayrexPaymentPaid, registerPayrexWebhookEvent } from "../server/db";
 import { sha256, verifyPayrexWebhook } from "../server/payrex";
 
 type WorkerBindings = Record<string, unknown> & {
@@ -50,6 +50,23 @@ async function handlePayrexWebhook(request: Request) {
   }
 }
 
+async function handleOneTimeDelivery(token: string) {
+  const tokenHash = await sha256(token);
+  const entitlement = await consumeOneTimeDeliveryEntitlement(tokenHash);
+  if (!entitlement) return new Response("This download link has expired, was used, or was revoked.", { status: 410, headers: { "Cache-Control": "no-store" } });
+  try {
+    const extension = entitlement.fileName.includes(".") ? entitlement.fileName.split(".").pop() || null : null;
+    const cloudinaryUrl = await storageGetPrivateDeliveryUrl({ publicId: entitlement.fileKey, resourceType: "raw", format: extension, expiresAt: new Date(Date.now() + 60_000) });
+    const source = await fetch(cloudinaryUrl, { headers: { "Accept": entitlement.fileMimeType || "application/octet-stream" } });
+    if (!source.ok || !source.body) return new Response("The purchased file could not be delivered. Please contact Digital Junction with your order details.", { status: 502, headers: { "Cache-Control": "no-store" } });
+    const filename = entitlement.fileName.replace(/[\\"\r\n]/g, "_");
+    return new Response(source.body, { headers: { "Content-Type": source.headers.get("Content-Type") || entitlement.fileMimeType || "application/octet-stream", "Content-Length": source.headers.get("Content-Length") || "", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff" } });
+  } catch (error) {
+    console.error("[one-time-delivery] failed", error);
+    return new Response("The purchased file could not be delivered. Please contact Digital Junction with your order details.", { status: 502, headers: { "Cache-Control": "no-store" } });
+  }
+}
+
 export default {
   async fetch(request: Request, bindings: WorkerBindings, ctx: ExecutionContext) {
     hydrateEnvironment(bindings);
@@ -63,6 +80,11 @@ export default {
 
     const pathname = new URL(request.url).pathname;
     if (pathname === "/api/payrex/webhook") return handlePayrexWebhook(request);
+    if (request.method === "GET" && pathname.startsWith("/api/delivery/")) {
+      const token = pathname.slice("/api/delivery/".length);
+      if (/^[0-9a-f-]{36}$/i.test(token)) return handleOneTimeDelivery(token);
+      return new Response("Invalid download link.", { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
     if (pathname.startsWith("/api/trpc")) {
       return fetchRequestHandler({
         endpoint: "/api/trpc",
