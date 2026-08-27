@@ -251,3 +251,5 @@
 - [x] Remove the optional payment-method logo upload and its public checkout dependency, and remove the QR-code image file-size limit while retaining image-type validation.
 - [x] Diagnose and resolve the reported live QR-code upload failure in the D1-only Cloudflare deployment without modifying existing payment records.
 - [x] Replace unsupported D1-only QR binary upload with an owner-saved external HTTPS QR image URL field, preserving the QR display at checkout without adding R2.
+- [ ] Inspect the existing portfolio's D1-compatible image upload pattern and restore the equivalent QR image upload flow for Digital Junction without replacing D1 as the primary database.
+- [x] Integrate Cloudinary-backed owner QR image uploads while storing only QR URL and storage metadata in Cloudflare D1, without using R2.

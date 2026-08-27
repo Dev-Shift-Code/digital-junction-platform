@@ -53,7 +53,7 @@ import {
   updateProject,
 } from "../db";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { isD1OnlyFileMode, storagePut } from "../storage";
+import { isD1OnlyFileMode, storagePut, storagePutPaymentQr } from "../storage";
 
 const projectStatus = z.enum(["discovery", "in_progress", "review", "complete", "on_hold"]);
 const milestoneStatus = z.enum(["upcoming", "in_progress", "completed"]);
@@ -548,6 +548,17 @@ export const portalRouter = router({
           const { paymentMethodId, ...values } = input;
           return savePaymentMethod(values, paymentMethodId);
         } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      uploadQrCode: adminProcedure.input(z.object({ fileName: z.string().trim().min(1).max(255), mimeType: paymentImageMimeType, sizeBytes: z.number().int().min(1), base64: z.string().min(1) })).mutation(async ({ input }) => {
+        try {
+          const bytes = Buffer.from(input.base64, "base64");
+          if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a non-empty QR code image." });
+          const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          return storagePutPaymentQr(`payment-method-qr/${Date.now()}-${safeName}`, bytes, input.mimeType);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
           return unavailable(error);
         }
       }),

@@ -10,6 +10,10 @@ describe("Cloudflare Worker deployment wiring", () => {
     expect(worker).toContain('from "@trpc/server/adapters/fetch"');
     expect(worker).toContain("configureD1(bindings.digital_junction_db)");
     expect(worker).toContain("configureD1OnlyFileMode()");
+    expect(worker).toContain("configureCloudinaryQrStorage(configuredCloudinaryQrStorage(bindings))");
+    expect(worker).toContain("CLOUDINARY_CLOUD_NAME");
+    expect(worker).toContain("CLOUDINARY_API_KEY");
+    expect(worker).toContain("CLOUDINARY_API_SECRET");
     expect(worker).toContain('endpoint: "/api/trpc"');
     expect(worker).not.toContain("httpServerHandler");
     expect(worker).not.toContain("DJDC_UPLOADS");

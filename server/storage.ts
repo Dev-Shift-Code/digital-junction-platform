@@ -5,6 +5,8 @@
 import { ENV } from "./_core/env";
 
 let d1OnlyFileMode = false;
+type CloudinaryQrConfig = { cloudName: string; apiKey: string; apiSecret: string };
+let cloudinaryQrConfig: CloudinaryQrConfig | null = null;
 
 /** Prevents file bytes from being treated as database content in a D1-only deployment. */
 export function configureD1OnlyFileMode() {
@@ -13,6 +15,16 @@ export function configureD1OnlyFileMode() {
 
 export function isD1OnlyFileMode() {
   return d1OnlyFileMode;
+}
+
+/** Configures only the owner payment-QR media path; D1 continues to store its URL/key metadata. */
+export function configureCloudinaryQrStorage(config: CloudinaryQrConfig | null) {
+  cloudinaryQrConfig = config;
+}
+
+async function sha1(value: string) {
+  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function getForgeConfig() {
@@ -85,6 +97,36 @@ export async function storagePut(
   }
 
   return { key, url: `/manus-storage/${key}` };
+}
+
+/** Uploads an owner payment QR image to Cloudinary; the returned URL/key are saved in D1, never the bytes. */
+export async function storagePutPaymentQr(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string }> {
+  if (!cloudinaryQrConfig) {
+    throw new Error("QR image storage is not configured. Set the Cloudinary Worker secrets before uploading a QR code.");
+  }
+
+  const key = appendHashSuffix(normalizeKey(relKey));
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = await sha1(`timestamp=${timestamp}${cloudinaryQrConfig.apiSecret}`);
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
+  const form = new FormData();
+  form.append("file", new Blob([bytes.buffer as ArrayBuffer], { type: contentType }), key.split("/").pop() || "payment-qr");
+  form.append("api_key", cloudinaryQrConfig.apiKey);
+  form.append("timestamp", String(timestamp));
+  form.append("signature", signature);
+
+  const upload = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudinaryQrConfig.cloudName)}/auto/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!upload.ok) throw new Error(`Cloudinary QR upload failed (${upload.status}): ${await upload.text()}`);
+  const result = await upload.json() as { secure_url?: string };
+  if (!result.secure_url) throw new Error("Cloudinary did not return a secure QR delivery URL.");
+  return { key, url: result.secure_url };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
