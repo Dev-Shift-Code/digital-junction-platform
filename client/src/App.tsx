@@ -16,7 +16,6 @@ import OwnerPaymentMethods from "@/pages/OwnerPaymentMethods";
 import { OwnerCustomers, OwnerSales, OwnerSettings, OwnerSupport, OwnerVouchers } from "@/pages/OwnerWorkspaceViews";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import { OwnerLoginEntry } from "@/pages/AuthEntry";
-import { useEffect } from "react";
 import Services from "@/pages/Services";
 import Shop from "@/pages/Shop";
 import Work from "@/pages/Work";
@@ -68,18 +67,6 @@ function Router() {
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
-  const d1Only = import.meta.env.VITE_D1_ONLY === "true";
-
-  useEffect(() => {
-    if (!d1Only) return;
-    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]'));
-    inputs.forEach(input => {
-      input.disabled = true;
-      input.setAttribute("aria-disabled", "true");
-      input.title = "Binary uploads are unavailable in the D1-only deployment.";
-    });
-  }, [d1Only]);
-
   return (
     <ErrorBoundary>
       <ThemeProvider
@@ -88,7 +75,6 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          {d1Only ? <div role="status" className="fixed inset-x-0 top-0 z-50 border-b border-[#1A312C]/15 bg-[#FFF4E1] px-4 py-2 text-center text-xs font-semibold text-[#1A312C] shadow-sm">D1-only deployment: structured website data is persistent. New binary file uploads are unavailable.</div> : null}
           <Router />
         </TooltipProvider>
       </ThemeProvider>
