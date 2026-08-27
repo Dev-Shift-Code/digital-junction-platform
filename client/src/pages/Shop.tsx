@@ -1,4 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
+import { getPublicSectionDefault } from "@/data/publicContentDefaults";
 import { sampleProducts } from "@/data/samplePreview";
 import { usePublicSection } from "@/hooks/usePublicSection";
 import { trpc } from "@/lib/trpc";
@@ -11,9 +12,9 @@ function money(value: string | number) { return new Intl.NumberFormat("en-PH", {
 
 export default function Shop() {
   const { data: products = [], isLoading, error } = trpc.portal.products.listPublished.useQuery();
-  const hero = usePublicSection("shop", "hero", { title: "Explore products", body: "Browse digital templates, interface assets, practical business resources, and creative tools made exclusively by Digital Junction. No account is required to browse or start checkout." });
-  const catalogue = usePublicSection("shop", "catalogue", { title: "Products made by Digital Junction", body: "Explore the current owner-managed digital catalogue." });
-  const cta = usePublicSection("shop", "call-to-action", { title: "Browse and checkout as a guest.", body: "Open any live product to review its details and submit a guest checkout request—no client account required.", ctaLabel: "Need help choosing a product?", ctaHref: "/contact" });
+  const hero = usePublicSection("shop", "hero", getPublicSectionDefault("shop", "hero"));
+  const catalogue = usePublicSection("shop", "catalogue", getPublicSectionDefault("shop", "catalogue"));
+  const cta = usePublicSection("shop", "call-to-action", getPublicSectionDefault("shop", "call-to-action"));
   const usingSamples = products.length === 0;
   const visibleProducts = usingSamples ? sampleProducts : products;
   const [search, setSearch] = useState("");

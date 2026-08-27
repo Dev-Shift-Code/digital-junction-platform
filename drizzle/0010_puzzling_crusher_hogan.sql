@@ -1,0 +1,1 @@
+ALTER TABLE `publicSiteContent` ADD `eyebrow` varchar(160);

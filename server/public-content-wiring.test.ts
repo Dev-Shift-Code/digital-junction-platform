@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const resolver = readFileSync(new URL("../client/src/hooks/usePublicSection.ts", import.meta.url), "utf8");
 const db = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 const ownerEditor = readFileSync(new URL("../client/src/pages/OwnerPublicContent.tsx", import.meta.url), "utf8");
+const defaults = readFileSync(new URL("../client/src/data/publicContentDefaults.ts", import.meta.url), "utf8");
+const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
 const publicFiles = [
   "../client/src/pages/Home.tsx",
   "../client/src/pages/Shop.tsx",
@@ -29,5 +31,20 @@ describe("public content override wiring", () => {
   it("connects every editor page to visitor-facing content overrides", () => {
     ["home", "shop", "services", "work", "about", "contact", "footer"].forEach(page => expect(publicFiles.some(source => source.includes(`usePublicSection(\"${page}\"`))).toBe(true));
     expect(ownerEditor).toContain('"story"');
+  });
+
+  it("provides a detailed card-based owner editing workspace with explicit save feedback", () => {
+    ["Choose what you want to edit.", "Hero and public summary", "Public heading", "Public description", "Section image URL", "Button link", "Restore current default", "Visible", "Save changes"].forEach(copy => expect(ownerEditor).toContain(copy));
+    expect(ownerEditor).toContain("Promise.all(changed.map");
+    expect(ownerEditor).toContain("No changes to save on this page.");
+    expect(ownerEditor).toContain("Owner-only editor");
+  });
+
+  it("preloads complete visitor-facing values and persists editable eyebrow labels", () => {
+    ["Connecting Ideas. Building Digital Success.", "Digital solutions overview", "Explore products", "Start a conversation"].forEach(copy => expect(defaults).toContain(copy));
+    expect(ownerEditor).toContain("getPublicSectionDefault");
+    expect(ownerEditor).toContain("eyebrow: draft.eyebrow.trim() || null");
+    expect(resolver).toContain("eyebrow: saved?.eyebrow ?? fallback.eyebrow");
+    expect(schema).toContain('eyebrow: varchar("eyebrow", { length: 160 })');
   });
 });

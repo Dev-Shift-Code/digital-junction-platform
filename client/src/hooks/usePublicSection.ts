@@ -4,6 +4,7 @@ import { useMemo } from "react";
 export type PublicPage = "home" | "shop" | "services" | "work" | "about" | "contact" | "footer";
 
 export type PublicSectionFallback = {
+  eyebrow?: string;
   title?: string;
   body?: string;
   imageUrl?: string;
@@ -25,6 +26,7 @@ export function usePublicSection(page: PublicPage, section: string, fallback: Pu
   const saved = content.data?.find(item => item.section === section);
 
   return {
+    eyebrow: saved?.eyebrow ?? fallback.eyebrow,
     title: saved?.title ?? fallback.title,
     body: saved?.body ?? fallback.body,
     imageUrl: saved?.imageUrl ?? fallback.imageUrl,

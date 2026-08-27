@@ -179,3 +179,10 @@
 - [ ] Add regression coverage and verify a saved owner public-content edit updates the matching visitor-facing section without inventing business copy or media.
 - [x] Add regression coverage for the public-section resolver, unpublished-content redaction, and every visitor-facing page integration.
 - [x] Remove the obsolete Owner Sales link to the standalone buyer-file page so buyer files are managed only inside Inventory Add/Edit Product.
+- [x] Redesign Owner Content into a detailed, card-based public-site editing workspace with grouped fields for each public section.
+- [ ] Support a page selector, section cards, visibility controls, text, media URL, CTA, and repeatable section groups within the detailed Owner Content editor.
+- [x] Preserve the existing owner-only authorization and public-section save contract while adding clear unsaved/saving/saved feedback.
+- [ ] Add regression coverage and responsive visual validation for the detailed Owner Content workspace.
+- [x] Preload every detailed Owner Content field with the current visitor-facing default section values so the owner can edit or replace them directly.
+- [x] Preserve saved overrides while showing the current full default value in unsaved public sections, then verify the populated editing workspace without changing public content.
+- [x] Add a persisted editable eyebrow-label field to public sections, migrate the schema safely, and render the saved label on matching visitor-facing sections.

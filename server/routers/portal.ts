@@ -527,7 +527,7 @@ export const portalRouter = router({
           return unavailable(error);
         }
       }),
-      save: adminProcedure.input(z.object({ contentId: z.number().int().positive().optional(), page: z.enum(["home", "shop", "services", "work", "about", "contact", "footer"]), section: z.string().trim().min(2).max(64), title: z.string().trim().max(300).optional().nullable(), body: z.string().trim().max(10000).optional().nullable(), imageUrl: z.string().url().max(5000).optional().nullable(), ctaLabel: z.string().trim().max(120).optional().nullable(), ctaHref: z.string().trim().max(500).optional().nullable(), isPublished: z.boolean().default(true) })).mutation(async ({ input }) => {
+      save: adminProcedure.input(z.object({ contentId: z.number().int().positive().optional(), page: z.enum(["home", "shop", "services", "work", "about", "contact", "footer"]), section: z.string().trim().min(2).max(64), eyebrow: z.string().trim().max(160).optional().nullable(), title: z.string().trim().max(300).optional().nullable(), body: z.string().trim().max(10000).optional().nullable(), imageUrl: z.string().url().max(5000).optional().nullable(), ctaLabel: z.string().trim().max(120).optional().nullable(), ctaHref: z.string().trim().max(500).optional().nullable(), isPublished: z.boolean().default(true) })).mutation(async ({ input }) => {
         try {
           const { contentId, ...values } = input;
           return savePublicSiteContent(values, contentId);

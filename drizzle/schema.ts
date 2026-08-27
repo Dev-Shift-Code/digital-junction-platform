@@ -246,6 +246,7 @@ export const publicSiteContent = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     page: varchar("page", { length: 64 }).notNull(),
     section: varchar("section", { length: 64 }).notNull(),
+    eyebrow: varchar("eyebrow", { length: 160 }),
     title: varchar("title", { length: 300 }),
     body: text("body"),
     imageUrl: text("imageUrl"),

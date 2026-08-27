@@ -1,42 +1,129 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import { getPublicSectionDefault } from "@/data/publicContentDefaults";
 import { ownerNavigation } from "@/data/ownerNavigation";
 import { trpc } from "@/lib/trpc";
-import { Check, Eye, FileText, Image, Loader2, Pencil, Plus, ShieldAlert } from "lucide-react";
-import { FormEvent, useState } from "react";
-import { Link } from "wouter";
+import { CheckCircle2, ChevronRight, CircleAlert, Eye, EyeOff, FileText, Image, Link2, Loader2, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 const pages = ["home", "shop", "services", "work", "about", "contact", "footer"] as const;
-const sectionOptions: Record<(typeof pages)[number], string[]> = {
-  home: ["hero", "services", "products", "projects", "story", "call-to-action"],
-  shop: ["hero", "catalogue", "call-to-action"],
-  services: ["hero", "service-list", "call-to-action"],
-  work: ["hero", "projects", "call-to-action"],
-  about: ["hero", "story", "call-to-action"],
-  contact: ["hero", "contact-details", "call-to-action"],
-  footer: ["brand", "contact", "social"],
-};
 type Page = (typeof pages)[number];
-type RecordForm = { id?: number; page: Page; section: string; title: string; body: string; imageUrl: string; ctaLabel: string; ctaHref: string; isPublished: boolean };
-const blank = (): RecordForm => ({ page: "home", section: "hero", title: "", body: "", imageUrl: "", ctaLabel: "", ctaHref: "", isPublished: true });
+
+const pageMeta: Record<Page, { label: string; detail: string }> = {
+  home: { label: "Home page", detail: "Hero, featured work, services, and final call-to-action." },
+  shop: { label: "Digital products", detail: "Catalogue introduction, filters, and direct-purchase prompt." },
+  services: { label: "Services", detail: "Service introduction, service list, and inquiry prompt." },
+  work: { label: "Projects", detail: "Work introduction, project collection, and next-project prompt." },
+  about: { label: "About", detail: "Company introduction, story, and conversation prompt." },
+  contact: { label: "Contact", detail: "Contact page introduction, guidance, and inquiry prompt." },
+  footer: { label: "Footer", detail: "Brand statement, contact invitation, and social information." },
+};
+
+const sectionMeta: Record<Page, Array<{ id: string; label: string; detail: string; eyebrow: string }>> = {
+  home: [
+    { id: "hero", label: "Hero and public summary", detail: "Main heading, introduction, feature image, and primary button.", eyebrow: "Home introduction" },
+    { id: "services", label: "Solutions overview", detail: "The introduction above the Home solutions cards.", eyebrow: "Home services" },
+    { id: "products", label: "Featured digital products", detail: "The introduction and button above published product cards.", eyebrow: "Home products" },
+    { id: "projects", label: "Featured projects", detail: "The introduction and button above published project cards.", eyebrow: "Home projects" },
+    { id: "story", label: "Story highlight", detail: "The green About preview card near the end of the Home page.", eyebrow: "Home story" },
+    { id: "call-to-action", label: "Final call-to-action", detail: "The final full-width action panel on the Home page.", eyebrow: "Home action" },
+  ],
+  shop: [
+    { id: "hero", label: "Catalogue hero", detail: "The top introduction for Digital Products.", eyebrow: "Shop introduction" },
+    { id: "catalogue", label: "Catalogue details", detail: "The introduction above search, filters, and product listings.", eyebrow: "Shop catalogue" },
+    { id: "call-to-action", label: "Guest checkout prompt", detail: "The assistance panel below the product catalogue.", eyebrow: "Shop action" },
+  ],
+  services: [
+    { id: "hero", label: "Services hero", detail: "The top heading and overview on the Services page.", eyebrow: "Services introduction" },
+    { id: "service-list", label: "Service list introduction", detail: "The heading and supporting copy above the service cards.", eyebrow: "Services list" },
+    { id: "call-to-action", label: "Services call-to-action", detail: "The closing conversation prompt on the Services page.", eyebrow: "Services action" },
+  ],
+  work: [
+    { id: "hero", label: "Projects hero", detail: "The top heading and overview for the public work page.", eyebrow: "Projects introduction" },
+    { id: "projects", label: "Projects collection", detail: "The public introduction placed above the project cards.", eyebrow: "Projects list" },
+    { id: "call-to-action", label: "Projects call-to-action", detail: "The final project inquiry panel.", eyebrow: "Projects action" },
+  ],
+  about: [
+    { id: "hero", label: "About hero", detail: "The main public introduction for Digital Junction.", eyebrow: "About introduction" },
+    { id: "story", label: "Vision and story", detail: "The highlighted story card on the About page.", eyebrow: "About story" },
+    { id: "call-to-action", label: "About call-to-action", detail: "The conversation prompt at the bottom of the About page.", eyebrow: "About action" },
+  ],
+  contact: [
+    { id: "hero", label: "Contact hero", detail: "The top heading and supporting text above the inquiry area.", eyebrow: "Contact introduction" },
+    { id: "contact-details", label: "Contact guidance", detail: "The explanatory panel beside the working inquiry form.", eyebrow: "Contact details" },
+    { id: "call-to-action", label: "Contact call-to-action", detail: "The secondary prompt under the inquiry form.", eyebrow: "Contact action" },
+  ],
+  footer: [
+    { id: "brand", label: "Footer brand statement", detail: "The company description at the left side of the site footer.", eyebrow: "Footer brand" },
+    { id: "contact", label: "Footer contact invitation", detail: "The contact prompt and button in the footer.", eyebrow: "Footer contact" },
+    { id: "social", label: "Footer social information", detail: "The social heading, supporting text, optional image, and link.", eyebrow: "Footer social" },
+  ],
+};
+
+type SectionDraft = { id?: number; eyebrow: string; title: string; body: string; imageUrl: string; ctaLabel: string; ctaHref: string; isPublished: boolean };
+type SavedSection = SectionDraft & { id: number; page: string; section: string };
+const emptyDraft = (): SectionDraft => ({ eyebrow: "", title: "", body: "", imageUrl: "", ctaLabel: "", ctaHref: "", isPublished: true });
+const keyFor = (page: Page, section: string) => `${page}:${section}`;
 
 export default function OwnerPublicContent() {
   const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
   const content = trpc.portal.admin.publicSiteContent.list.useQuery(undefined, { enabled: isOwner });
-  const save = trpc.portal.admin.publicSiteContent.save.useMutation({ onSuccess: () => { setNotice("Public section saved."); setEditor(null); content.refetch(); } });
-  const [editor, setEditor] = useState<RecordForm | null>(null);
-  const [notice, setNotice] = useState("");
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const page = String(form.get("page")) as Page;
-    save.mutate({ contentId: editor?.id, page, section: String(form.get("section")), title: String(form.get("title")) || null, body: String(form.get("body")) || null, imageUrl: String(form.get("imageUrl")) || null, ctaLabel: String(form.get("ctaLabel")) || null, ctaHref: String(form.get("ctaHref")) || null, isPublished: form.get("isPublished") === "on" });
+  const save = trpc.portal.admin.publicSiteContent.save.useMutation();
+  const [activePage, setActivePage] = useState<Page>("home");
+  const [drafts, setDrafts] = useState<Record<string, SectionDraft>>({});
+  const [dirty, setDirty] = useState<Set<string>>(new Set());
+  const [hydrated, setHydrated] = useState(false);
+  const [notice, setNotice] = useState<{ kind: "success" | "error" | "info"; text: string } | null>(null);
+
+  const savedContent = content.data as SavedSection[] | undefined;
+  useEffect(() => {
+    if (!savedContent || hydrated) return;
+    const next: Record<string, SectionDraft> = {};
+    pages.forEach(page => sectionMeta[page].forEach(meta => {
+      const saved = savedContent.find(item => item.page === page && item.section === meta.id);
+      const defaults = getPublicSectionDefault(page, meta.id);
+      next[keyFor(page, meta.id)] = saved ? { id: saved.id, eyebrow: saved.eyebrow ?? defaults.eyebrow, title: saved.title ?? defaults.title, body: saved.body ?? defaults.body, imageUrl: saved.imageUrl ?? defaults.imageUrl, ctaLabel: saved.ctaLabel ?? defaults.ctaLabel, ctaHref: saved.ctaHref ?? defaults.ctaHref, isPublished: saved.isPublished } : defaults;
+    }));
+    setDrafts(next);
+    setHydrated(true);
+  }, [hydrated, savedContent]);
+
+  const activeSections = useMemo(() => sectionMeta[activePage], [activePage]);
+  const editedCount = Array.from(dirty).filter(key => key.startsWith(`${activePage}:`)).length;
+  const draftFor = (section: string) => drafts[keyFor(activePage, section)] ?? emptyDraft();
+  const updateDraft = (section: string, patch: Partial<SectionDraft>) => {
+    const key = keyFor(activePage, section);
+    setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? emptyDraft()), ...patch } }));
+    setDirty(current => new Set(current).add(key));
+    setNotice(null);
   };
-  const startEdit = (item: NonNullable<typeof content.data>[number]) => setEditor({ id: item.id, page: item.page as Page, section: item.section, title: item.title ?? "", body: item.body ?? "", imageUrl: item.imageUrl ?? "", ctaLabel: item.ctaLabel ?? "", ctaHref: item.ctaHref ?? "", isPublished: item.isPublished });
-  return <DashboardLayout navigation={ownerNavigation} title="DJDC Owner"><div className="mx-auto max-w-7xl space-y-6 py-2">{!isOwner ? <section className="grid min-h-[60vh] place-items-center rounded-[1.5rem] border border-[#1A312C]/12 bg-white"><div className="max-w-md p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the owner can change public website content.</p></div></section> : <><header className="flex flex-col gap-5 rounded-[1.55rem] bg-[#1A312C] px-6 py-8 text-[#FFF4E1] sm:px-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="font-mono text-[.62rem] uppercase tracking-[.14em] text-[#89D7B7]">Public website editor</p><h1 className="display mt-3 text-4xl">Edit every visible public section.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#FFF4E1]/72">Manage public page text, images, calls-to-action, products, and selected work from one owner-only place. Product and project records remain editable from Inventory and their own management workflows.</p></div><button className="button-primary w-fit !bg-[#89D7B7] !text-[#1A312C]" onClick={() => setEditor(blank())}><Plus className="size-4" />Add public section</button></header>{notice ? <div className="flex items-center gap-2 rounded-xl bg-[#89D7B7]/30 px-4 py-3 text-sm text-[#1A312C]"><Check className="size-4" />{notice}</div> : null}<section className="grid gap-4 md:grid-cols-3"><EditorGuide icon={<FileText className="size-5" />} title="Text" detail="Headings, descriptions, and public messaging" /><EditorGuide icon={<Image className="size-5" />} title="Media" detail="Image URLs for each chosen public section" /><EditorGuide icon={<Eye className="size-5" />} title="Calls-to-action" detail="Button text, link destination, and visibility" /></section>{editor ? <section className="rounded-[1.5rem] border border-[#428475]/22 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.07)] sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="eyebrow">{editor.id ? "Edit public section" : "New public section"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">Content, media, and button controls</h2></div><button className="button-quiet !min-h-9 !px-3" onClick={() => setEditor(null)}>Close</button></div><form onSubmit={submit} className="mt-6 grid gap-4"><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Public page</span><select name="page" value={editor.page} onChange={event => setEditor(current => current ? { ...current, page: event.target.value as Page, section: sectionOptions[event.target.value as Page][0] } : current)} className="form-field">{pages.map(page => <option key={page} value={page}>{page}</option>)}</select></label><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Section</span><select name="section" value={editor.section} onChange={event => setEditor(current => current ? { ...current, section: event.target.value } : current)} className="form-field">{sectionOptions[editor.page].map(section => <option key={section} value={section}>{section}</option>)}</select></label></div><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Heading</span><input name="title" value={editor.title} onChange={event => setEditor(current => current ? { ...current, title: event.target.value } : current)} className="form-field" placeholder="Public heading" /></label><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Body text</span><textarea name="body" value={editor.body} onChange={event => setEditor(current => current ? { ...current, body: event.target.value } : current)} className="form-field min-h-32 resize-y" placeholder="Public description or section copy" /></label><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Image URL <span className="font-normal text-[#1A312C]/45">(optional)</span></span><input name="imageUrl" type="url" value={editor.imageUrl} onChange={event => setEditor(current => current ? { ...current, imageUrl: event.target.value } : current)} className="form-field" placeholder="https://…" /></label><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Button label <span className="font-normal text-[#1A312C]/45">(optional)</span></span><input name="ctaLabel" value={editor.ctaLabel} onChange={event => setEditor(current => current ? { ...current, ctaLabel: event.target.value } : current)} className="form-field" placeholder="Explore products" /></label><label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>Button link <span className="font-normal text-[#1A312C]/45">(optional)</span></span><input name="ctaHref" value={editor.ctaHref} onChange={event => setEditor(current => current ? { ...current, ctaHref: event.target.value } : current)} className="form-field" placeholder="/shop" /></label></div><label className="flex items-center gap-2 text-sm font-semibold text-[#1A312C]"><input name="isPublished" type="checkbox" checked={editor.isPublished} onChange={event => setEditor(current => current ? { ...current, isPublished: event.target.checked } : current)} />Visible on public site</label>{save.error ? <p role="alert" className="text-sm text-red-700">Unable to save this section. Check the fields and try again.</p> : null}<div className="flex flex-wrap gap-3"><button className="button-primary" disabled={save.isPending}>{save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Save public section</button><button type="button" className="button-quiet" onClick={() => setEditor(null)}>Cancel</button></div></form></section> : null}<section className="rounded-[1.5rem] border border-[#1A312C]/10 bg-white p-5 sm:p-7"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Editable public sections</p><h2 className="display mt-2 text-3xl text-[#1A312C]">Saved public-site changes</h2></div><Link href="/" className="button-quiet buttonlike w-fit">View public site</Link></div>{content.isLoading ? <div className="grid min-h-36 place-items-center"><Loader2 className="size-6 animate-spin text-[#428475]" /></div> : content.data?.length ? <div className="mt-6 grid gap-3">{content.data.map(item => <article key={item.id} className="flex flex-col gap-4 rounded-xl border border-[#1A312C]/10 bg-[#FFF4E1]/45 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[.57rem] uppercase tracking-[.1em] text-[#428475]">{item.page} · {item.section} · {item.isPublished ? "Public" : "Hidden"}</p><h3 className="mt-2 text-sm font-bold text-[#1A312C]">{item.title || "Untitled section"}</h3><p className="mt-1 max-w-2xl line-clamp-2 text-sm leading-6 text-[#1A312C]/62">{item.body || "No body text saved."}</p></div><button onClick={() => startEdit(item)} className="button-quiet w-fit !min-h-9 !px-3 text-xs"><Pencil className="size-3.5" />Edit</button></article>)}</div> : <div className="mt-6 rounded-xl border border-dashed border-[#1A312C]/15 bg-[#FFF4E1]/55 p-6 text-sm leading-6 text-[#1A312C]/62">No public section overrides are saved yet. Add a section to replace the matching public page text, image, or call-to-action without editing code.</div>}</section></>}</div></DashboardLayout>;
+  const resetDraft = (section: string) => updateDraft(section, { ...getPublicSectionDefault(activePage, section), id: draftFor(section).id });
+  const savePage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const changed = activeSections.filter(section => dirty.has(keyFor(activePage, section.id)));
+    if (!changed.length) { setNotice({ kind: "info", text: "No changes to save on this page." }); return; }
+    try {
+      await Promise.all(changed.map(section => {
+        const draft = draftFor(section.id);
+        return save.mutateAsync({ contentId: draft.id, page: activePage, section: section.id, eyebrow: draft.eyebrow.trim() || null, title: draft.title.trim() || null, body: draft.body.trim() || null, imageUrl: draft.imageUrl.trim() || null, ctaLabel: draft.ctaLabel.trim() || null, ctaHref: draft.ctaHref.trim() || null, isPublished: draft.isPublished });
+      }));
+      setDirty(current => { const next = new Set(current); changed.forEach(section => next.delete(keyFor(activePage, section.id))); return next; });
+      setNotice({ kind: "success", text: `${changed.length} public section${changed.length === 1 ? "" : "s"} saved.` });
+      await content.refetch();
+    } catch {
+      setNotice({ kind: "error", text: "Unable to save all changes. Please review the section fields and try again." });
+    }
+  };
+
+  return <DashboardLayout navigation={ownerNavigation} title="DJDC Owner"><div className="mx-auto max-w-7xl space-y-6 py-2">{!isOwner ? <section className="grid min-h-[60vh] place-items-center rounded-[1.5rem] border border-[#1A312C]/12 bg-white"><div className="max-w-md p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the owner can change the public website content.</p></div></section> : <><header className="rounded-[1.55rem] bg-[#1A312C] px-5 py-6 text-[#FFF4E1] shadow-[0_20px_48px_rgba(26,49,44,.18)] sm:px-8 sm:py-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="font-mono text-[.6rem] uppercase tracking-[.14em] text-[#89D7B7]">Owner workspace / public portfolio</p><h1 className="display mt-3 text-4xl">Public content</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#FFF4E1]/72">Edit the public website page by page. Every section keeps the DJDC default until you save an owner override; product and project records stay in their own management workspaces.</p></div><div className="flex items-center gap-3"><span className="inline-flex items-center gap-2 text-xs font-semibold text-[#89D7B7]"><CheckCircle2 className="size-4" />Owner-only editor</span><button type="submit" form="public-content-form" disabled={save.isPending || !hydrated} className="button-primary !min-h-10 !bg-[#89D7B7] !px-4 !text-[#1A312C] disabled:opacity-60">{save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save changes{editedCount ? ` (${editedCount})` : ""}</button></div></div></header>
+      <section className="rounded-[1.5rem] border border-[#1A312C]/10 bg-white p-4 shadow-[0_14px_35px_rgba(26,49,44,.05)] sm:p-6"><div className="flex flex-col gap-3 border-b border-[#1A312C]/10 pb-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="eyebrow">Public page</p><h2 className="display mt-2 text-3xl text-[#1A312C]">Choose what you want to edit.</h2></div><p className="max-w-md text-sm leading-6 text-[#1A312C]/60">Each card controls a real visitor-facing section. Blank text fields use the page’s established default copy.</p></div><div className="mt-5 flex gap-2 overflow-x-auto pb-1">{pages.map(page => <button type="button" key={page} onClick={() => { setActivePage(page); setNotice(null); }} className={`shrink-0 rounded-xl border px-4 py-3 text-left transition ${activePage === page ? "border-[#1A312C] bg-[#1A312C] text-[#FFF4E1]" : "border-[#1A312C]/12 bg-[#FFF4E1]/45 text-[#1A312C] hover:border-[#428475]/45 hover:bg-[#89D7B7]/16"}`}><span className="block text-sm font-bold">{pageMeta[page].label}</span><span className={`mt-1 block text-[.68rem] ${activePage === page ? "text-[#89D7B7]" : "text-[#1A312C]/52"}`}>{sectionMeta[page].length} editable sections</span></button>)}</div></section>
+      {notice && <div role={notice.kind === "error" ? "alert" : "status"} className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm ${notice.kind === "success" ? "bg-[#89D7B7]/28 text-[#1A312C]" : notice.kind === "error" ? "bg-red-50 text-red-800" : "bg-[#FFF4E1] text-[#1A312C]/75"}`}>{notice.kind === "error" ? <CircleAlert className="size-4" /> : <CheckCircle2 className="size-4" />}{notice.text}</div>}
+      <form id="public-content-form" onSubmit={savePage} className="space-y-5">{content.isLoading || !hydrated ? <section className="grid min-h-72 place-items-center rounded-[1.5rem] border border-[#1A312C]/10 bg-white"><div className="flex items-center gap-3 text-sm text-[#1A312C]/65"><Loader2 className="size-5 animate-spin text-[#428475]" />Loading saved public content…</div></section> : activeSections.map((section, index) => { const draft = draftFor(section.id); const key = keyFor(activePage, section.id); const changed = dirty.has(key); return <section key={section.id} className={`overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_14px_35px_rgba(26,49,44,.05)] transition ${changed ? "border-[#428475]/50 ring-2 ring-[#89D7B7]/22" : "border-[#1A312C]/10"}`}><div className="flex flex-col gap-4 border-b border-[#1A312C]/10 bg-[#FFF4E1]/42 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-7"><div className="flex min-w-0 gap-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#1A312C] font-mono text-xs text-[#89D7B7]">{String(index + 1).padStart(2, "0")}</span><div><p className="font-mono text-[.59rem] uppercase tracking-[.11em] text-[#428475]">{draft.eyebrow}</p><h2 className="display mt-2 text-2xl text-[#1A312C]">{section.label}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#1A312C]/62">{section.detail}</p></div></div><label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[#1A312C]/12 bg-white px-3 py-2 text-xs font-bold text-[#1A312C]"><input checked={draft.isPublished} onChange={event => updateDraft(section.id, { isPublished: event.target.checked })} type="checkbox" className="size-3.5 accent-[#428475]" />{draft.isPublished ? <Eye className="size-3.5 text-[#428475]" /> : <EyeOff className="size-3.5 text-[#1A312C]/50" />}{draft.isPublished ? "Visible" : "Hidden"}</label></div><div className="grid gap-5 p-5 sm:p-7"><div className="grid gap-5 lg:grid-cols-2"><Field label="Public heading" hint="Loaded from the current visitor-facing section. Edit to replace it."><input value={draft.title} onChange={event => updateDraft(section.id, { title: event.target.value })} className="form-field" placeholder="Section heading" /></Field><Field label="Eyebrow label" hint="Loaded from the current public section. Edit to replace it."><span className="relative"><FileText className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#428475]" /><input value={draft.eyebrow} onChange={event => updateDraft(section.id, { eyebrow: event.target.value })} className="form-field !pl-10" placeholder="Section label" /></span></Field></div><Field label="Public description" hint="Loaded from the current visitor-facing section. Supports line breaks."><textarea value={draft.body} onChange={event => updateDraft(section.id, { body: event.target.value })} className="form-field min-h-30 resize-y" placeholder="Public section description" /></Field><div className="grid gap-5 lg:grid-cols-2"><Field label="Section image URL" hint="Optional public image. Use a complete https:// URL."><span className="relative"><Image className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#428475]" /><input value={draft.imageUrl} onChange={event => updateDraft(section.id, { imageUrl: event.target.value })} type="url" className="form-field !pl-10" placeholder="https://…" /></span></Field><Field label="Button label" hint="Loaded from the current public button when this section has one."><input value={draft.ctaLabel} onChange={event => updateDraft(section.id, { ctaLabel: event.target.value })} className="form-field" placeholder="Explore products" /></Field></div><div className="grid gap-5 lg:grid-cols-[1fr_auto]"><Field label="Button link" hint="Use a public internal path such as /shop or a full https:// URL."><span className="relative"><Link2 className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#428475]" /><input value={draft.ctaHref} onChange={event => updateDraft(section.id, { ctaHref: event.target.value })} className="form-field !pl-10" placeholder="/contact" /></span></Field><div className="flex items-end"><button type="button" onClick={() => resetDraft(section.id)} className="button-quiet w-full !min-h-11 !px-3 text-xs sm:w-auto"><RotateCcw className="size-3.5" />Restore current default</button></div></div><p className="rounded-xl border border-[#89D7B7]/35 bg-[#89D7B7]/12 px-4 py-3 text-xs leading-5 text-[#1A312C]/70"><strong className="text-[#1A312C]">Ready to edit:</strong> these values are the current visitor-facing section content. Change only what you want, then save the page. Turn visibility off to hide the section.</p></div></section>; })}</form>
+      <section className="rounded-[1.4rem] border border-[#1A312C]/10 bg-[#FFF4E1]/55 p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="eyebrow">Current editing page</p><h2 className="display mt-2 text-2xl text-[#1A312C]">{pageMeta[activePage].label}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/63">{pageMeta[activePage].detail}</p></div><button type="submit" form="public-content-form" disabled={save.isPending || !hydrated} className="button-primary w-fit disabled:opacity-60">{save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save changes{editedCount ? ` (${editedCount})` : ""}<ChevronRight className="size-4" /></button></div></section>
+    </>}</div></DashboardLayout>;
 }
 
-function EditorGuide({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
-  return <article className="rounded-[1.25rem] border border-[#1A312C]/10 bg-white p-5"><span className="grid size-10 place-items-center rounded-xl bg-[#89D7B7]/28 text-[#428475]">{icon}</span><p className="mt-4 text-base font-bold text-[#1A312C]">{title}</p><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">{detail}</p></article>;
+function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return <label className="grid gap-2 text-sm font-bold text-[#1A312C]"><span>{label}</span>{children}<span className="text-xs font-normal leading-5 text-[#1A312C]/54">{hint}</span></label>;
 }
