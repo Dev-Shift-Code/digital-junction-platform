@@ -34,6 +34,16 @@ describe("Cloudflare Worker deployment wiring", () => {
     expect(pagesProxy).toContain("Pages API proxy is not configured.");
   });
 
+  it("renders branded, non-cached HTML for invalid or unavailable one-time links", () => {
+    expect(worker).toContain("function deliveryStatusPage(title: string, message: string, status: number)");
+    expect(worker).toContain("DJDC_LOGO_URL");
+    expect(worker).toContain('"Content-Type": "text/html; charset=UTF-8"');
+    expect(worker).toContain('"Cache-Control": "no-store, private"');
+    expect(worker).toContain("Download link unavailable");
+    expect(worker).toContain("Invalid download link");
+    expect(worker).not.toContain('new Response("This download link has expired, was used, or was revoked."');
+  });
+
   it("registers separate raw-body verified PayRex and PayPal webhook endpoints", () => {
     expect(worker).toContain('pathname === "/api/payrex/webhook"');
     expect(worker).toContain('pathname === "/api/paypal/webhook"');

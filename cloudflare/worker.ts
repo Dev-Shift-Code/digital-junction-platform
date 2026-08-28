@@ -13,6 +13,15 @@ type WorkerBindings = Record<string, unknown> & {
   ASSETS?: { fetch: (request: Request) => Promise<Response> };
 };
 
+const DJDC_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663920827301/UriSGgVGQZmuEDZB.png";
+
+function deliveryStatusPage(title: string, message: string, status: number) {
+  const escapeHtml = (value: string) => value.replace(/[&<>\"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character] || character);
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle} · Digital Junction Development Co.</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f8efdf;color:#18352f;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:24px;background-image:linear-gradient(rgba(24,53,47,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(24,53,47,.06) 1px,transparent 1px);background-size:28px 28px}.card{width:min(100%,560px);overflow:hidden;border:1px solid rgba(24,53,47,.14);border-radius:28px;background:#fffaf1;box-shadow:0 24px 70px rgba(24,53,47,.14)}.top{padding:34px 34px 30px;background:#18352f;color:#fffaf1}.brand{display:flex;align-items:center;gap:12px}.brand img{width:48px;height:48px;object-fit:contain;border-radius:14px;background:#9be4c4}.brand strong{display:block;font-family:Georgia,serif;font-size:20px;letter-spacing:-.02em}.brand span{display:block;margin-top:3px;color:#9be4c4;font-size:10px;letter-spacing:.18em;text-transform:uppercase}.body{padding:38px 34px 40px}.eyebrow{color:#4f9480;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}.body h1{margin:12px 0 14px;font-family:Georgia,serif;font-size:clamp(30px,6vw,44px);line-height:1.04;letter-spacing:-.04em}.body p{margin:0;color:rgba(24,53,47,.7);font-size:16px;line-height:1.7}.note{margin-top:26px;padding:16px 18px;border-radius:16px;background:#edf5ed;color:#315f52;font-size:13px;line-height:1.6}.footer{padding:18px 34px;border-top:1px solid rgba(24,53,47,.1);color:rgba(24,53,47,.55);font-size:12px}.footer a{color:#347966;font-weight:700;text-decoration:none}@media(max-width:480px){body{padding:14px}.top,.body,.footer{padding-left:24px;padding-right:24px}.body{padding-top:30px;padding-bottom:32px}} </style></head><body><main class="card"><header class="top"><div class="brand"><img src="${DJDC_LOGO_URL}" alt="DJDC logo"><div><strong>Digital Junction</strong><span>Development Co.</span></div></div></header><section class="body"><div class="eyebrow">Secure delivery status</div><h1>${safeTitle}</h1><p>${safeMessage}</p><div class="note">For your security, each download link is private, single-use, and time-limited. If you still need access, please contact Digital Junction with your order email.</div></section><footer class="footer">Digital Junction Development Co. · <a href="/">Return to website</a></footer></main></body></html>`, { status, headers: { "Content-Type": "text/html; charset=UTF-8", "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; img-src https://files.manuscdn.com; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" } });
+}
+
 function hydrateEnvironment(bindings: WorkerBindings) {
   process.env.CLOUDFLARE_WORKER = "1";
   for (const [key, value] of Object.entries(bindings)) {
@@ -74,17 +83,17 @@ async function handlePaypalWebhook(request: Request, ctx: ExecutionContext) {
 async function handleOneTimeDelivery(token: string) {
   const tokenHash = await sha256(token);
   const entitlement = await consumeOneTimeDeliveryEntitlement(tokenHash);
-  if (!entitlement) return new Response("This download link has expired, was used, or was revoked.", { status: 410, headers: { "Cache-Control": "no-store" } });
+  if (!entitlement) return deliveryStatusPage("Download link unavailable", "This download link has expired, was already used, or was revoked. Please request a new link from Digital Junction if you still need access.", 410);
   try {
     const extension = entitlement.fileName.includes(".") ? entitlement.fileName.split(".").pop() || null : null;
     const cloudinaryUrl = await storageGetPrivateDeliveryUrl({ publicId: entitlement.fileKey, resourceType: "raw", format: extension, expiresAt: new Date(Date.now() + 60_000) });
     const source = await fetch(cloudinaryUrl, { headers: { "Accept": entitlement.fileMimeType || "application/octet-stream" } });
-    if (!source.ok || !source.body) return new Response("The purchased file could not be delivered. Please contact Digital Junction with your order details.", { status: 502, headers: { "Cache-Control": "no-store" } });
+    if (!source.ok || !source.body) return deliveryStatusPage("We could not deliver this file", "The purchased file is temporarily unavailable. Please contact Digital Junction with your order details so we can help.", 502);
     const filename = entitlement.fileName.replace(/[\\"\r\n]/g, "_");
     return new Response(source.body, { headers: { "Content-Type": source.headers.get("Content-Type") || entitlement.fileMimeType || "application/octet-stream", "Content-Length": source.headers.get("Content-Length") || "", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     console.error("[one-time-delivery] failed", error);
-    return new Response("The purchased file could not be delivered. Please contact Digital Junction with your order details.", { status: 502, headers: { "Cache-Control": "no-store" } });
+    return deliveryStatusPage("We could not deliver this file", "The purchased file is temporarily unavailable. Please contact Digital Junction with your order details so we can help.", 502);
   }
 }
 
@@ -105,7 +114,7 @@ export default {
     if (request.method === "GET" && pathname.startsWith("/api/delivery/")) {
       const token = pathname.slice("/api/delivery/".length);
       if (/^[0-9a-f-]{36}$/i.test(token)) return handleOneTimeDelivery(token);
-      return new Response("Invalid download link.", { status: 400, headers: { "Cache-Control": "no-store" } });
+      return deliveryStatusPage("Invalid download link", "This link is not valid. Please use the complete link from your Digital Junction email or contact us for help.", 400);
     }
     if (pathname.startsWith("/api/trpc")) {
       return fetchRequestHandler({
