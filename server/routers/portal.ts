@@ -117,6 +117,18 @@ function unavailable(error: unknown): never {
   throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The portal service is temporarily unavailable." });
 }
 
+function isDatabaseUnavailable(error: unknown) {
+  return error instanceof Error && error.message === "Database is not available";
+}
+
+function publicDatabaseFallback(error: unknown, label: string) {
+  if (isDatabaseUnavailable(error)) {
+    console.warn(`[portal] ${label} unavailable; using built-in public fallback`);
+    return [];
+  }
+  return unavailable(error);
+}
+
 export const portalRouter = router({
   projects: router({
     listMine: protectedProcedure.query(async ({ ctx }) => {
@@ -149,9 +161,9 @@ export const portalRouter = router({
   publicContent: router({
     list: publicProcedure.input(z.object({ page: z.string().trim().min(1).max(64) })).query(async ({ input }) => {
       try {
-        return getPublicSiteContent(input.page);
+        return await getPublicSiteContent(input.page);
       } catch (error) {
-        return unavailable(error);
+        return publicDatabaseFallback(error, "public content");
       }
     }),
   }),
@@ -176,18 +188,18 @@ export const portalRouter = router({
   caseStudies: router({
     listPublished: publicProcedure.query(async () => {
       try {
-        return getPublishedCaseStudies();
+        return await getPublishedCaseStudies();
       } catch (error) {
-        return unavailable(error);
+        return publicDatabaseFallback(error, "case studies");
       }
     }),
   }),
   products: router({
     listPublished: publicProcedure.query(async () => {
       try {
-        return getPublishedDigitalProducts();
+        return await getPublishedDigitalProducts();
       } catch (error) {
-        return unavailable(error);
+        return publicDatabaseFallback(error, "digital products");
       }
     }),
     bySlug: publicProcedure.input(z.object({ slug: z.string().min(1) })).query(async ({ input }) => {

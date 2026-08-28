@@ -6,6 +6,7 @@ const db = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 const ownerEditor = readFileSync(new URL("../client/src/pages/OwnerPublicContent.tsx", import.meta.url), "utf8");
 const defaults = readFileSync(new URL("../client/src/data/publicContentDefaults.ts", import.meta.url), "utf8");
 const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+const portalRouter = readFileSync(new URL("../server/routers/portal.ts", import.meta.url), "utf8");
 const publicFiles = [
   "../client/src/pages/Home.tsx",
   "../client/src/pages/Shop.tsx",
@@ -21,6 +22,16 @@ describe("public content override wiring", () => {
     expect(resolver).toContain("trpc.portal.publicContent.list.useQuery");
     expect(resolver).toContain("saved?.title ?? fallback.title");
     expect(resolver).toContain("saved?.isPublished ?? fallback.isVisible ?? true");
+  });
+
+  it("uses built-in public fallbacks when local D1 is unavailable", () => {
+    expect(portalRouter).toContain('function isDatabaseUnavailable(error: unknown)');
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "public content")');
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "case studies")');
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "digital products")');
+    expect(portalRouter).toContain('return await getPublicSiteContent(input.page)');
+    expect(portalRouter).toContain('return await getPublishedCaseStudies()');
+    expect(portalRouter).toContain('return await getPublishedDigitalProducts()');
   });
 
   it("redacts unpublished public content fields while retaining only the hidden-section state", () => {

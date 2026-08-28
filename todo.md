@@ -301,4 +301,7 @@
 - [x] Correct the Apps Script relay unauthorized-request error by synchronizing the Worker and Script Properties shared secret without reprocessing payment or delivery records.
 - [x] Replace the incompatible Apps Script HMAC authorization comparison with a reliable private shared-secret relay check after repeated Unauthorized relay request failures.
 - [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.
-- [ ] Replace raw expired, used, revoked, and invalid delivery responses with polished DJDC-branded status pages while preserving one-time-link security.
+- [x] Replace raw expired, used, revoked, and invalid delivery responses with polished DJDC-branded status pages while preserving one-time-link security.
+- [x] Diagnose public-site API query failures for `publicSiteContent`, `caseStudies`, and `digitalProducts` in the reported preview and fix the source-repository schema/binding mismatch without modifying real business data.
+- [x] Add safe public homepage fallback behavior so one unavailable content section does not crash the page.
+
