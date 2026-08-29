@@ -26,16 +26,21 @@ describe("product Purchase Method", () => {
     expect(ownerProducts).toContain("onQrChange={selectGcashQr}");
   });
 
-  it("keeps catalogue cards simple while retaining detail-page QR and external-link actions", () => {
-    ["Purchase Here", "Gumroad", "Payhip", "role=\"dialog\"", "iframe", "product.gcashQrCodeUrl", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
-    expect(shop).toContain("<ProductPurchaseActions product={product} showGcash={false} />");
+  it("keeps catalogue cards simple and puts marketplace links in the Buy Now area", () => {
+    ["Purchase Here", "Gumroad", "Payhip", "product.gcashQrCodeUrl", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
+    expect(shop).not.toContain("<ProductPurchaseActions");
     expect(shop).toContain(">Purchase Here<ArrowRight");
-    expect(detail).not.toContain("<ProductPurchaseActions product={product} />");
     expect(detail).toContain("Buy now");
+    expect(detail).toContain("<ProductPurchaseActions product={product} showGcash={false} showMarketplaceNote />");
     expect(actions).toContain("showGcash = true");
     expect(actions).toContain("showGcash && Boolean(product.gcashQrCodeUrl)");
+    expect(actions).toContain("showMarketplaceNote = false");
+    expect(actions).toContain("If you don't want to wait for manual checking of your payment");
+    expect(actions).toContain("<a href={product.gumroadUrl!}");
+    expect(actions).toContain("<a href={product.payhipUrl!}");
     expect(actions).not.toContain('target="_blank"');
-    expect(actions).toContain("marketplaceOpen");
+    expect(actions).not.toContain("iframe");
+    expect(actions).not.toContain("marketplaceOpen");
     expect(actions).toContain("createPortal");
     expect(actions).toContain("portalTarget");
     expect(actions).toContain("document.body.style.overflow");
