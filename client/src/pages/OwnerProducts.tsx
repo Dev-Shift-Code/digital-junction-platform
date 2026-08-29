@@ -77,14 +77,6 @@ type PendingBuyerFile = {
   base64: string;
 };
 
-type PendingGcashQr = {
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  base64: string;
-  previewUrl: string;
-};
-
 type StoredBuyerFile = {
   id: number;
   fileName: string;
@@ -174,43 +166,15 @@ function ProductFields({
   );
 }
 
-function PurchaseMethodPanel({
-  product,
-  pendingQr,
-  onQrChange,
-  onQrRemove,
-}: {
-  product?: ProductValues;
-  pendingQr: PendingGcashQr | null;
-  onQrChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onQrRemove: () => void;
-}) {
-  const currentQr = pendingQr?.previewUrl || product?.gcashQrCodeUrl;
-
+function PurchaseMethodPanel({ product }: { product?: ProductValues }) {
   return (
     <section className="mt-5 rounded-[1.25rem] border border-[#428475]/22 bg-[#89D7B7]/10 p-4 sm:p-5">
       <div className="border-b border-[#1A312C]/10 pb-4">
         <p className="eyebrow">Purchase method</p>
         <h3 className="display mt-2 text-2xl text-[#1A312C]">Let buyers choose where to purchase</h3>
-        <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">All three fields are optional. Add only the purchase methods that apply to this specific product.</p>
+        <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Add the purchase methods that apply to this specific product.</p>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#1A312C]/10 bg-white/70 p-4">
-          <p className="text-sm font-bold text-[#1A312C]">GCash QR Code</p>
-          <p className="mt-1 text-xs leading-5 text-[#1A312C]/58">Upload the QR image buyers should scan for this product.</p>
-          <label className="button-quiet mt-4 w-fit cursor-pointer !min-h-9 !px-3 text-xs">
-            <Upload className="size-3.5" />
-            {currentQr ? "Replace QR code" : "Upload QR code"}
-            <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={onQrChange} />
-          </label>
-          {currentQr ? (
-            <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#1A312C]/10 bg-[#FFF4E1]/75 p-2">
-              <img src={currentQr} alt="GCash QR code preview" className="size-14 rounded-md border border-[#1A312C]/10 bg-white object-contain p-1" />
-              <div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#1A312C]">{pendingQr?.fileName || "Current GCash QR code"}</p><p className="mt-1 text-[.68rem] text-[#1A312C]/55">{pendingQr ? "Queued for save" : "Saved purchase method"}</p></div>
-              <button type="button" onClick={onQrRemove} className="button-quiet !min-h-8 !px-2 text-xs text-rose-700"><X className="size-3.5" />Remove</button>
-            </div>
-          ) : null}
-        </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <label className="grid content-start gap-2 rounded-xl border border-[#1A312C]/10 bg-white/70 p-4 text-sm font-bold text-[#1A312C]">
           <span>Gumroad Link <span className="font-normal text-[#1A312C]/50">(optional)</span></span>
           <input type="url" name="gumroadUrl" defaultValue={product?.gumroadUrl ?? ""} className="form-field text-sm" placeholder="https://gumroad.com/l/..." />
@@ -219,7 +183,7 @@ function PurchaseMethodPanel({
         <label className="grid content-start gap-2 rounded-xl border border-[#1A312C]/10 bg-white/70 p-4 text-sm font-bold text-[#1A312C]">
           <span>Payhip Link <span className="font-normal text-[#1A312C]/50">(optional)</span></span>
           <input type="url" name="payhipUrl" defaultValue={product?.payhipUrl ?? ""} className="form-field text-sm" placeholder="https://payhip.com/b/..." />
-          <span className="text-xs font-normal leading-5 text-[#1A312C]/55">Paste the specific Payhip product URL.</span>
+          <span className="text-xs font-normal leading-5 text-[#1A312C]/55">Paste the specific Payhip product URL. It opens in a new tab.</span>
         </label>
       </div>
     </section>
@@ -312,8 +276,6 @@ export default function OwnerProducts() {
   const removeCover = trpc.portal.admin.productCovers.remove.useMutation();
   const uploadBuyerFile = trpc.portal.admin.productFiles.upload.useMutation();
   const removeBuyerFile = trpc.portal.admin.productFiles.remove.useMutation();
-  const uploadGcashQr = trpc.portal.admin.productPurchaseMethods.uploadGcashQr.useMutation();
-  const removeGcashQr = trpc.portal.admin.productPurchaseMethods.removeGcashQr.useMutation();
   const deleteProduct = trpc.portal.admin.products.delete.useMutation();
   const [status, setStatus] = useState<InventoryStatus>("all");
   const [category, setCategory] = useState("all");
@@ -323,7 +285,6 @@ export default function OwnerProducts() {
   const [notice, setNotice] = useState("");
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
   const [pendingBuyerFiles, setPendingBuyerFiles] = useState<PendingBuyerFile[]>([]);
-  const [pendingQr, setPendingQr] = useState<PendingGcashQr | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "product" | "buyer-file"; id: number; label: string } | null>(null);
   const [copiedProductId, setCopiedProductId] = useState<number | null>(null);
 
@@ -378,12 +339,10 @@ export default function OwnerProducts() {
     setEditor(null);
     setPendingCover(null);
     setPendingBuyerFiles([]);
-    setPendingQr(null);
   };
   const openEditor = (value: ProductValues | "new") => {
     setPendingCover(null);
     setPendingBuyerFiles([]);
-    setPendingQr(null);
     setEditor(value);
   };
   const finishSave = async (message: string) => {
@@ -405,29 +364,6 @@ export default function OwnerProducts() {
     };
     reader.readAsDataURL(file);
   };
-  const selectGcashQr = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { setNotice("GCash QR codes must be image files."); return; }
-    if (file.size > 10_000_000) { setNotice("GCash QR codes must be smaller than 10 MB."); return; }
-    try {
-      const result = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("File could not be read."));
-        reader.readAsDataURL(file);
-      });
-      setPendingQr({ fileName: file.name, mimeType: file.type, sizeBytes: file.size, base64: result.includes(",") ? result.split(",", 2)[1] : result, previewUrl: result });
-    } catch { setNotice("We could not read the GCash QR code. Please try again."); }
-  };
-  const clearGcashQr = () => {
-    if (pendingQr) { setPendingQr(null); return; }
-    if (editor && editor !== "new" && editor.gcashQrCodeUrl) {
-      removeGcashQr.mutate({ productId: editor.id }, { onSuccess: updated => { setEditor(updated as ProductValues); setNotice("GCash QR code removed."); }, onError: error => setNotice(error.message || "We could not remove the GCash QR code.") });
-    }
-  };
-
   const clearCover = () => {
     if (pendingCover) { setPendingCover(null); return; }
     if (editor && editor !== "new" && editor.coverImageUrl) {
@@ -494,15 +430,11 @@ export default function OwnerProducts() {
         savedProduct = await uploadCover.mutateAsync({ productId: savedProduct.id, fileName: cover.fileName, mimeType: cover.mimeType, sizeBytes: cover.sizeBytes, base64: cover.base64 }) as ProductValues;
         setPendingCover(null);
       }
-      if (pendingQr) {
-        savedProduct = await uploadGcashQr.mutateAsync({ productId: savedProduct.id, fileName: pendingQr.fileName, mimeType: pendingQr.mimeType, sizeBytes: pendingQr.sizeBytes, base64: pendingQr.base64 }) as ProductValues;
-        setPendingQr(null);
-      }
       for (const file of pendingBuyerFiles) {
         await uploadBuyerFile.mutateAsync({ productId: savedProduct.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
         setPendingBuyerFiles(current => current.filter(item => item.id !== file.id));
       }
-      await finishSave(cover || pendingQr || pendingBuyerFiles.length ? "Product listing and purchase methods saved." : "Product listing saved.");
+      await finishSave(cover || pendingBuyerFiles.length ? "Product listing and purchase methods saved." : "Product listing saved.");
     } catch {
       if (savedProduct) {
         setEditor(savedProduct);
@@ -576,7 +508,7 @@ export default function OwnerProducts() {
     { id: "draft", label: "Drafts", count: counts.draft },
     { id: "archived", label: "Archived", count: counts.archived },
   ];
-  const isSaving = saveProduct.isPending || uploadCover.isPending || uploadBuyerFile.isPending || uploadGcashQr.isPending || removeCover.isPending || removeGcashQr.isPending;
+  const isSaving = saveProduct.isPending || uploadCover.isPending || uploadBuyerFile.isPending || removeCover.isPending;
 
   return (
     <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
@@ -610,7 +542,7 @@ export default function OwnerProducts() {
                 <form key={editor === "new" ? "new" : editor.id} onSubmit={submitProduct} className="mt-6">
                   <ProductFields product={editor === "new" ? undefined : editor} pendingCover={pendingCover} onCoverChange={selectCover} onCoverRemove={clearCover} />
                   <BuyerFilesPanel product={editor === "new" ? undefined : editor} pendingFiles={pendingBuyerFiles} storedFiles={attachedBuyerFiles.data as StoredBuyerFile[] | undefined} filesLoading={attachedBuyerFiles.isLoading} isUploading={isSaving} isRemoving={removeBuyerFile.isPending} onSelectFiles={selectBuyerFiles} onRemovePending={fileId => setPendingBuyerFiles(current => current.filter(file => file.id !== fileId))} onRemoveStored={removeStoredBuyerFile} />
-                  <PurchaseMethodPanel product={editor === "new" ? undefined : editor} pendingQr={pendingQr} onQrChange={selectGcashQr} onQrRemove={clearGcashQr} />
+                  <PurchaseMethodPanel product={editor === "new" ? undefined : editor} />
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button className="button-primary disabled:opacity-60" disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button>
                     <button type="button" className="button-quiet" onClick={closeEditor}>Cancel</button>

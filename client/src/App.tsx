@@ -4,7 +4,6 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
-import GuestCheckout from "@/pages/GuestCheckout";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import OwnerPublicContent from "@/pages/OwnerPublicContent";
 import OwnerProducts from "@/pages/OwnerProducts";
@@ -36,7 +35,6 @@ function Router() {
       <Route path={"/work"} component={Work} />
       <Route path={"/shop/:handle"} component={ProductDetail} />
       <Route path={"/shop"} component={Shop} />
-      <Route path={"/checkout/:handle"} component={GuestCheckout} />
       <Route path={"/about"} component={About} />
       <Route path={"/contact"} component={Contact} />
       <Route path={"/owner/login"} component={OwnerLoginEntry} />

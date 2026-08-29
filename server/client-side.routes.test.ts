@@ -8,7 +8,7 @@ const inventory = readFileSync(new URL("../client/src/pages/OwnerProducts.tsx", 
 
 describe("DJDC owner inventory and public commerce routes", () => {
   it("removes the Client Side route group while preserving the requested owner operations navigation", () => {
-    expect(appRoutes).toContain('path={"/checkout/:handle"}');
+    expect(appRoutes).not.toContain('path={"/checkout/:handle"}');
     expect(appRoutes).not.toContain('path={"/client"}');
     ["Dashboard", "Inventory", "Sales", "Customers", "Content", "Vouchers", "Settings", "Support"].forEach(label => expect(ownerNavigation).toContain(`label: "${label}"`));
   });

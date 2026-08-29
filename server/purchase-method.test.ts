@@ -15,33 +15,29 @@ describe("product Purchase Method", () => {
     ["ALTER TABLE digitalProducts ADD COLUMN gcashQrCodeUrl TEXT", "ALTER TABLE digitalProducts ADD COLUMN gcashQrCodeKey TEXT", "ALTER TABLE digitalProducts ADD COLUMN gumroadUrl TEXT", "ALTER TABLE digitalProducts ADD COLUMN payhipUrl TEXT"].forEach(copy => expect(migration).toContain(copy));
   });
 
-  it("keeps Purchase Method owner-only and supports QR upload/removal without touching buyer delivery records", () => {
-    expect(router).toContain("productPurchaseMethods: router({");
-    expect(router).toContain("uploadGcashQr: adminProcedure");
-    expect(router).toContain("removeGcashQr: adminProcedure");
+  it("exposes only Gumroad and Payhip in the owner Purchase Method panel", () => {
     expect(router).toContain("updateDigitalProductPurchaseMethods");
     expect(ownerProducts).toContain("Purchase method");
     expect(ownerProducts).toContain('name="gumroadUrl"');
     expect(ownerProducts).toContain('name="payhipUrl"');
-    expect(ownerProducts).toContain("onQrChange={selectGcashQr}");
+    expect(ownerProducts).not.toContain("GCash QR Code");
+    expect(ownerProducts).not.toContain("onQrChange={selectGcashQr}");
   });
 
-  it("keeps catalogue cards simple and puts marketplace links in the Buy Now area", () => {
-    ["Purchase Here", "Gumroad", "Payhip", "product.gcashQrCodeUrl", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
-    expect(shop).not.toContain("<ProductPurchaseActions");
-    expect(shop).toContain(">Purchase Here<ArrowRight");
-    expect(detail).toContain("Buy now");
-    expect(detail).toContain("<ProductPurchaseActions product={product} showGcash={false} showMarketplaceNote />");
-    expect(actions).toContain("showGcash = true");
-    expect(actions).toContain("showGcash && Boolean(product.gcashQrCodeUrl)");
+  it("renders only Gumroad and Payhip purchase links and removes website checkout", () => {
+    ["Gumroad", "Payhip", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
+    expect(shop).toContain("<ProductPurchaseActions product={product} />");
+    expect(shop).not.toContain("Purchase Here");
+    expect(detail).not.toContain("Buy now");
+    expect(detail).not.toContain("/checkout/");
+    expect(detail).toContain("<ProductPurchaseActions product={product} showMarketplaceNote />");
     expect(actions).toContain("showMarketplaceNote = false");
     expect(actions).toContain("If you don't want to wait for manual checking of your payment");
     expect(actions).toContain('<a href={product.gumroadUrl!} target="_blank" rel="noopener noreferrer"');
     expect(actions).toContain('<a href={product.payhipUrl!} target="_blank" rel="noopener noreferrer"');
-    expect(actions).not.toContain("gumroadOpen");
+    expect(actions).not.toContain("gcashQrCode");
+    expect(actions).not.toContain("showGcash");
     expect(actions).not.toContain("iframe");
-    expect(actions).toContain("createPortal");
-    expect(actions).toContain("portalTarget");
-    expect(actions).toContain("document.body.style.overflow");
+    expect(actions).not.toContain("createPortal");
   });
 });

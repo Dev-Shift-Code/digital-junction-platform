@@ -1,7 +1,7 @@
 import PublicLayout from "@/components/PublicLayout";
 import ProductPurchaseActions from "@/components/ProductPurchaseActions";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, FileBox, Loader2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, FileBox, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useRoute } from "wouter";
 
@@ -37,7 +37,7 @@ export default function ProductDetail() {
                 <p className="font-mono text-[.6rem] uppercase tracking-[.1em] text-[#428475]">Inclusions</p>
                 {textInclusions ? <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#1A312C]/68">{textInclusions}</p> : <div className="mt-3 rounded-xl border border-dashed border-[#1A312C]/15 bg-[#FFF4E1]/55 p-4 text-sm leading-6 text-[#1A312C]/63">The owner has not added text inclusions for this product yet.</div>}
               </section>
-              <section className="mt-7 rounded-2xl border border-[#1A312C]/12 bg-[#FFF4E1]/78 p-5 shadow-[0_12px_30px_rgba(26,49,44,.04)]"><span className="grid size-10 place-items-center rounded-xl bg-[#89D7B7]/32 text-[#1A312C]"><ShoppingBag className="size-5" /></span><p className="eyebrow mt-5">Direct purchase</p><h2 className="display mt-3 text-2xl text-[#1A312C]">Ready to buy?</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/64">No account required. Your order is created on the next step; payment and file delivery are confirmed by the owner.</p><Link href={`/checkout/${product.slug}`} className="button-primary buttonlike mt-5">Buy now</Link><ProductPurchaseActions product={product} showGcash={false} showMarketplaceNote /></section>
+              <section className="mt-7 rounded-2xl border border-[#1A312C]/12 bg-[#FFF4E1]/78 p-5 shadow-[0_12px_30px_rgba(26,49,44,.04)]"><p className="eyebrow">Purchase options</p><h2 className="display mt-3 text-2xl text-[#1A312C]">Choose where to purchase</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/64">Product details and checkout are handled securely by Gumroad or Payhip.</p><div className="mt-5"><ProductPurchaseActions product={product} showMarketplaceNote /></div></section>
             </div>
           </div>
         </div>
