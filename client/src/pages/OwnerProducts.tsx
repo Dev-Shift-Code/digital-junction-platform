@@ -8,11 +8,9 @@ import {
   Check,
   Copy,
   Eye,
-  FileText,
   FolderArchive,
   ImagePlus,
   Loader2,
-  LockKeyhole,
   PackageOpen,
   Pencil,
   Plus,
@@ -22,7 +20,6 @@ import {
   Sparkles,
   Store,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
@@ -69,40 +66,8 @@ type PendingCover = {
   previewUrl: string;
 };
 
-type PendingBuyerFile = {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  base64: string;
-};
-
-type StoredBuyerFile = {
-  id: number;
-  fileName: string;
-  mimeType: string | null;
-  sizeBytes: number | null;
-};
-
 function money(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(value);
-}
-
-function formatBytes(sizeBytes: number | null) {
-  if (sizeBytes === null) return "Unknown size";
-  return sizeBytes < 1024 * 1024 ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readFileAsBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
-    };
-    reader.onerror = () => reject(new Error("File could not be read."));
-    reader.readAsDataURL(file);
-  });
 }
 
 function ProductFields({
@@ -192,83 +157,6 @@ function PurchaseMethodPanel({ product }: { product?: ProductValues }) {
   );
 }
 
-function BuyerFilesPanel({
-  product,
-  pendingFiles,
-  storedFiles,
-  filesLoading,
-  isUploading,
-  isRemoving,
-  onSelectFiles,
-  onRemovePending,
-  onRemoveStored,
-}: {
-  product?: ProductValues;
-  pendingFiles: PendingBuyerFile[];
-  storedFiles?: StoredBuyerFile[];
-  filesLoading: boolean;
-  isUploading: boolean;
-  isRemoving: boolean;
-  onSelectFiles: (event: ChangeEvent<HTMLInputElement>) => void;
-  onRemovePending: (fileId: string) => void;
-  onRemoveStored: (fileId: number, fileName: string) => void;
-}) {
-  const canAttachFiles = !product || !product.isArchived;
-
-  return (
-    <section className="mt-5 rounded-[1.25rem] border border-[#428475]/22 bg-[#89D7B7]/10 p-4 sm:p-5">
-      <div className="flex flex-col gap-4 border-b border-[#1A312C]/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="eyebrow">Buyer delivery files</p>
-          <h3 className="display mt-2 text-2xl text-[#1A312C]">Files the buyer receives</h3>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Upload PDFs, ZIPs, PNGs, documents, or any other file type here. These are separate from the text-only Inclusions above.</p>
-        </div>
-        {canAttachFiles ? (
-          <div>
-            <input id={`buyer-delivery-files-${product?.id ?? "new"}`} type="file" multiple accept="*/*" className="sr-only" onChange={onSelectFiles} disabled={isUploading} />
-            <label htmlFor={`buyer-delivery-files-${product?.id ?? "new"}`} className={`button-primary w-fit cursor-pointer ${isUploading ? "pointer-events-none opacity-60" : ""}`}>
-              <Upload className="size-4" />
-              {isUploading ? "Uploading…" : "Add buyer files"}
-            </label>
-          </div>
-        ) : null}
-      </div>
-
-      {product?.isArchived ? <p className="mt-4 rounded-lg bg-white/65 px-3 py-3 text-xs leading-5 text-[#1A312C]/64">Restore this archived listing before attaching buyer files.</p> : null}
-
-      {pendingFiles.length ? (
-        <div className="mt-5">
-          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Queued for upload</p>
-          <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">{product ? "These files will upload when you save changes." : "These files will upload when you save this new product."}</p>
-          <div className="mt-3 grid gap-2">
-            {pendingFiles.map(file => (
-              <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span>
-                  <div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div>
-                </div>
-                <button type="button" onClick={() => onRemovePending(file.id)} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700"><X className="size-3.5" />Remove</button>
-              </article>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {product ? (
-        <div className="mt-5">
-          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Saved buyer files</p>
-          {filesLoading ? <div className="grid min-h-20 place-items-center"><Loader2 className="size-5 animate-spin text-[#428475]" /></div> : storedFiles?.length ? <div className="mt-3 grid gap-2">{storedFiles.map(file => <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div></div><button type="button" onClick={() => onRemoveStored(file.id, file.fileName)} disabled={isRemoving} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700 disabled:opacity-50"><X className="size-3.5" />Remove</button></article>)}</div> : <p className="mt-3 rounded-lg border border-dashed border-[#1A312C]/15 bg-white/60 px-3 py-3 text-xs leading-5 text-[#1A312C]/60">No buyer files are attached yet.</p>}
-        </div>
-      ) : null}
-
-      <aside className="mt-5 flex items-start gap-3 rounded-xl border border-[#428475]/18 bg-white/52 p-3 text-xs leading-5 text-[#1A312C]/65">
-        <LockKeyhole className="mt-0.5 size-4 shrink-0 text-[#428475]" />
-        <p><strong className="text-[#1A312C]">Delivery safeguard:</strong> public product pages show only file names and formats. The stored delivery links remain owner-controlled until you confirm real payment and fulfilment.</p>
-      </aside>
-    </section>
-  );
-}
-
 export default function OwnerProducts() {
   const { user } = useAuth({ scope: "owner" });
   const isOwner = user?.role === "admin";
@@ -276,8 +164,6 @@ export default function OwnerProducts() {
   const saveProduct = trpc.portal.admin.products.save.useMutation();
   const uploadCover = trpc.portal.admin.productCovers.upload.useMutation();
   const removeCover = trpc.portal.admin.productCovers.remove.useMutation();
-  const uploadBuyerFile = trpc.portal.admin.productFiles.upload.useMutation();
-  const removeBuyerFile = trpc.portal.admin.productFiles.remove.useMutation();
   const deleteProduct = trpc.portal.admin.products.delete.useMutation();
   const [status, setStatus] = useState<InventoryStatus>("all");
   const [category, setCategory] = useState("all");
@@ -286,13 +172,8 @@ export default function OwnerProducts() {
   const [editor, setEditor] = useState<ProductValues | "new" | null>(null);
   const [notice, setNotice] = useState("");
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
-  const [pendingBuyerFiles, setPendingBuyerFiles] = useState<PendingBuyerFile[]>([]);
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "product" | "buyer-file"; id: number; label: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "product"; id: number; label: string } | null>(null);
   const [copiedProductId, setCopiedProductId] = useState<number | null>(null);
-
-  const currentProductId = editor && editor !== "new" ? editor.id : 0;
-  const currentProductFileInput = useMemo(() => ({ productId: currentProductId }), [currentProductId]);
-  const attachedBuyerFiles = trpc.portal.admin.productFiles.list.useQuery(currentProductFileInput, { enabled: isOwner && currentProductId > 0 });
 
   const realRows = useMemo<InventoryRow[]>(() => (products.data ?? []).map(raw => {
     const item = raw as ProductValues;
@@ -344,11 +225,9 @@ export default function OwnerProducts() {
   const closeEditor = () => {
     setEditor(null);
     setPendingCover(null);
-    setPendingBuyerFiles([]);
   };
   const openEditor = (value: ProductValues | "new") => {
     setPendingCover(null);
-    setPendingBuyerFiles([]);
     setEditor(value);
   };
   const finishSave = async (message: string) => {
@@ -384,48 +263,6 @@ export default function OwnerProducts() {
     }
   };
 
-  const selectBuyerFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? []);
-    event.currentTarget.value = "";
-    if (!selected.length) return;
-    try {
-      const staged = await Promise.all(selected.map(async file => ({
-        id: `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).slice(2)}`,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        sizeBytes: file.size,
-        base64: await readFileAsBase64(file),
-      })));
-      if (editor && editor !== "new") {
-        const failedFiles: PendingBuyerFile[] = [];
-        let failureDetail = "";
-        let uploadedCount = 0;
-        for (const file of staged) {
-          try {
-            await uploadBuyerFile.mutateAsync({ productId: editor.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
-            uploadedCount += 1;
-          } catch (error) {
-            failedFiles.push(file);
-            failureDetail ||= error instanceof Error ? error.message : "The server did not accept the file.";
-          }
-        }
-        await attachedBuyerFiles.refetch();
-        if (failedFiles.length) {
-          setPendingBuyerFiles(current => [...current, ...failedFiles]);
-          setNotice(uploadedCount ? `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} uploaded. Retry the remaining file${failedFiles.length === 1 ? "" : "s"} below. ${failureDetail}` : `We could not upload those files. ${failureDetail}`);
-          return;
-        }
-        setNotice(`${uploadedCount} buyer file${uploadedCount === 1 ? "" : "s"} uploaded.`);
-        return;
-      }
-      setPendingBuyerFiles(current => [...current, ...staged]);
-      setNotice(`${staged.length} file${staged.length === 1 ? "" : "s"} queued. Save the new product to upload ${staged.length === 1 ? "it" : "them"}.`);
-    } catch {
-      setNotice("We could not read one of those files. Please try again.");
-    }
-  };
-  const removeStoredBuyerFile = (fileId: number, fileName: string) => setPendingDelete({ kind: "buyer-file", id: fileId, label: fileName });
-
   const submitProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cover = pendingCover;
@@ -436,11 +273,7 @@ export default function OwnerProducts() {
         savedProduct = await uploadCover.mutateAsync({ productId: savedProduct.id, fileName: cover.fileName, mimeType: cover.mimeType, sizeBytes: cover.sizeBytes, base64: cover.base64 }) as ProductValues;
         setPendingCover(null);
       }
-      for (const file of pendingBuyerFiles) {
-        await uploadBuyerFile.mutateAsync({ productId: savedProduct.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
-        setPendingBuyerFiles(current => current.filter(item => item.id !== file.id));
-      }
-      await finishSave(cover || pendingBuyerFiles.length ? "Product listing and purchase methods saved." : "Product listing saved.");
+      await finishSave(cover ? "Product listing and purchase methods saved." : "Product listing saved.");
     } catch {
       if (savedProduct) {
         setEditor(savedProduct);
@@ -489,16 +322,6 @@ export default function OwnerProducts() {
     const pending = pendingDelete;
     if (!pending) return;
     setPendingDelete(null);
-    if (pending.kind === "buyer-file") {
-      removeBuyerFile.mutate({ productFileId: pending.id }, {
-        onSuccess: async () => {
-          setNotice(`${pending.label} removed.`);
-          await attachedBuyerFiles.refetch();
-        },
-        onError: () => setNotice("We could not remove that buyer file. Please try again."),
-      });
-      return;
-    }
     deleteProduct.mutate({ productId: pending.id }, {
       onSuccess: async result => {
         setNotice(result.preservedHistory ? "Product removed from the public catalogue. Existing buyer history and delivery records were kept." : "Product permanently deleted.");
@@ -514,7 +337,7 @@ export default function OwnerProducts() {
     { id: "draft", label: "Drafts", count: counts.draft },
     { id: "archived", label: "Archived", count: counts.archived },
   ];
-  const isSaving = saveProduct.isPending || uploadCover.isPending || uploadBuyerFile.isPending || removeCover.isPending;
+  const isSaving = saveProduct.isPending || uploadCover.isPending || removeCover.isPending;
 
   return (
     <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
@@ -522,9 +345,9 @@ export default function OwnerProducts() {
         <ConfirmDialog
           open={Boolean(pendingDelete)}
           onOpenChange={open => { if (!open) setPendingDelete(null); }}
-          title={pendingDelete?.kind === "product" ? `Delete “${pendingDelete.label}”?` : `Remove “${pendingDelete?.label ?? "this file"}”?`}
-          description={pendingDelete?.kind === "product" ? "The listing will be removed from the public catalogue immediately. If it has existing buyer records, its historical order and delivery information will be retained privately in Owner Sales." : "This buyer delivery file will be removed from the product. The action cannot be undone."}
-          confirmLabel={pendingDelete?.kind === "product" ? "Remove listing" : "Remove file"}
+          title={`Delete “${pendingDelete?.label ?? "this listing"}”?`}
+          description="The listing will be removed from the public catalogue immediately. If it has existing buyer records, its historical order and delivery information will be retained privately in Owner Sales."
+          confirmLabel="Remove listing"
           destructive
           onConfirm={confirmDelete}
         />
@@ -542,12 +365,11 @@ export default function OwnerProducts() {
             {editor ? (
               <section className="rounded-[1.4rem] border border-[#428475]/25 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.08)] sm:p-7">
                 <div className="flex items-start justify-between gap-5">
-                  <div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add a local cover, write text-only inclusions, and attach the actual buyer delivery files in this form.</p></div>
+                  <div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add the public product basics and the Gumroad or Payhip purchase links.</p></div>
                   <button type="button" onClick={closeEditor} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button>
                 </div>
                 <form key={editor === "new" ? "new" : editor.id} onSubmit={submitProduct} className="mt-6">
                   <ProductFields product={editor === "new" ? undefined : editor} pendingCover={pendingCover} onCoverChange={selectCover} onCoverRemove={clearCover} />
-                  <BuyerFilesPanel product={editor === "new" ? undefined : editor} pendingFiles={pendingBuyerFiles} storedFiles={attachedBuyerFiles.data as StoredBuyerFile[] | undefined} filesLoading={attachedBuyerFiles.isLoading} isUploading={isSaving} isRemoving={removeBuyerFile.isPending} onSelectFiles={selectBuyerFiles} onRemovePending={fileId => setPendingBuyerFiles(current => current.filter(file => file.id !== fileId))} onRemoveStored={removeStoredBuyerFile} />
                   <PurchaseMethodPanel product={editor === "new" ? undefined : editor} />
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button className="button-primary disabled:opacity-60" disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button>
