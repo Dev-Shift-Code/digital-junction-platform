@@ -332,3 +332,6 @@
 - [ ] Replace Return to checkout with Continue shopping and redirect it to the Digital Products catalogue.
 - [ ] Add regression coverage and validate both fixes without creating or modifying real business data.
 - [x] Correct the reduced checkout UI so only Name, Email, Voucher Code, product-specific GCash QR code, and Order Note are visible; keep secure payment logic internal.
+- [x] Add payment reference number and receipt screenshot proof fields to GCash/manual checkout.
+- [x] Store receipt bytes only through the existing private storage flow and keep the order pending until owner verification.
+- [x] Show submitted proof to the owner for review and add regression coverage without creating real orders.

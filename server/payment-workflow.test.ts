@@ -20,7 +20,9 @@ describe("provider-backed payment workflow safeguards", () => {
     const payrex = readFileSync(resolve(root, "server/payrex.ts"), "utf8");
     const paypal = readFileSync(resolve(root, "server/paypal.ts"), "utf8");
     expect(router).toContain("createPayrexCheckout: publicProcedure");
-    expect(router).toContain("createPaypalCheckout: publicProcedure");
+    expect(router).toContain("createManualCheckout");
+    expect(router).toContain("paymentProofBase64");
+    expect(router).toContain("Payment receipt must be an image");
     expect(router).toContain("resolveCheckoutTotal");
     expect(router).toContain("subtotalCents = priceToCents(product.price) * input.quantity");
     expect(router).toContain("amountCents: total.totalCents");
@@ -42,6 +44,9 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("manual QR payment needs owner review");
     expect(checkout).toContain("product.gcashQrCodeUrl");
     expect(checkout).toContain("GCash QR code");
+    expect(checkout).toContain("paymentReference");
+    expect(checkout).toContain("paymentProof");
+    expect(checkout).toContain("Payment receipt screenshot");
     expect(checkout).not.toContain('name="company"');
     expect(checkout).not.toContain(">Quantity</span>");
     expect(checkout).not.toContain("Choose payment method.");
@@ -49,8 +54,6 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("Files are not released until the payment is manually verified");
     expect(checkout).toContain("Your files will be sent by email.");
     expect(checkout).toContain("Thank you for waiting and purchasing from Digital Junction Development Co.");
-    expect(checkout).not.toContain("paymentProofBase64");
-    expect(checkout).not.toContain("paymentReference");
     expect(checkout).not.toMatch(/accountNumber|account_name|bankAccount|gcashNumber/i);
   });
 

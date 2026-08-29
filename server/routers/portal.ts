@@ -312,7 +312,7 @@ export const portalRouter = router({
         }
       }),
     createManualCheckout: publicProcedure
-      .input(z.object({ productId: z.number().int().positive(), quantity: z.number().int().min(1).max(20).default(1), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), voucherCode }))
+      .input(z.object({ productId: z.number().int().positive(), quantity: z.number().int().min(1).max(20).default(1), name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(320), company: z.string().trim().max(180).optional(), message: z.string().trim().max(5000).optional(), paymentMethodId: z.number().int().positive(), paymentReference: z.string().trim().min(3).max(180), paymentProofFileName: z.string().trim().min(1).max(255), paymentProofMimeType: paymentImageMimeType, paymentProofSizeBytes: z.number().int().min(1).max(5_000_000), paymentProofBase64: z.string().min(1).max(7_000_000), voucherCode }))
       .mutation(async ({ input }) => {
         try {
           const [paymentMethod, total] = await Promise.all([
@@ -321,8 +321,12 @@ export const portalRouter = router({
           ]);
           if (!paymentMethod || !paymentMethod.isActive) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an active manual payment method before placing this order." });
           if (total.totalCents < 1) throw new TRPCError({ code: "BAD_REQUEST", message: "A manual payment order must have a final total of at least ₱0.01." });
+          const proofBytes = Buffer.from(input.paymentProofBase64, "base64");
+          if (!proofBytes.length || proofBytes.length > 5_000_000 || proofBytes.length !== input.paymentProofSizeBytes) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment receipt must be an image no larger than 5 MB." });
+          const safeProofName = input.paymentProofFileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const proof = await storagePut(`payment-proofs/${Date.now()}-${safeProofName}`, proofBytes, input.paymentProofMimeType);
           const publicToken = crypto.randomUUID();
-          const order = await createManualCheckoutOrder({ productId: total.product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl || null, voucherId: total.voucherId, voucherCodeSnapshot: total.voucherCodeSnapshot, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents });
+          const order = await createManualCheckoutOrder({ productId: total.product.id, name: input.name, email: input.email, company: input.company || null, message: input.message || null, publicToken, paymentMethodId: paymentMethod.id, paymentMethodName: paymentMethod.displayName, paymentMethodType: paymentMethod.methodType, paymentInstructionsSnapshot: paymentMethod.instructions, paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl || null, paymentReference: input.paymentReference, paymentProofUrl: proof.url, paymentProofKey: proof.key, paymentProofFileName: input.paymentProofFileName, paymentProofMimeType: input.paymentProofMimeType, paymentProofSizeBytes: input.paymentProofSizeBytes, voucherId: total.voucherId, voucherCodeSnapshot: total.voucherCodeSnapshot, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents });
           return { orderId: order.id, paymentMethodName: paymentMethod.displayName, qrCodeUrl: paymentMethod.qrCodeUrl, instructions: paymentMethod.instructions, subtotalCents: total.subtotalCents, discountCents: total.discountCents, totalCents: total.totalCents, status: "awaiting_manual_review" as const };
         } catch (error) {
           if (error instanceof TRPCError) throw error;

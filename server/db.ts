@@ -454,14 +454,14 @@ export async function createGuestCheckoutRequest(values: typeof guestCheckoutReq
 }
 
 type PaymentProvider = "payrex" | "paypal" | "manual";
-type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken?: string | null; paymentReference?: string | null; paymentMethodId?: number | null; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot?: string | null; paymentQrCodeUrlSnapshot?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number };
+type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken?: string | null; paymentReference?: string | null; paymentProofUrl?: string | null; paymentProofKey?: string | null; paymentProofFileName?: string | null; paymentProofMimeType?: string | null; paymentProofSizeBytes?: number | null; paymentMethodId?: number | null; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot?: string | null; paymentQrCodeUrlSnapshot?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number };
 
 async function createProviderCheckoutOrder(input: ProviderCheckoutOrderInput) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values({
     productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
     status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken || null,
-    paymentMethodId: input.paymentMethodId || null, paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentInstructionsSnapshot: input.paymentInstructionsSnapshot || null, paymentQrCodeUrlSnapshot: input.paymentQrCodeUrlSnapshot || null, paymentReference: input.paymentReference || null, voucherId: input.voucherId || null, voucherCodeSnapshot: input.voucherCodeSnapshot || null, subtotalCents: input.subtotalCents, discountCents: input.discountCents, totalCents: input.totalCents, paymentStatus: "awaiting_payment",
+    paymentMethodId: input.paymentMethodId || null, paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentInstructionsSnapshot: input.paymentInstructionsSnapshot || null, paymentQrCodeUrlSnapshot: input.paymentQrCodeUrlSnapshot || null, paymentReference: input.paymentReference || null, paymentProofUrl: input.paymentProofUrl || null, paymentProofKey: input.paymentProofKey || null, paymentProofFileName: input.paymentProofFileName || null, paymentProofMimeType: input.paymentProofMimeType || null, paymentProofSizeBytes: input.paymentProofSizeBytes || null, voucherId: input.voucherId || null, voucherCodeSnapshot: input.voucherCodeSnapshot || null, subtotalCents: input.subtotalCents, discountCents: input.discountCents, totalCents: input.totalCents, paymentStatus: "awaiting_payment",
   });
   const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
   if (!created[0]) throw new Error("Unable to create checkout order");
@@ -476,7 +476,7 @@ export async function createPaypalCheckoutOrder(input: { productId: number; name
   return createProviderCheckoutOrder({ ...input, paymentMethodName: "PayPal", paymentMethodType: "PayPal" });
 }
 
-export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; paymentProofUrl?: string | null; paymentProofKey?: string | null; paymentProofFileName?: string | null; paymentProofMimeType?: string | null; paymentProofSizeBytes?: number | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
   return createProviderCheckoutOrder(input);
 }
 
