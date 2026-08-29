@@ -12,9 +12,9 @@ function isExternalUrl(value: string | null | undefined): value is string {
   return Boolean(value && /^https?:\/\//i.test(value));
 }
 
-export default function ProductPurchaseActions({ product }: { product: ProductPurchaseMethods }) {
+export default function ProductPurchaseActions({ product, showGcash = true }: { product: ProductPurchaseMethods; showGcash?: boolean }) {
   const [qrOpen, setQrOpen] = useState(false);
-  const hasGcash = Boolean(product.gcashQrCodeUrl);
+  const hasGcash = showGcash && Boolean(product.gcashQrCodeUrl);
   const hasGumroad = isExternalUrl(product.gumroadUrl);
   const hasPayhip = isExternalUrl(product.payhipUrl);
 

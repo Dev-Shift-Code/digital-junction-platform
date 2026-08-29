@@ -311,3 +311,5 @@
 - [x] Add regression tests and verify the Purchase Method feature without creating or modifying real business transactions.
 - [x] Remove the misplaced Purchase Method action block from public catalogue cards and rename only the card View details button to Purchase Here.
 - [x] Verify the storefront card layout no longer opens or embeds the GCash QR modal unexpectedly, while product detail and secure checkout remain available.
+- [x] Restore Gumroad and Payhip buttons on public product cards while keeping the GCash QR/modal out of catalogue cards and retaining Purchase Here for product details.
+- [x] Revalidate the corrected card layout and external-link behavior.
