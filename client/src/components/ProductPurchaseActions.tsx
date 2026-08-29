@@ -51,7 +51,7 @@ export default function ProductPurchaseActions({ product, showGcash = true, show
           </a>
         ) : null}
         {hasPayhip ? (
-          <a href={product.payhipUrl!} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#1A312C]/18 bg-white px-3 py-2 text-xs font-bold text-[#1A312C] transition hover:border-[#428475] hover:text-[#428475] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475] focus-visible:ring-offset-2">
+          <a href={product.payhipUrl!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#1A312C]/18 bg-white px-3 py-2 text-xs font-bold text-[#1A312C] transition hover:border-[#428475] hover:text-[#428475] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475] focus-visible:ring-offset-2">
             Payhip<ExternalLink className="size-3.5" />
           </a>
         ) : null}

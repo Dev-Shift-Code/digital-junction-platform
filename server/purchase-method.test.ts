@@ -38,7 +38,8 @@ describe("product Purchase Method", () => {
     expect(actions).toContain("If you don't want to wait for manual checking of your payment");
     expect(actions).toContain("<a href={product.gumroadUrl!}");
     expect(actions).toContain("<a href={product.payhipUrl!}");
-    expect(actions).not.toContain('target="_blank"');
+    expect(actions).toContain('<a href={product.gumroadUrl!} className=');
+    expect(actions).toContain('<a href={product.payhipUrl!} target="_blank" rel="noopener noreferrer"');
     expect(actions).not.toContain("iframe");
     expect(actions).not.toContain("marketplaceOpen");
     expect(actions).toContain("createPortal");
