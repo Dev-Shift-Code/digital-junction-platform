@@ -27,12 +27,14 @@ describe("product Purchase Method", () => {
   });
 
   it("keeps catalogue cards simple while retaining detail-page QR and external-link actions", () => {
-    ["Purchase Here", "Gumroad", "Payhip", "role=\"dialog\"", 'target="_blank"', "product.gcashQrCodeUrl", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
+    ["Purchase Here", "Gumroad", "Payhip", "role=\"dialog\"", "iframe", "product.gcashQrCodeUrl", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
     expect(shop).toContain("<ProductPurchaseActions product={product} showGcash={false} />");
     expect(shop).toContain(">Purchase Here<ArrowRight");
     expect(detail).not.toContain("<ProductPurchaseActions product={product} />");
     expect(detail).toContain("Buy now");
     expect(actions).toContain("showGcash = true");
     expect(actions).toContain("showGcash && Boolean(product.gcashQrCodeUrl)");
+    expect(actions).not.toContain('target="_blank"');
+    expect(actions).toContain("marketplaceOpen");
   });
 });

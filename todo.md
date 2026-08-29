@@ -317,3 +317,6 @@
 - [x] Add a copyable published product link to the Owner Products interface.
 - [x] Add protected individual order deletion in Owner Sales with safeguards for related payment and delivery history.
 - [x] Test and build the revised purchase, product-link, and order-deletion flows without fabricating business data.
+- [x] Open Gumroad and Payhip destinations inside an in-site modal instead of a new browser tab.
+- [x] Fix the deployed `portal.admin.orders.delete` tRPC procedure so individual Sales order deletion works.
+- [x] Add regression coverage and validate both fixes without creating or modifying real business data.
