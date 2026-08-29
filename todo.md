@@ -313,3 +313,7 @@
 - [x] Verify the storefront card layout no longer opens or embeds the GCash QR modal unexpectedly, while product detail and secure checkout remain available.
 - [x] Restore Gumroad and Payhip buttons on public product cards while keeping the GCash QR/modal out of catalogue cards and retaining Purchase Here for product details.
 - [x] Revalidate the corrected card layout and external-link behavior.
+- [x] Make Purchase Here lead to a Buy now-only product detail flow without repeating Gumroad or Payhip actions.
+- [x] Add a copyable published product link to the Owner Products interface.
+- [x] Add protected individual order deletion in Owner Sales with safeguards for related payment and delivery history.
+- [x] Test and build the revised purchase, product-link, and order-deletion flows without fabricating business data.

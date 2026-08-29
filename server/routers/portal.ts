@@ -18,6 +18,7 @@ import {
   deleteCaseStudy,
   deleteDigitalProduct,
   deletePaymentMethod,
+  deleteGuestCheckoutRequest,
   deleteProductFile,
   getAdminProjectDetail,
   getAllCaseStudies,
@@ -698,6 +699,16 @@ export const portalRouter = router({
         try {
           return getGuestCheckoutRequests();
         } catch (error) {
+          return unavailable(error);
+        }
+      }),
+      delete: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(async ({ input }) => {
+        try {
+          const result = await deleteGuestCheckoutRequest(input.orderId);
+          if (!result.deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found." });
+          return result;
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
           return unavailable(error);
         }
       }),

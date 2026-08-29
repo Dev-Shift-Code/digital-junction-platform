@@ -800,6 +800,23 @@ export async function getGuestCheckoutRequests() {
   });
 }
 
+export async function deleteGuestCheckoutRequest(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const existing = await db.select({ id: guestCheckoutRequests.id }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  if (!existing[0]) return { deleted: false };
+
+  const revokedAt = new Date();
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt }).where(and(eq(paymentDeliveryEntitlements.orderId, orderId), eq(paymentDeliveryEntitlements.status, "active")));
+  await db.delete(paymentDeliveryEmails).where(eq(paymentDeliveryEmails.orderId, orderId));
+  await db.delete(paymentRejectionEmails).where(eq(paymentRejectionEmails.orderId, orderId));
+  await db.delete(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.orderId, orderId));
+  await db.delete(paymentTransactions).where(eq(paymentTransactions.orderId, orderId));
+  await db.delete(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId));
+
+  // Webhook events intentionally remain for provider idempotency and audit history.
+  return { deleted: true, orderId };
+}
+
 export async function createOwnerOneTimeDeliveryEntitlement(input: { orderId: number; productFileId: number; tokenHash: string; expiresAt: Date }) {
   const db = requireDatabase(await getDb());
   const orderRows = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, input.orderId)).limit(1);
