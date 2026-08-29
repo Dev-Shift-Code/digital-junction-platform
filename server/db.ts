@@ -370,6 +370,13 @@ export async function updateDigitalProductCover(productId: number, coverImageUrl
   return updated[0];
 }
 
+export async function updateDigitalProductPurchaseMethods(productId: number, values: Pick<typeof digitalProducts.$inferInsert, "gcashQrCodeUrl" | "gcashQrCodeKey" | "gumroadUrl" | "payhipUrl">) {
+  const db = requireDatabase(await getDb());
+  await db.update(digitalProducts).set(values).where(eq(digitalProducts.id, productId));
+  const updated = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+  return updated[0];
+}
+
 export async function deleteDigitalProduct(productId: number) {
   const db = requireDatabase(await getDb());
   const [order, access, inquiry] = await Promise.all([

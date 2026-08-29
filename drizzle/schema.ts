@@ -41,7 +41,7 @@ export const caseStudies = sqliteTable("caseStudies", {
 }, table => [uniqueIndex("case_studies_slug_unique").on(table.slug), index("case_studies_public_idx").on(table.isPublished, table.category)]);
 
 export const digitalProducts = sqliteTable("digitalProducts", {
-  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), slug: text().notNull(), category: text().notNull(), summary: text().notNull(), description: text(), deliveryNotes: text(), price: numeric().notNull(), coverImageUrl: text(), isPublished: integer({ mode: "boolean" }).notNull().default(false), isFeatured: integer({ mode: "boolean" }).notNull().default(false), isArchived: integer({ mode: "boolean" }).notNull().default(false), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), slug: text().notNull(), category: text().notNull(), summary: text().notNull(), description: text(), deliveryNotes: text(), price: numeric().notNull(), coverImageUrl: text(), gcashQrCodeUrl: text(), gcashQrCodeKey: text(), gumroadUrl: text(), payhipUrl: text(), isPublished: integer({ mode: "boolean" }).notNull().default(false), isFeatured: integer({ mode: "boolean" }).notNull().default(false), isArchived: integer({ mode: "boolean" }).notNull().default(false), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
 }, table => [uniqueIndex("digital_products_slug_unique").on(table.slug), index("digital_products_public_idx").on(table.isPublished, table.isArchived, table.isFeatured, table.category)]);
 
 export const productAccess = sqliteTable("productAccess", {

@@ -305,3 +305,7 @@
 - [x] Diagnose public-site API query failures for `publicSiteContent`, `caseStudies`, and `digitalProducts` in the reported preview and fix the source-repository schema/binding mismatch without modifying real business data.
 - [x] Add safe public homepage fallback behavior so one unavailable content section does not crash the page.
 
+- [x] Replace complex product Purchase Method controls with optional GCash QR upload, Gumroad URL, and Payhip URL fields.
+- [x] Persist product-specific Purchase Method fields through D1 schema, migration, protected owner API, and storage upload flow.
+- [x] Generate storefront purchase buttons from saved Purchase Method data, including accessible GCash QR modal and safe external links.
+- [x] Add regression tests and verify the Purchase Method feature without creating or modifying real business transactions.

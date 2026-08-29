@@ -64,6 +64,7 @@ import {
   updateDeliverable,
   updateCaseStudyCover,
   updateDigitalProductCover,
+  updateDigitalProductPurchaseMethods,
   updateGuestCheckoutRequestStatus,
   updateGuestCheckoutPaymentReview,
   updateInquiryStatus,
@@ -674,11 +675,11 @@ export const portalRouter = router({
         }
       }),
       save: adminProcedure
-        .input(z.object({ productId: z.number().int().positive().optional(), title: z.string().trim().min(2).max(180), slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180), category: z.string().trim().min(2).max(100), summary: z.string().trim().min(10).max(5000), description: z.string().trim().max(10000).optional().nullable(), deliveryNotes: z.string().trim().max(5000).optional().nullable(), price: z.coerce.number().min(0).max(1000000), coverImageUrl: z.string().url().max(5000).optional().nullable(), isPublished: z.boolean().default(false), isFeatured: z.boolean().default(false), isArchived: z.boolean().default(false), sortOrder: z.number().int().min(0).default(0) }))
+        .input(z.object({ productId: z.number().int().positive().optional(), title: z.string().trim().min(2).max(180), slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180), category: z.string().trim().min(2).max(100), summary: z.string().trim().min(10).max(5000), description: z.string().trim().max(10000).optional().nullable(), deliveryNotes: z.string().trim().max(5000).optional().nullable(), price: z.coerce.number().min(0).max(1000000), coverImageUrl: z.string().url().max(5000).optional().nullable(), gcashQrCodeUrl: z.string().trim().max(5000).refine(value => /^https?:\/\//.test(value) || value.startsWith("/"), "GCash QR code URL is invalid.").optional().nullable(), gcashQrCodeKey: z.string().trim().max(1000).optional().nullable(), gumroadUrl: z.string().url().max(2000).optional().nullable(), payhipUrl: z.string().url().max(2000).optional().nullable(), isPublished: z.boolean().default(false), isFeatured: z.boolean().default(false), isArchived: z.boolean().default(false), sortOrder: z.number().int().min(0).default(0) }))
         .mutation(async ({ input }) => {
           try {
             const { productId, price, ...product } = input;
-            return saveDigitalProduct({ ...product, price: price.toFixed(2) }, productId);
+            return await saveDigitalProduct({ ...product, price: price.toFixed(2) }, productId);
           } catch (error) {
             return unavailable(error);
           }
@@ -881,7 +882,33 @@ export const portalRouter = router({
         }
       }),
     }),
-    productCovers: router({
+      productPurchaseMethods: router({
+        uploadGcashQr: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().regex(/^image\//), sizeBytes: z.number().int().min(1).max(10_000_000), base64: z.string().min(1).max(14_000_000) })).mutation(async ({ input }) => {
+          try {
+            const product = await getDigitalProductById(input.productId);
+            if (!product || product.isArchived) throw new TRPCError({ code: "NOT_FOUND", message: "An active product is required before adding a GCash QR code." });
+            const bytes = Buffer.from(input.base64, "base64");
+            if (!bytes.length || bytes.length > 10_000_000) throw new TRPCError({ code: "BAD_REQUEST", message: "The GCash QR code must be a non-empty image smaller than 10 MB." });
+            const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+            const stored = await storagePut(`product-purchase-methods/${product.id}/gcash-${Date.now()}-${safeName}`, bytes, input.mimeType);
+            return updateDigitalProductPurchaseMethods(product.id, { gcashQrCodeUrl: stored.url, gcashQrCodeKey: stored.key, gumroadUrl: product.gumroadUrl, payhipUrl: product.payhipUrl });
+          } catch (error) {
+            if (error instanceof TRPCError) throw error;
+            return unavailable(error);
+          }
+        }),
+        removeGcashQr: adminProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(async ({ input }) => {
+          try {
+            const product = await getDigitalProductById(input.productId);
+            if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
+            return updateDigitalProductPurchaseMethods(product.id, { gcashQrCodeUrl: null, gcashQrCodeKey: null, gumroadUrl: product.gumroadUrl, payhipUrl: product.payhipUrl });
+          } catch (error) {
+            if (error instanceof TRPCError) throw error;
+            return unavailable(error);
+          }
+        }),
+      }),
+      productCovers: router({
       upload: adminProcedure.input(z.object({ productId: z.number().int().positive(), fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), sizeBytes: z.number().int().min(1).max(5_000_000), base64: z.string().min(1).max(7_000_000) })).mutation(async ({ input }) => {
         try {
           if (input.mimeType && !input.mimeType.startsWith("image/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Product covers must be image files." });
