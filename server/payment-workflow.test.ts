@@ -42,7 +42,7 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("manual QR payment needs owner review");
     expect(checkout).toContain("product.gcashQrCodeUrl");
     expect(checkout).toContain("GCash QR code");
-    expect(checkout).not.toContain(">Company <span");
+    expect(checkout).not.toContain('name="company"');
     expect(checkout).not.toContain(">Quantity</span>");
     expect(checkout).not.toContain("Choose payment method.");
     expect(checkout).not.toContain("Selected payment method");

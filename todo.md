@@ -328,3 +328,7 @@
 - [x] Validate the checkout heading cleanup with tests and a production build.
 - [x] Reduce the visible checkout form to Name, Email, Voucher Code, product-specific GCash QR code, and Order Note only.
 - [x] Preserve secure server-side payment submission and validate the reduced checkout form with tests and a production build.
+- [ ] Exclude deleted or archived products from the Owner voucher product selector so only valid current products can be assigned.
+- [ ] Replace Return to checkout with Continue shopping and redirect it to the Digital Products catalogue.
+- [ ] Add regression coverage and validate both fixes without creating or modifying real business data.
+- [x] Correct the reduced checkout UI so only Name, Email, Voucher Code, product-specific GCash QR code, and Order Note are visible; keep secure payment logic internal.
