@@ -28,6 +28,9 @@ describe("product Purchase Method", () => {
     ["Gumroad", "Payhip", "product.gumroadUrl", "product.payhipUrl"].forEach(copy => expect(actions).toContain(copy));
     expect(shop).toContain("<ProductPurchaseActions product={product} />");
     expect(shop).not.toContain("Purchase Here");
+    expect(actions).toContain("flex w-full flex-nowrap");
+    expect(actions).toContain("min-w-0 flex-1");
+    expect(shop).toContain("grid-cols-[auto_minmax(0,1fr)]");
     expect(detail).not.toContain("Buy now");
     expect(detail).not.toContain("/checkout/");
     expect(detail).toContain("<ProductPurchaseActions product={product} showMarketplaceNote />");
