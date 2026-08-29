@@ -15,19 +15,15 @@ function isExternalUrl(value: string | null | undefined): value is string {
 
 export default function ProductPurchaseActions({ product, showGcash = true, showMarketplaceNote = false }: { product: ProductPurchaseMethods; showGcash?: boolean; showMarketplaceNote?: boolean }) {
   const [qrOpen, setQrOpen] = useState(false);
-  const [gumroadOpen, setGumroadOpen] = useState(false);
   const hasGcash = showGcash && Boolean(product.gcashQrCodeUrl);
   const hasGumroad = isExternalUrl(product.gumroadUrl);
   const hasPayhip = isExternalUrl(product.payhipUrl);
   const portalTarget = typeof document === "undefined" ? null : document.body;
 
   useEffect(() => {
-    if (!qrOpen && !gumroadOpen) return;
+    if (!qrOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setQrOpen(false);
-        setGumroadOpen(false);
-      }
+      if (event.key === "Escape") setQrOpen(false);
     };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -36,7 +32,7 @@ export default function ProductPurchaseActions({ product, showGcash = true, show
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [qrOpen, gumroadOpen]);
+  }, [qrOpen]);
 
   if (!hasGcash && !hasGumroad && !hasPayhip) return null;
 
@@ -50,9 +46,9 @@ export default function ProductPurchaseActions({ product, showGcash = true, show
           </button>
         ) : null}
         {hasGumroad ? (
-          <button type="button" onClick={() => setGumroadOpen(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#1A312C]/18 bg-white px-3 py-2 text-xs font-bold text-[#1A312C] transition hover:border-[#428475] hover:text-[#428475] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475] focus-visible:ring-offset-2">
+          <a href={product.gumroadUrl!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#1A312C]/18 bg-white px-3 py-2 text-xs font-bold text-[#1A312C] transition hover:border-[#428475] hover:text-[#428475] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475] focus-visible:ring-offset-2">
             Gumroad<ExternalLink className="size-3.5" />
-          </button>
+          </a>
         ) : null}
         {hasPayhip ? (
           <a href={product.payhipUrl!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#1A312C]/18 bg-white px-3 py-2 text-xs font-bold text-[#1A312C] transition hover:border-[#428475] hover:text-[#428475] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475] focus-visible:ring-offset-2">
@@ -71,22 +67,6 @@ export default function ProductPurchaseActions({ product, showGcash = true, show
                 <img src={product.gcashQrCodeUrl!} alt={`GCash QR code for ${product.title}`} className="mx-auto mt-6 max-h-[55vh] w-full rounded-2xl border border-[#1A312C]/10 bg-white p-4 object-contain" />
                 <button type="button" onClick={() => setQrOpen(false)} className="button-primary mt-5 w-full">Close</button>
               </section>
-            </div>,
-            portalTarget,
-          )
-        : null}
-      {gumroadOpen && hasGumroad && portalTarget
-        ? createPortal(
-            <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#1A312C]/70 p-4 sm:p-6" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setGumroadOpen(false); }}>
-              <div className="grid min-h-full place-items-center">
-                <section role="dialog" aria-modal="true" aria-labelledby="gumroad-title" className="relative flex h-[calc(100dvh-2rem)] w-full max-w-[1024px] flex-none flex-col overflow-hidden rounded-[1.5rem] bg-[#FFF4E1] shadow-2xl sm:h-[min(870px,calc(100dvh-3rem))]" style={{ contain: "layout paint size" }} onMouseDown={event => event.stopPropagation()}>
-                  <header className="flex flex-none items-center justify-between gap-4 border-b border-[#1A312C]/10 px-4 py-4 sm:px-6">
-                    <div><p className="eyebrow">Purchase method</p><h2 id="gumroad-title" className="display mt-1 text-2xl text-[#1A312C]">Gumroad</h2></div>
-                    <button type="button" onClick={() => setGumroadOpen(false)} aria-label="Close Gumroad window" className="grid size-9 flex-none place-items-center rounded-full border border-[#1A312C]/12 text-[#1A312C] transition hover:bg-[#89D7B7]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#428475]"><X className="size-4" /></button>
-                  </header>
-                  <div className="min-h-0 flex-1 bg-white"><iframe key={product.gumroadUrl} title="Gumroad purchase page" src={product.gumroadUrl!} className="block size-full border-0 bg-white" loading="eager" referrerPolicy="no-referrer" /></div>
-                </section>
-              </div>
             </div>,
             portalTarget,
           )

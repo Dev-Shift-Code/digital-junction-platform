@@ -36,11 +36,10 @@ describe("product Purchase Method", () => {
     expect(actions).toContain("showGcash && Boolean(product.gcashQrCodeUrl)");
     expect(actions).toContain("showMarketplaceNote = false");
     expect(actions).toContain("If you don't want to wait for manual checking of your payment");
-    expect(actions).toContain("onClick={() => setGumroadOpen(true)}");
+    expect(actions).toContain('<a href={product.gumroadUrl!} target="_blank" rel="noopener noreferrer"');
     expect(actions).toContain('<a href={product.payhipUrl!} target="_blank" rel="noopener noreferrer"');
-    expect(actions).toContain("gumroadOpen && hasGumroad");
-    expect(actions).toContain("iframe");
-    expect(actions).not.toContain("onClick={() => setPayhipOpen");
+    expect(actions).not.toContain("gumroadOpen");
+    expect(actions).not.toContain("iframe");
     expect(actions).toContain("createPortal");
     expect(actions).toContain("portalTarget");
     expect(actions).toContain("document.body.style.overflow");
