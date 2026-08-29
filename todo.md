@@ -320,3 +320,5 @@
 - [x] Open Gumroad and Payhip destinations inside an in-site modal instead of a new browser tab.
 - [x] Fix the deployed `portal.admin.orders.delete` tRPC procedure so individual Sales order deletion works.
 - [x] Add regression coverage and validate both fixes without creating or modifying real business data.
+- [x] Show the selected product’s owner-uploaded GCash QR after the buyer presses Buy now, before the payment-details step.
+- [x] Validate that the checkout QR is product-specific and does not alter verified-payment, one-time delivery, or email safeguards.
