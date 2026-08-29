@@ -22,7 +22,7 @@ describe("owner authentication and guest product access", () => {
   it("uses guest checkout without a Client Side account or frontend payment claim", () => {
     expect(publicLayout).not.toContain('href="/login"');
     expect(publicLayout).not.toContain('Client side');
-    ["Secure digital checkout", "Choose payment method.", "GCash via PayRex", "PayPal", "manual QR payment needs owner review"].forEach(copy => expect(checkoutPage).toContain(copy));
+    ["Secure digital checkout", "Place your order", "GCash via PayRex", "PayPal", "manual QR payment needs owner review"].forEach(copy => expect(checkoutPage).toContain(copy));
     ["Direct purchase", "Buy now"].forEach(copy => expect(productDetail).toContain(copy));
     expect(shopPage).toContain('getPublicSectionDefault("shop", "hero")');
     ["No account is required to browse or start checkout.", "Guest checkout"].forEach(copy => expect(publicDefaults).toContain(copy));

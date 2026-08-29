@@ -322,3 +322,7 @@
 - [x] Add regression coverage and validate both fixes without creating or modifying real business data.
 - [x] Show the selected product’s owner-uploaded GCash QR after the buyer presses Buy now, before the payment-details step.
 - [x] Validate that the checkout QR is product-specific and does not alter verified-payment, one-time delivery, or email safeguards.
+- [x] Remove only the Payment Methods item from the Owner sidebar while preserving payment settings and checkout behavior.
+- [x] Validate the Owner navigation and payment-related regression tests after the sidebar cleanup.
+- [x] Remove the visible “Choose payment method.” heading from checkout while preserving payment options and secure payment processing.
+- [x] Validate the checkout heading cleanup with tests and a production build.
