@@ -309,3 +309,5 @@
 - [x] Persist product-specific Purchase Method fields through D1 schema, migration, protected owner API, and storage upload flow.
 - [x] Generate storefront purchase buttons from saved Purchase Method data, including accessible GCash QR modal and safe external links.
 - [x] Add regression tests and verify the Purchase Method feature without creating or modifying real business transactions.
+- [x] Remove the misplaced Purchase Method action block from public catalogue cards and rename only the card View details button to Purchase Here.
+- [x] Verify the storefront card layout no longer opens or embeds the GCash QR modal unexpectedly, while product detail and secure checkout remain available.
