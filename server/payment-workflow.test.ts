@@ -40,8 +40,12 @@ describe("provider-backed payment workflow safeguards", () => {
     expect(checkout).toContain("capturePaypalCheckout.useMutation");
     expect(checkout).toContain("window.location.assign(result.checkoutUrl)");
     expect(checkout).toContain("manual QR payment needs owner review");
-    expect(checkout).toContain("GCash QR for this product");
-    expect(checkout).toContain("product.gcashQrCodeUrl && !paymentToken");
+    expect(checkout).toContain("product.gcashQrCodeUrl");
+    expect(checkout).toContain("GCash QR code");
+    expect(checkout).not.toContain(">Company <span");
+    expect(checkout).not.toContain(">Quantity</span>");
+    expect(checkout).not.toContain("Choose payment method.");
+    expect(checkout).not.toContain("Selected payment method");
     expect(checkout).toContain("Files are not released until the payment is manually verified");
     expect(checkout).toContain("Your files will be sent by email.");
     expect(checkout).toContain("Thank you for waiting and purchasing from Digital Junction Development Co.");

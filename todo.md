@@ -326,3 +326,5 @@
 - [x] Validate the Owner navigation and payment-related regression tests after the sidebar cleanup.
 - [x] Remove the visible “Choose payment method.” heading from checkout while preserving payment options and secure payment processing.
 - [x] Validate the checkout heading cleanup with tests and a production build.
+- [x] Reduce the visible checkout form to Name, Email, Voucher Code, product-specific GCash QR code, and Order Note only.
+- [x] Preserve secure server-side payment submission and validate the reduced checkout form with tests and a production build.
