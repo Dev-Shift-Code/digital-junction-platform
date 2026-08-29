@@ -119,12 +119,12 @@ function ProductFields({
   const currentCover = pendingCover?.previewUrl || product?.coverImageUrl;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-5">
       <div className="rounded-xl border border-dashed border-[#428475]/35 bg-[#89D7B7]/12 p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-bold text-[#1A312C]">Product cover</p>
-            <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload a local image for the public product cover. You can remove or replace it anytime.</p>
+            <p className="text-sm font-bold text-[#1A312C]">Product Cover</p>
+            <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload the image buyers will see on the public catalogue.</p>
           </div>
           <label className="button-quiet w-fit cursor-pointer !min-h-9 !px-3 text-xs">
             <ImagePlus className="size-3.5" />
@@ -146,21 +146,23 @@ function ProductFields({
         ) : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
-        <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+          <span>Title</span>
+          <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
+        </label>
+        <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+          <span>Category</span>
+          <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
+        </label>
       </div>
-      <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Short public summary" />
-      <textarea name="description" defaultValue={product?.description ?? ""} className="form-field min-h-24 resize-y text-sm" placeholder="Full product description (optional)" />
-      <label className="grid gap-1.5 text-sm font-bold text-[#1A312C]">
-        <span>Inclusions <span className="font-normal text-[#1A312C]/55">(text only)</span></span>
-        <textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Example: Editable source files, step-by-step guide, bonus templates" />
+      <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+        <span>Short Public Summary</span>
+        <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Short public summary" />
       </label>
-      <input required min="0" step="0.01" type="number" name="price" defaultValue={product?.price ?? ""} className="form-field text-sm" placeholder="Price in PHP" />
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isPublished" type="checkbox" defaultChecked={product?.isPublished ?? false} />Publish publicly</label>
         <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured ?? false} />Feature on catalogue</label>
-        <label className="flex items-center gap-2 text-sm text-[#1A312C]/70">Order <input name="sortOrder" type="number" min="0" defaultValue={product?.sortOrder ?? 0} className="form-field !h-9 !w-18 !py-1 text-sm" /></label>
       </div>
     </div>
   );
@@ -316,14 +318,18 @@ export default function OwnerProducts() {
 
   const payloadFromForm = (form: FormData, product?: ProductValues) => {
     const title = String(form.get("title") ?? "").trim();
+    const optionalText = (name: string, fallback: string | null) => {
+      const value = form.get(name);
+      return value === null ? fallback : String(value).trim() || null;
+    };
     return {
       ...(product ? { productId: product.id, slug: product.slug, isArchived: product.isArchived } : { slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), isArchived: false }),
       title,
       category: String(form.get("category")),
       summary: String(form.get("summary")),
-      description: String(form.get("description")) || null,
-      deliveryNotes: String(form.get("deliveryNotes")) || null,
-      price: Number(form.get("price")),
+      description: optionalText("description", product?.description ?? null),
+      deliveryNotes: optionalText("deliveryNotes", product?.deliveryNotes ?? null),
+      price: product ? Number(product.price) : 0,
       coverImageUrl: product?.coverImageUrl ?? null,
       gcashQrCodeUrl: product?.gcashQrCodeUrl ?? null,
       gcashQrCodeKey: product?.gcashQrCodeKey ?? null,
@@ -331,7 +337,7 @@ export default function OwnerProducts() {
       payhipUrl: String(form.get("payhipUrl") || "").trim() || null,
       isPublished: form.get("isPublished") === "on",
       isFeatured: form.get("isFeatured") === "on",
-      sortOrder: Number(form.get("sortOrder")) || 0,
+      sortOrder: product?.sortOrder ?? 0,
     };
   };
 

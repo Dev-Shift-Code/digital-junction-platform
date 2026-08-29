@@ -20,6 +20,8 @@ describe("product Purchase Method", () => {
     expect(ownerProducts).toContain("Purchase method");
     expect(ownerProducts).toContain('name="gumroadUrl"');
     expect(ownerProducts).toContain('name="payhipUrl"');
+    ["Product Cover", "Title", "Category", "Short Public Summary", "Publish publicly", "Feature on catalogue"].forEach(copy => expect(ownerProducts).toContain(copy));
+    ["Full product description", "Price in PHP", "Order <input"].forEach(copy => expect(ownerProducts).not.toContain(copy));
     expect(ownerProducts).not.toContain("GCash QR Code");
     expect(ownerProducts).not.toContain("onQrChange={selectGcashQr}");
   });
