@@ -335,3 +335,5 @@
 - [x] Add payment reference number and receipt screenshot proof fields to GCash/manual checkout.
 - [x] Store receipt bytes only through the existing private storage flow and keep the order pending until owner verification.
 - [x] Show submitted proof to the owner for review and add regression coverage without creating real orders.
+- [x] Fix Gumroad and Payhip public-card clicks so they open immediately in a stable site-level modal without navigating into the product card or showing a garbled embedded page.
+- [x] Validate modal layering, click propagation, responsive behavior, and marketplace-link regression coverage.

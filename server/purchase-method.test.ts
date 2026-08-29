@@ -36,5 +36,8 @@ describe("product Purchase Method", () => {
     expect(actions).toContain("showGcash && Boolean(product.gcashQrCodeUrl)");
     expect(actions).not.toContain('target="_blank"');
     expect(actions).toContain("marketplaceOpen");
+    expect(actions).toContain("createPortal");
+    expect(actions).toContain("portalTarget");
+    expect(actions).toContain("document.body.style.overflow");
   });
 });
