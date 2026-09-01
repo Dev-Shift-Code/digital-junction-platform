@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useMemo } from "react";
 
-export type PublicPage = "home" | "shop" | "services" | "work" | "about" | "contact" | "footer";
+export type PublicPage = "home" | "shop" | "services" | "work" | "about" | "contact" | "footer" | "legal";
 
 export type PublicSectionFallback = {
   eyebrow?: string;

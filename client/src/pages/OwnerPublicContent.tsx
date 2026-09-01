@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { CheckCircle2, ChevronRight, CircleAlert, Eye, EyeOff, FileText, Image, Link2, Loader2, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-const pages = ["home", "shop", "services", "work", "about", "contact", "footer"] as const;
+const pages = ["home", "shop", "services", "work", "about", "contact", "footer", "legal"] as const;
 type Page = (typeof pages)[number];
 
 const pageMeta: Record<Page, { label: string; detail: string }> = {
@@ -16,7 +16,8 @@ const pageMeta: Record<Page, { label: string; detail: string }> = {
   work: { label: "Projects", detail: "Work introduction, project collection, and next-project prompt." },
   about: { label: "About", detail: "Company introduction, story, and conversation prompt." },
   contact: { label: "Contact", detail: "Contact page introduction, guidance, and inquiry prompt." },
-  footer: { label: "Footer", detail: "Brand statement, contact invitation, and social information." },
+  footer: { label: "Footer", detail: "Brand statement, navigation, contact invitation, social information, and legal links." },
+  legal: { label: "Legal pages", detail: "Privacy, terms, and refund copy shown on the public legal pages." },
 };
 
 const sectionMeta: Record<Page, Array<{ id: string; label: string; detail: string; eyebrow: string }>> = {
@@ -27,15 +28,22 @@ const sectionMeta: Record<Page, Array<{ id: string; label: string; detail: strin
     { id: "projects", label: "Featured projects", detail: "The introduction and button above published project cards.", eyebrow: "Home projects" },
     { id: "story", label: "Story highlight", detail: "The green About preview card near the end of the Home page.", eyebrow: "Home story" },
     { id: "call-to-action", label: "Final call-to-action", detail: "The final full-width action panel on the Home page.", eyebrow: "Home action" },
+    { id: "services-grid", label: "Services grid introduction", detail: "The heading, description, and link above the Home service cards.", eyebrow: "Home service grid" },
+    { id: "services-grid-cards", label: "Home service cards", detail: "One editable Home service per line in Title | Description format.", eyebrow: "Home service cards" },
+    { id: "advantages", label: "Advantages cards", detail: "Heading and one editable card per line for the Home advantages section.", eyebrow: "Home advantages" },
+    { id: "process", label: "Process steps", detail: "Heading and one editable step per line for the Home process section.", eyebrow: "Home process" },
+    { id: "partnership", label: "Partnership statement", detail: "The supporting statement beside the Home story card.", eyebrow: "Home partnership" },
   ],
   shop: [
     { id: "hero", label: "Catalogue hero", detail: "The top introduction for Digital Products.", eyebrow: "Shop introduction" },
+    { id: "filter-controls", label: "Catalogue controls", detail: "Search, filter, sort, and empty-state labels in Digital Products.", eyebrow: "Catalogue controls" },
     { id: "catalogue", label: "Catalogue details", detail: "The introduction above search, filters, and product listings.", eyebrow: "Shop catalogue" },
     { id: "call-to-action", label: "Guest checkout prompt", detail: "The assistance panel below the product catalogue.", eyebrow: "Shop action" },
   ],
   services: [
     { id: "hero", label: "Services hero", detail: "The top heading and overview on the Services page.", eyebrow: "Services introduction" },
     { id: "service-list", label: "Service list introduction", detail: "The heading and supporting copy above the service cards.", eyebrow: "Services list" },
+    { id: "service-cards", label: "Service cards", detail: "One editable service per line with optional comma-separated detail pills.", eyebrow: "Service cards" },
     { id: "call-to-action", label: "Services call-to-action", detail: "The closing conversation prompt on the Services page.", eyebrow: "Services action" },
   ],
   work: [
@@ -46,10 +54,13 @@ const sectionMeta: Record<Page, Array<{ id: string; label: string; detail: strin
   about: [
     { id: "hero", label: "About hero", detail: "The main public introduction for Digital Junction.", eyebrow: "About introduction" },
     { id: "story", label: "Vision and story", detail: "The highlighted story card on the About page.", eyebrow: "About story" },
+    { id: "mission", label: "Mission", detail: "The mission card beside the About vision card.", eyebrow: "About mission" },
+    { id: "values", label: "Values cards", detail: "Heading and one editable value per line for the About values section.", eyebrow: "About values" },
     { id: "call-to-action", label: "About call-to-action", detail: "The conversation prompt at the bottom of the About page.", eyebrow: "About action" },
   ],
   contact: [
     { id: "hero", label: "Contact hero", detail: "The top heading and supporting text above the inquiry area.", eyebrow: "Contact introduction" },
+    { id: "form", label: "Contact form copy", detail: "Field labels, placeholders, options, success, and error messages in the inquiry form.", eyebrow: "Contact form" },
     { id: "contact-details", label: "Contact guidance", detail: "The explanatory panel beside the working inquiry form.", eyebrow: "Contact details" },
     { id: "call-to-action", label: "Contact call-to-action", detail: "The secondary prompt under the inquiry form.", eyebrow: "Contact action" },
   ],
@@ -57,6 +68,16 @@ const sectionMeta: Record<Page, Array<{ id: string; label: string; detail: strin
     { id: "brand", label: "Footer brand statement", detail: "The company description at the left side of the site footer.", eyebrow: "Footer brand" },
     { id: "contact", label: "Footer contact invitation", detail: "The contact prompt and button in the footer.", eyebrow: "Footer contact" },
     { id: "social", label: "Footer social information", detail: "The social heading, supporting text, optional image, and link.", eyebrow: "Footer social" },
+    { id: "navigation", label: "Footer company navigation", detail: "One footer link per line in Label | /route format.", eyebrow: "Footer navigation" },
+    { id: "products-navigation", label: "Footer product navigation", detail: "One product link per line in Label | /route format.", eyebrow: "Footer products" },
+    { id: "help-navigation", label: "Footer help navigation", detail: "One help link per line in Label | /route format.", eyebrow: "Footer help" },
+    { id: "contact-details", label: "Footer contact details", detail: "Editable footer contact heading and contact lines.", eyebrow: "Footer contact details" },
+    { id: "legal", label: "Footer legal navigation", detail: "One legal link per line in Label | /route format.", eyebrow: "Footer legal" },
+  ],
+  legal: [
+    { id: "privacy", label: "Privacy policy", detail: "Visitor-facing privacy policy title and body.", eyebrow: "Legal privacy" },
+    { id: "terms", label: "Terms and conditions", detail: "Visitor-facing terms title and body.", eyebrow: "Legal terms" },
+    { id: "refunds", label: "Refund policy", detail: "Visitor-facing refund policy title and body.", eyebrow: "Legal refunds" },
   ],
 };
 

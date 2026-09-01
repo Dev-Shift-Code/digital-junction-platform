@@ -28,9 +28,9 @@ describe("public interaction accessibility safeguards", () => {
   it("styles public form focus and keeps footer destinations visible and routed", () => {
     expect(styles).toContain(".form-field:focus");
     expect(contactPage).toContain('className="form-field');
-    expect(publicLayout).toContain('href="/privacy"');
-    expect(publicLayout).toContain('href="/terms"');
-    expect(publicLayout).toContain('href="/refunds"');
+    expect(publicLayout).toContain("const legalLinks = parseEditableLinks");
+    expect(publicLayout).toContain("legalLinks.map");
+    expect(publicLayout).toContain("footerLegal");
     expect(publicLayout).toContain("hover:text-[#89D7B7]");
   });
 });

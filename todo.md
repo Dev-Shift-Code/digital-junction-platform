@@ -220,3 +220,17 @@
 - [x] Replace free-form payment method type entry with a GoTyme, PayPal, GCash, and MariBank dropdown in the owner form and server validation.
 - [x] Re-test owner payment method configuration without creating a payment method or exposing payment account details.
 - [x] Produce a privacy-safe database structure reference listing the current tables and columns, excluding records and sensitive credential fields.
+
+- [x] Audit the connected GitHub repository and map every visitor-facing public detail to an owner-editable source.
+- [x] Extend Owner Content so every applicable public text, label, button/link, media reference, visibility state, product field, and project field can be edited from the owner side.
+- [x] Add regression coverage proving public pages consume owner-saved content and that owner-only controls remain protected.
+- [x] Verify the complete public-editability editor at desktop and mobile widths without changing real owner content.
+
+- [x] Record and correct the earlier repository/audit sequencing interruption before continuing implementation.
+
+- [x] Restore and verify the active preview service after the repository-backed public-editability audit.
+
+- [ ] Resolve the approved GitHub conflict by keeping the remote direction that removes buyer delivery-file uploads from the Product form.
+- [ ] Preserve the unrelated public-editability implementation while synchronizing the repository.
+- [ ] Update affected upload-related tests and verify the synchronized build and regression suite.
+- [ ] Save a checkpoint after the approved GitHub synchronization.
