@@ -233,7 +233,7 @@
 - [x] Resolve the approved GitHub conflict by keeping the remote direction that removes buyer delivery-file uploads from the Product form.
 - [x] Preserve the unrelated public-editability implementation while synchronizing the repository.
 - [x] Update affected upload-related tests and verify the synchronized build and regression suite.
-- [ ] Save a checkpoint after the approved GitHub synchronization.
+- [x] Save a checkpoint after the approved GitHub synchronization.
 - [x] Prepare permanent-hosting and managed-deployment updates only in `Dev-Shift-Code/digital-junction-platform`; do not create or use a separate website project.
 - [ ] Verify authenticated Owner Dashboard, Inventory, Projects, Content, Sales, Customers, and Payment Methods routes without creating or modifying business records.
 - [x] Adapt the existing Express application and static-asset build for Cloudflare Workers without binding or querying the isolated D1 database. Superseded by the later D1-as-primary decision.
