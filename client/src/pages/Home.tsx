@@ -48,7 +48,7 @@ function money(value: string | number) {
 function HeroVisual({ imageUrl }: { imageUrl?: string }) {
   if (imageUrl) return <img src={imageUrl} alt="Digital Junction feature" className="aspect-[1.04] w-full rounded-[1.65rem] object-cover shadow-[0_22px_70px_rgba(0,0,0,.28)]" />;
   return (
-    <div className="art-card relative overflow-hidden rounded-[1.65rem] p-4 sm:p-5">
+    <div className="art-card relative rounded-[1.65rem] p-4 pb-14 sm:p-5 sm:pb-16">
       <div className="flex items-center justify-between border-b border-[#FFF4E1]/15 pb-4">
         <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-[#89D7B7]">Digital operations</span>
         <span className="flex gap-1.5"><i className="size-2 rounded-full bg-[#89D7B7]" /><i className="size-2 rounded-full bg-[#FFF4E1]/35" /><i className="size-2 rounded-full bg-[#FFF4E1]/35" /></span>
@@ -61,7 +61,7 @@ function HeroVisual({ imageUrl }: { imageUrl?: string }) {
         </div>
         <div className="grid gap-4"><div className="rounded-2xl border border-[#89D7B7]/35 bg-[#1A312C]/70 p-4"><p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[#89D7B7]">Progress</p><div className="mt-4 flex h-16 items-end gap-2">{[28, 52, 37, 69, 57, 82].map((value, index) => <span key={value} className="flex-1 rounded-t-sm bg-[#89D7B7]" style={{ height: `${value}%`, opacity: 0.45 + index * 0.08 }} />)}</div></div><div className="rounded-2xl bg-[#428475] p-4"><p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[#FFF4E1]/65">Next milestone</p><p className="mt-3 text-sm font-semibold leading-5 text-[#FFF4E1]">A practical digital solution, ready to use.</p><div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#FFF4E1]/25"><div className="h-full w-[68%] rounded-full bg-[#89D7B7]" /></div></div></div>
       </div>
-      <div className="absolute -bottom-6 -left-5 hidden rounded-2xl border border-[#89D7B7]/30 bg-[#1A312C] px-4 py-3 shadow-xl sm:flex sm:items-center sm:gap-3"><span className="grid size-8 place-items-center rounded-xl bg-[#89D7B7] text-[#1A312C]"><BriefcaseBusiness className="size-4" /></span><span><span className="block font-mono text-[0.58rem] uppercase tracking-[0.11em] text-[#89D7B7]">Digital Junction</span><span className="mt-0.5 block text-xs font-semibold">Ideas, made practical</span></span></div>
+      <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-2xl border border-[#89D7B7]/30 bg-[#1A312C] px-4 py-3 shadow-xl sm:bottom-5 sm:left-5"><span className="grid size-8 place-items-center rounded-xl bg-[#89D7B7] text-[#1A312C]"><BriefcaseBusiness className="size-4" /></span><span><span className="block font-mono text-[0.58rem] uppercase tracking-[0.11em] text-[#89D7B7]">Digital Junction</span><span className="mt-0.5 block text-xs font-semibold">Ideas, made practical</span></span></div>
     </div>
   );
 }

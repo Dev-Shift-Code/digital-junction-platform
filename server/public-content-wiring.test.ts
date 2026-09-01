@@ -7,6 +7,7 @@ const ownerEditor = readFileSync(new URL("../client/src/pages/OwnerPublicContent
 const defaults = readFileSync(new URL("../client/src/data/publicContentDefaults.ts", import.meta.url), "utf8");
 const schema = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
 const structured = readFileSync(new URL("../client/src/data/publicContentStructured.ts", import.meta.url), "utf8");
+const portalRouter = readFileSync(new URL("../server/routers/portal.ts", import.meta.url), "utf8");
 const publicFiles = [
   "../client/src/pages/Home.tsx",
   "../client/src/pages/Shop.tsx",
@@ -14,7 +15,7 @@ const publicFiles = [
   "../client/src/pages/Work.tsx",
   "../client/src/pages/About.tsx",
   "../client/src/pages/Contact.tsx",
-    "../client/src/components/PublicLayout.tsx",
+  "../client/src/components/PublicLayout.tsx",
   "../client/src/pages/LegalPages.tsx",
 ].map(path => readFileSync(new URL(path, import.meta.url), "utf8"));
 
@@ -25,6 +26,16 @@ describe("public content override wiring", () => {
     expect(resolver).toContain("saved?.isPublished ?? fallback.isVisible ?? true");
   });
 
+  it("uses built-in public fallbacks when local D1 is unavailable", () => {
+    expect(portalRouter).toContain("function isDatabaseUnavailable(error: unknown)");
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "public content")');
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "case studies")');
+    expect(portalRouter).toContain('return publicDatabaseFallback(error, "digital products")');
+    expect(portalRouter).toContain("return await getPublicSiteContent(input.page)");
+    expect(portalRouter).toContain("return await getPublishedCaseStudies()");
+    expect(portalRouter).toContain("return await getPublishedDigitalProducts()");
+  });
+
   it("redacts unpublished public content fields while retaining only the hidden-section state", () => {
     expect(db).toContain("return rows.map(row => row.isPublished ? row");
     ["title: null", "body: null", "imageUrl: null", "ctaLabel: null", "ctaHref: null"].forEach(copy => expect(db).toContain(copy));
@@ -32,7 +43,7 @@ describe("public content override wiring", () => {
 
   it("connects every editor page to visitor-facing content overrides", () => {
     ["home", "shop", "services", "work", "about", "contact", "footer", "legal"].forEach(page => expect(publicFiles.some(source => source.includes(`usePublicSection(\"${page}\"`))).toBe(true));
-    expect(ownerEditor).toContain('"story"');
+    expect(ownerEditor).toContain("\"story\"");
   });
 
   it("provides a detailed card-based owner editing workspace with explicit save feedback", () => {
@@ -57,6 +68,6 @@ describe("public content override wiring", () => {
     expect(ownerEditor).toContain("getPublicSectionDefault");
     expect(ownerEditor).toContain("eyebrow: draft.eyebrow.trim() || null");
     expect(resolver).toContain("eyebrow: saved?.eyebrow ?? fallback.eyebrow");
-    expect(schema).toContain('eyebrow: varchar("eyebrow", { length: 160 })');
+    expect(schema).toContain("eyebrow: text()");
   });
 });

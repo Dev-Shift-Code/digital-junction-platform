@@ -230,7 +230,124 @@
 
 - [x] Restore and verify the active preview service after the repository-backed public-editability audit.
 
-- [ ] Resolve the approved GitHub conflict by keeping the remote direction that removes buyer delivery-file uploads from the Product form.
-- [ ] Preserve the unrelated public-editability implementation while synchronizing the repository.
-- [ ] Update affected upload-related tests and verify the synchronized build and regression suite.
+- [x] Resolve the approved GitHub conflict by keeping the remote direction that removes buyer delivery-file uploads from the Product form.
+- [x] Preserve the unrelated public-editability implementation while synchronizing the repository.
+- [x] Update affected upload-related tests and verify the synchronized build and regression suite.
 - [ ] Save a checkpoint after the approved GitHub synchronization.
+- [x] Prepare permanent-hosting and managed-deployment updates only in `Dev-Shift-Code/digital-junction-platform`; do not create or use a separate website project.
+- [ ] Verify authenticated Owner Dashboard, Inventory, Projects, Content, Sales, Customers, and Payment Methods routes without creating or modifying business records.
+- [x] Adapt the existing Express application and static-asset build for Cloudflare Workers without binding or querying the isolated D1 database. Superseded by the later D1-as-primary decision.
+- [x] Validate a Cloudflare Workers deployment build, create deployment documentation, and commit only the existing GitHub repository changes.
+- [x] Repair the users-table schema mismatch that prevents secure owner-account setup and sign-in, without altering existing business records.
+- [x] Provision and non-destructively align the application database for the existing website’s users, content, catalogue, projects, inquiries, payment methods, and orders while leaving Cloudflare D1 isolated. Superseded by the later D1-as-primary decision.
+- [x] Replace the primary MySQL application data layer with Cloudflare D1/SQLite and migrate the existing website schema without fabricating or deleting data.
+- [x] Adapt the Express runtime and production build for Cloudflare Workers using the existing `digital-junction-db` D1 database.
+- [x] Provide the requested `db:migrate:cloudflare`, `deploy:cloudflare`, and `deploy:pages` command scripts with distinct D1/Workers/Pages responsibilities.
+- [x] Apply the complete provided table-and-column migration to remote `digital-junction-db` and verify the live D1 schema.
+- [x] Redact password hashes and other non-public account fields from owner and customer session API responses.
+- [x] Remove the Cloudflare R2 dependency and preserve D1 as the sole Cloudflare persistence service for structured application data.
+- [x] Disable new binary product-file, payment-proof, logo, QR-code, and cover-image uploads in the D1-only deployment instead of storing file bytes in the database.
+- [x] Resolve the user’s non-Git Windows checkout so it can pull the pushed D1-only Cloudflare commit and run the deployment scripts.
+- [x] Diagnose and repair the Windows `cf:build` failure before retrying the D1-only Cloudflare Worker deployment.
+- [x] Replace legacy `/manus-storage` logo references that fail on the live D1-only Cloudflare Worker deployment.
+- [x] Remove the misleading D1-only public banner and forced file-input disablement from the live website while retaining Cloudflare D1 as the application database.
+- [x] Repair the clipped responsive hero illustration so the Digital Operations card remains fully visible.
+- [x] Configure the Cloudflare Pages project name and deployment command for the requested `digital-junction-platform.pages.dev` URL.
+- [x] Repair owner-session cookie handoff between the Cloudflare Pages frontend and D1-backed Worker API so valid owner credentials remain authenticated on the Pages domain.
+- [x] Preserve all Worker `Set-Cookie` headers through the Pages API proxy so owner login sessions are stored on `digital-junction-platform.pages.dev`.
+- [ ] Diagnose and repair the persistent live owner-login failure on the Pages domain using direct API response evidence, without changing owner or business data.
+- [ ] Verify the production D1 owner account role and password-configuration state through a read-only query before altering authentication logic.
+- [x] Add a token-protected owner password recovery path for an existing admin account when the current direct sign-in password cannot be verified.
+- [ ] Audit every live owner-login dependency: Pages proxy deployment, Worker secrets and variables, D1 owner account state, password verification, Set-Cookie delivery, and owner-session token verification.
+- [x] Remove the production dependency on a manually configured `VITE_APP_ID` for first-party owner and customer session validity while retaining JWT signature verification.
+- [x] Make token-gated owner recovery cover an absent D1 owner record and an incorrectly assigned customer role without requiring an optional owner-email variable.
+- [ ] Add owner-created vouchers with a general all-product scope or a selected-digital-products scope, backed by D1 and enforced at guest checkout.
+- [x] Remove the optional payment-method logo upload and its public checkout dependency, and remove the QR-code image file-size limit while retaining image-type validation.
+- [x] Diagnose and resolve the reported live QR-code upload failure in the D1-only Cloudflare deployment without modifying existing payment records.
+- [x] Replace unsupported D1-only QR binary upload with an owner-saved external HTTPS QR image URL field, preserving the QR display at checkout without adding R2.
+- [ ] Inspect the existing portfolio's D1-compatible image upload pattern and restore the equivalent QR image upload flow for Digital Junction without replacing D1 as the primary database.
+- [x] Integrate Cloudinary-backed owner QR image uploads while storing only QR URL and storage metadata in Cloudflare D1, without using R2.
+- [ ] Resolve the Cloudinary QR upload 403 caused by an API credential without create permission, without exposing or storing credentials in source control.
+- [x] Restyle the public Selected Work introduction section with the established dark-green background and readable mint/cream text contrast.
+- [x] Redesign Owner Sales as a real-data sales-management workspace with KPI summaries, filters, CSV export, and payment/fulfilment actions without fabricated transaction data.
+- [ ] Implement a GCash-only provider-backed payment flow with backend-calculated amounts, one unique payment transaction per order, verified webhook confirmation, and no screenshot-based automatic payment approval.
+- [ ] Confirm an authorized GCash provider and sandbox credentials before payment API or webhook implementation.
+- [ ] Verify PayRex pricing, transaction fees, and merchant onboarding requirements before enabling the selected GCash integration.
+- [ ] Verify Xendit GCash pricing and compare it with PayRex before confirming the payment provider.
+- [x] Implement server-side PayRex GCash Checkout Session creation, D1 transaction records, and signature-verified webhook handling; live sandbox credentials and remote migration remain pending.
+- [x] Align the owner payment configuration screen with PayRex GCash-only checkout and remove legacy manual payment choices from the active buyer flow.
+- [x] Automatically release revocable one-time buyer download controls for each eligible private file only after a verified PayRex payment event, with D1 delivery audit records.
+- [x] Show paid buyers their eligible one-time delivery controls on the payment-success page and provide owner revoke controls.
+- [ ] Send an optional transactional buyer email containing the one-time delivery link after verified payment, using a configured email provider and without exposing delivery URLs publicly.
+- [x] Extend Owner Sales with real PayRex payment and one-time delivery entitlement statuses per order, plus safe revoke and regeneration controls.
+- [x] Preserve D1 migration compatibility by moving delivery-entitlement schema into a new forward-only migration and keeping post-release runtime changes compatible with databases that may have applied the earlier PayRex migration.
+- [ ] Add PayPal and Stripe as provider-backed payment options alongside PayRex GCash, with server-calculated amounts, verified webhooks, D1 transaction records, and the existing one-time delivery policy.
+- [x] Implement PayPal Sandbox Orders checkout, provider approval/capture, verified PayPal webhook processing, buyer status return, and Owner Sales provider visibility.
+- [x] Restore Cloudinary-backed project cover, product cover, and buyer delivery-file uploads with D1 metadata records and owner-controlled delivery access.
+- [ ] Configure PayPal Sandbox Worker secrets and a `PAYMENT.CAPTURE.COMPLETED` webhook, deploy the Worker/Pages changes, and non-destructively verify a real sandbox checkout.
+- [x] Refine the buyer checkout and Owner Payment Methods screens so PayRex GCash and PayPal are visibly separate, selected-state messaging is accurate, and deployment status is understandable.
+- [x] Unify all production toast notifications, inline success/error/info alerts, and shared alert variants in the Digital Junction cream, dark-green, teal, and mint visual system.
+- [x] Replace the public header/footer, owner header, and browser-tab favicon with the supplied DJDC logo asset.
+- [x] Re-upload the DJDC logo asset after the prior attachment transfer failed, then complete the pending header, footer, owner header, and favicon replacement.
+- [x] Add D1-backed owner voucher creation, selected-product or general scope, discount limits, activation controls, and buyer-side voucher validation.
+- [x] Add owner-controlled enabled/disabled states for PayRex GCash and PayPal Sandbox so disabled providers are not offered to buyers.
+- [x] Add owner-managed manual payment methods with a custom display name, Cloudinary-hosted QR image, instructions, and manual order payment review.
+- [x] Show only enabled payment methods at checkout and apply a validated server-side voucher adjustment without trusting buyer-entered totals.
+- [x] Replace the Owner Vouchers placeholder with voucher management and the Owner Support placeholder with real contact-inquiry records and status controls.
+- [x] Replace all native browser confirmation popups with the shared modern Digital Junction confirmation dialog.
+- [x] Apply the supplied DJDC logo asset to public header/footer, owner sidebar branding, and browser-tab favicon.
+- [x] Allow an owner to remove public projects and sold-out/ended catalogue listings at any time while preserving historical purchase, payment, and entitled-delivery records.
+- [x] Fix the live DJDC logo delivery so the supplied PNG is served instead of any legacy fallback or cached asset in the public site, owner workspace, and browser tab.
+- [x] Implement automatic Resend transactional email delivery containing per-file one-time download links only after a verified PayRex/PayPal payment or owner-approved manual payment, with D1 delivery audit records and no file attachments.
+- [x] Superseded: configure and verify the Resend sending domain/sender secrets before enabling real buyer delivery emails.
+- [x] Replace the pending Resend sender configuration with owner-authorized Gmail API delivery from devshiftcode2025@gmail.com, while preserving D1 email audit records, verified-payment-only triggers, and per-file one-time links.
+- [x] Create owner-authorized Gmail API OAuth credentials and add the Gmail Worker secrets before enabling real buyer delivery emails.
+- [x] Diagnose and correct the skipped automatic Gmail delivery audit for verified manual payments when eligible private buyer files are present, without re-approving payment or creating duplicate delivery links.
+- [x] Redesign the buyer delivery email into a polished DJDC-branded transactional template with a strong hierarchy, clear one-time download buttons, security guidance, and responsive email-client-safe layout.
+- [x] Update the manual payment order-created screen to clearly explain that Digital Junction Development Co. will send purchased files by email after owner verification, with a buyer-friendly thank-you message.
+- [x] Confirm that the owner-authorized Gmail API sender can deliver to arbitrary buyer checkout email addresses; Google OAuth Testing mode restricts sender authorization accounts, not email recipients.
+- [x] Superseded: consider Google OAuth production publishing/verification for a longer-lived owner sender authorization; it is not required for buyer recipient delivery.
+- [x] Superseded: prepare and complete the Google OAuth production authorization path for the owner Gmail sender so refresh-token renewal is not a recurring operating task, subject to Google’s approval requirements.
+- [x] Replace the temporary Google OAuth sender with a durable API-key transactional email provider that verifies devshiftcode2025@gmail.com by email and does not require a custom sending domain or recurring refresh-token replacement.
+- [x] Replace the unavailable Brevo transport with a secured Google Apps Script relay that sends from devshiftcode2025@gmail.com without OAuth refresh-token maintenance or a custom domain.
+- [ ] Deploy the private Apps Script relay, configure its shared secret and Cloudflare Worker relay secrets, then confirm delivery from a real owner-approved or provider-verified order.
+- [x] Correct the Google Apps Script relay ParseError on save and revalidate the exact copy-paste script before the owner deploys it.
+- [x] Correct the Apps Script relay unauthorized-request error by synchronizing the Worker and Script Properties shared secret without reprocessing payment or delivery records.
+- [x] Replace the incompatible Apps Script HMAC authorization comparison with a reliable private shared-secret relay check after repeated Unauthorized relay request failures.
+- [x] Add the verified DJDC logo to transactional email headers and send a separate owner-triggered manual-payment rejection notice that states the owner’s declared refund/compensation policy without automatically issuing or promising an unverified refund.
+- [x] Replace raw expired, used, revoked, and invalid delivery responses with polished DJDC-branded status pages while preserving one-time-link security.
+- [x] Diagnose public-site API query failures for `publicSiteContent`, `caseStudies`, and `digitalProducts` in the reported preview and fix the source-repository schema/binding mismatch without modifying real business data.
+- [x] Add safe public homepage fallback behavior so one unavailable content section does not crash the page.
+
+- [x] Replace complex product Purchase Method controls with optional GCash QR upload, Gumroad URL, and Payhip URL fields.
+- [x] Persist product-specific Purchase Method fields through D1 schema, migration, protected owner API, and storage upload flow.
+- [x] Generate storefront purchase buttons from saved Purchase Method data, including accessible GCash QR modal and safe external links.
+- [x] Add regression tests and verify the Purchase Method feature without creating or modifying real business transactions.
+- [x] Remove the misplaced Purchase Method action block from public catalogue cards and rename only the card View details button to Purchase Here.
+- [x] Verify the storefront card layout no longer opens or embeds the GCash QR modal unexpectedly, while product detail and secure checkout remain available.
+- [x] Restore Gumroad and Payhip buttons on public product cards while keeping the GCash QR/modal out of catalogue cards and retaining Purchase Here for product details.
+- [x] Revalidate the corrected card layout and external-link behavior.
+- [x] Make Purchase Here lead to a Buy now-only product detail flow without repeating Gumroad or Payhip actions.
+- [x] Add a copyable published product link to the Owner Products interface.
+- [x] Add protected individual order deletion in Owner Sales with safeguards for related payment and delivery history.
+- [x] Test and build the revised purchase, product-link, and order-deletion flows without fabricating business data.
+- [x] Open Gumroad and Payhip destinations inside an in-site modal instead of a new browser tab.
+- [x] Fix the deployed `portal.admin.orders.delete` tRPC procedure so individual Sales order deletion works.
+- [x] Add regression coverage and validate both fixes without creating or modifying real business data.
+- [x] Show the selected product’s owner-uploaded GCash QR after the buyer presses Buy now, before the payment-details step.
+- [x] Validate that the checkout QR is product-specific and does not alter verified-payment, one-time delivery, or email safeguards.
+- [x] Remove only the Payment Methods item from the Owner sidebar while preserving payment settings and checkout behavior.
+- [x] Validate the Owner navigation and payment-related regression tests after the sidebar cleanup.
+- [x] Remove the visible “Choose payment method.” heading from checkout while preserving payment options and secure payment processing.
+- [x] Validate the checkout heading cleanup with tests and a production build.
+- [x] Reduce the visible checkout form to Name, Email, Voucher Code, product-specific GCash QR code, and Order Note only.
+- [x] Preserve secure server-side payment submission and validate the reduced checkout form with tests and a production build.
+- [ ] Exclude deleted or archived products from the Owner voucher product selector so only valid current products can be assigned.
+- [ ] Replace Return to checkout with Continue shopping and redirect it to the Digital Products catalogue.
+- [ ] Add regression coverage and validate both fixes without creating or modifying real business data.
+- [x] Correct the reduced checkout UI so only Name, Email, Voucher Code, product-specific GCash QR code, and Order Note are visible; keep secure payment logic internal.
+- [x] Add payment reference number and receipt screenshot proof fields to GCash/manual checkout.
+- [x] Store receipt bytes only through the existing private storage flow and keep the order pending until owner verification.
+- [x] Show submitted proof to the owner for review and add regression coverage without creating real orders.
+- [x] Fix Gumroad and Payhip public-card clicks so they open immediately in a stable site-level modal without navigating into the product card or showing a garbled embedded page.
+- [x] Validate modal layering, click propagation, responsive behavior, and marketplace-link regression coverage.

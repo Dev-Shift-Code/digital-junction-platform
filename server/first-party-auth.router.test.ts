@@ -6,8 +6,10 @@ import { sdk } from "./_core/sdk";
 const dbMock = vi.hoisted(() => ({
   getUserByEmail: vi.fn(),
   createLocalUser: vi.fn(),
+  hasAdminUser: vi.fn(),
   recordUserSignIn: vi.fn(),
   setUserPassword: vi.fn(),
+  promoteUserToAdmin: vi.fn(),
   getClientProjects: vi.fn(),
 }));
 
@@ -99,6 +101,26 @@ describe("first-party Digital Junction account router", () => {
     await expect(sdk.verifySession(cookies[0]?.value)).resolves.toMatchObject({ openId: "local-owner-1" });
   });
 
+  it("accepts a signed first-party owner session when VITE_APP_ID is not configured in the Worker environment", async () => {
+    const originalAppId = process.env.VITE_APP_ID;
+    delete process.env.VITE_APP_ID;
+    try {
+      const token = await sdk.createSessionToken("local-owner-without-app-id", { name: "Digital Junction Owner" });
+      await expect(sdk.verifySession(token)).resolves.toMatchObject({ openId: "local-owner-without-app-id", appId: "" });
+    } finally {
+      if (originalAppId === undefined) delete process.env.VITE_APP_ID;
+      else process.env.VITE_APP_ID = originalAppId;
+    }
+  });
+
+  it("never exposes a password hash through customer or owner session responses", async () => {
+    const owner = { ...localUser, id: 1, role: "admin" as const, passwordHash: "private-scrypt-hash" };
+    const caller = appRouter.createCaller(context(owner).ctx as any);
+
+    await expect(caller.auth.me()).resolves.not.toHaveProperty("passwordHash");
+    await expect(caller.auth.ownerMe()).resolves.not.toHaveProperty("passwordHash");
+  });
+
   it("explains when an existing owner must set a direct password before separate owner login", async () => {
     const { ctx } = context();
     dbMock.getUserByEmail.mockResolvedValue({ ...localUser, id: 1, role: "admin" as const, passwordHash: null });
@@ -119,6 +141,52 @@ describe("first-party Digital Junction account router", () => {
 
     await expect(caller.auth.ownerSetup({ email: owner.email, setupToken: setupToken!, password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
     expect(dbMock.setUserPassword).toHaveBeenCalledWith(owner.id, expect.not.stringContaining("Digital-Junction-Owner-2026"));
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
+  it("allows the configured private owner setup token to replace an existing owner password during recovery", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    expect(setupToken).toBeTruthy();
+    const { ctx, cookies } = context();
+    const owner = { ...localUser, id: 1, openId: "local-owner-recovery", email: "devshiftcode2025@gmail.com", role: "admin" as const, passwordHash: await hashPassword("Previous-Owner-Password-2026") };
+    dbMock.getUserByEmail.mockResolvedValue(owner);
+    dbMock.setUserPassword.mockResolvedValue(undefined);
+    dbMock.recordUserSignIn.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: owner.email, setupToken: setupToken!, password: "Recovered-Owner-Password-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.setUserPassword).toHaveBeenCalledWith(owner.id, expect.not.stringContaining("Recovered-Owner-Password-2026"));
+    expect(dbMock.recordUserSignIn).toHaveBeenCalledWith(owner.openId);
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
+  it("repairs an existing account that was incorrectly assigned the customer role when a valid recovery token is supplied", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    expect(setupToken).toBeTruthy();
+    const { ctx, cookies } = context();
+    const recoveryAccount = { ...localUser, id: 24, openId: "local-owner-role-recovery", email: "owner-recovery@example.com", passwordHash: await hashPassword("Old-Password-2026") };
+    dbMock.getUserByEmail.mockResolvedValue(recoveryAccount);
+    dbMock.promoteUserToAdmin.mockResolvedValue(undefined);
+    dbMock.setUserPassword.mockResolvedValue(undefined);
+    dbMock.recordUserSignIn.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: recoveryAccount.email, setupToken: setupToken!, password: "Recovered-Owner-Password-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.promoteUserToAdmin).toHaveBeenCalledWith(recoveryAccount.id);
+    expect(dbMock.setUserPassword).toHaveBeenCalledWith(recoveryAccount.id, expect.not.stringContaining("Recovered-Owner-Password-2026"));
+    expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
+  });
+
+  it("bootstraps the first owner with only a valid private setup token when no admin record exists", async () => {
+    const setupToken = process.env.OWNER_SETUP_TOKEN;
+    const { ctx, cookies } = context();
+    dbMock.getUserByEmail.mockResolvedValue(undefined);
+    dbMock.hasAdminUser.mockResolvedValue(false);
+    dbMock.createLocalUser.mockImplementation(async (input: any) => ({ ...localUser, id: 1, ...input, role: "admin" }));
+    const caller = appRouter.createCaller(ctx as any);
+
+    await expect(caller.auth.ownerSetup({ email: "devshiftcode2025@gmail.com", setupToken: setupToken!, password: "Digital-Junction-Owner-2026" })).resolves.toEqual({ success: true });
+    expect(dbMock.createLocalUser).toHaveBeenCalledWith(expect.objectContaining({ role: "admin", email: "devshiftcode2025@gmail.com" }));
     expect(cookies[0]?.name).toBe(OWNER_SESSION_COOKIE);
   });
 

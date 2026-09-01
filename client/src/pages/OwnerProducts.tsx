@@ -1,16 +1,16 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { ownerNavigation } from "@/data/ownerNavigation";
 import { trpc } from "@/lib/trpc";
 import {
   Archive,
   Check,
+  Copy,
   Eye,
-  FileText,
   FolderArchive,
   ImagePlus,
   Loader2,
-  LockKeyhole,
   PackageOpen,
   Pencil,
   Plus,
@@ -20,7 +20,6 @@ import {
   Sparkles,
   Store,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
@@ -35,6 +34,10 @@ type ProductValues = {
   deliveryNotes: string | null;
   price: string;
   coverImageUrl: string | null;
+  gcashQrCodeUrl: string | null;
+  gcashQrCodeKey: string | null;
+  gumroadUrl: string | null;
+  payhipUrl: string | null;
   isPublished: boolean;
   isFeatured: boolean;
   isArchived: boolean;
@@ -63,40 +66,8 @@ type PendingCover = {
   previewUrl: string;
 };
 
-type PendingBuyerFile = {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  base64: string;
-};
-
-type StoredBuyerFile = {
-  id: number;
-  fileName: string;
-  mimeType: string | null;
-  sizeBytes: number | null;
-};
-
 function money(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 }).format(value);
-}
-
-function formatBytes(sizeBytes: number | null) {
-  if (sizeBytes === null) return "Unknown size";
-  return sizeBytes < 1024 * 1024 ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readFileAsBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
-    };
-    reader.onerror = () => reject(new Error("File could not be read."));
-    reader.readAsDataURL(file);
-  });
 }
 
 function ProductFields({
@@ -113,12 +84,12 @@ function ProductFields({
   const currentCover = pendingCover?.previewUrl || product?.coverImageUrl;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-5">
       <div className="rounded-xl border border-dashed border-[#428475]/35 bg-[#89D7B7]/12 p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-bold text-[#1A312C]">Product cover</p>
-            <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload a local image for the public product cover. You can remove or replace it anytime.</p>
+            <p className="text-sm font-bold text-[#1A312C]">Product Cover</p>
+            <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">Upload the image buyers will see on the public catalogue.</p>
           </div>
           <label className="button-quiet w-fit cursor-pointer !min-h-9 !px-3 text-xs">
             <ImagePlus className="size-3.5" />
@@ -140,99 +111,48 @@ function ProductFields({
         ) : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
-        <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+          <span>Title</span>
+          <input required name="title" defaultValue={product?.title ?? ""} className="form-field text-sm" placeholder="Product title" />
+        </label>
+        <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+          <span>Category</span>
+          <input required name="category" defaultValue={product?.category ?? ""} className="form-field text-sm" placeholder="Category" />
+        </label>
       </div>
-      <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm" placeholder="Short public summary" />
-      <textarea name="description" defaultValue={product?.description ?? ""} className="form-field min-h-24 resize-y text-sm" placeholder="Full product description (optional)" />
-      <label className="grid gap-1.5 text-sm font-bold text-[#1A312C]">
-        <span>Inclusions <span className="font-normal text-[#1A312C]/55">(text only)</span></span>
-        <textarea name="deliveryNotes" defaultValue={product?.deliveryNotes ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Example: Editable source files, step-by-step guide, bonus templates" />
+      <label className="grid gap-2 text-sm font-bold text-[#1A312C]">
+        <span>Short Public Summary</span>
+        <textarea required minLength={10} name="summary" defaultValue={product?.summary ?? ""} className="form-field min-h-20 resize-y text-sm font-normal" placeholder="Short public summary" />
       </label>
-      <input required min="0" step="0.01" type="number" name="price" defaultValue={product?.price ?? ""} className="form-field text-sm" placeholder="Price in PHP" />
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isPublished" type="checkbox" defaultChecked={product?.isPublished ?? false} />Publish publicly</label>
         <label className="flex items-center gap-2 text-sm text-[#1A312C]/70"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured ?? false} />Feature on catalogue</label>
-        <label className="flex items-center gap-2 text-sm text-[#1A312C]/70">Order <input name="sortOrder" type="number" min="0" defaultValue={product?.sortOrder ?? 0} className="form-field !h-9 !w-18 !py-1 text-sm" /></label>
       </div>
     </div>
   );
 }
 
-function BuyerFilesPanel({
-  product,
-  pendingFiles,
-  storedFiles,
-  filesLoading,
-  isUploading,
-  isRemoving,
-  onSelectFiles,
-  onRemovePending,
-  onRemoveStored,
-}: {
-  product?: ProductValues;
-  pendingFiles: PendingBuyerFile[];
-  storedFiles?: StoredBuyerFile[];
-  filesLoading: boolean;
-  isUploading: boolean;
-  isRemoving: boolean;
-  onSelectFiles: (event: ChangeEvent<HTMLInputElement>) => void;
-  onRemovePending: (fileId: string) => void;
-  onRemoveStored: (fileId: number, fileName: string) => void;
-}) {
-  const canAttachFiles = !product || !product.isArchived;
-
+function PurchaseMethodPanel({ product }: { product?: ProductValues }) {
   return (
     <section className="mt-5 rounded-[1.25rem] border border-[#428475]/22 bg-[#89D7B7]/10 p-4 sm:p-5">
-      <div className="flex flex-col gap-4 border-b border-[#1A312C]/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="eyebrow">Buyer delivery files</p>
-          <h3 className="display mt-2 text-2xl text-[#1A312C]">Files the buyer receives</h3>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Upload PDFs, ZIPs, PNGs, documents, or any other file type here. These are separate from the text-only Inclusions above.</p>
-        </div>
-        {canAttachFiles ? (
-          <div>
-            <input id={`buyer-delivery-files-${product?.id ?? "new"}`} type="file" multiple accept="*/*" className="sr-only" onChange={onSelectFiles} disabled={isUploading} />
-            <label htmlFor={`buyer-delivery-files-${product?.id ?? "new"}`} className={`button-primary w-fit cursor-pointer ${isUploading ? "pointer-events-none opacity-60" : ""}`}>
-              <Upload className="size-4" />
-              {isUploading ? "Uploading…" : "Add buyer files"}
-            </label>
-          </div>
-        ) : null}
+      <div className="border-b border-[#1A312C]/10 pb-4">
+        <p className="eyebrow">Purchase method</p>
+        <h3 className="display mt-2 text-2xl text-[#1A312C]">Let buyers choose where to purchase</h3>
+        <p className="mt-2 max-w-2xl text-xs leading-5 text-[#1A312C]/62">Add the purchase methods that apply to this specific product.</p>
       </div>
-
-      {product?.isArchived ? <p className="mt-4 rounded-lg bg-white/65 px-3 py-3 text-xs leading-5 text-[#1A312C]/64">Restore this archived listing before attaching buyer files.</p> : null}
-
-      {pendingFiles.length ? (
-        <div className="mt-5">
-          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Queued for upload</p>
-          <p className="mt-1 text-xs leading-5 text-[#1A312C]/60">{product ? "These files will upload when you save changes." : "These files will upload when you save this new product."}</p>
-          <div className="mt-3 grid gap-2">
-            {pendingFiles.map(file => (
-              <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span>
-                  <div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div>
-                </div>
-                <button type="button" onClick={() => onRemovePending(file.id)} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700"><X className="size-3.5" />Remove</button>
-              </article>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {product ? (
-        <div className="mt-5">
-          <p className="font-mono text-[.58rem] uppercase tracking-[.1em] text-[#1A312C]/48">Saved buyer files</p>
-          {filesLoading ? <div className="grid min-h-20 place-items-center"><Loader2 className="size-5 animate-spin text-[#428475]" /></div> : storedFiles?.length ? <div className="mt-3 grid gap-2">{storedFiles.map(file => <article key={file.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#1A312C]/10 bg-white/75 p-3"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#89D7B7]/28 text-[#428475]"><FileText className="size-4" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-[#1A312C]">{file.fileName}</p><p className="mt-0.5 text-xs text-[#1A312C]/55">{file.mimeType || "File"} · {formatBytes(file.sizeBytes)}</p></div></div><button type="button" onClick={() => onRemoveStored(file.id, file.fileName)} disabled={isRemoving} className="button-quiet !min-h-9 !px-3 text-xs text-rose-700 disabled:opacity-50"><X className="size-3.5" />Remove</button></article>)}</div> : <p className="mt-3 rounded-lg border border-dashed border-[#1A312C]/15 bg-white/60 px-3 py-3 text-xs leading-5 text-[#1A312C]/60">No buyer files are attached yet.</p>}
-        </div>
-      ) : null}
-
-      <aside className="mt-5 flex items-start gap-3 rounded-xl border border-[#428475]/18 bg-white/52 p-3 text-xs leading-5 text-[#1A312C]/65">
-        <LockKeyhole className="mt-0.5 size-4 shrink-0 text-[#428475]" />
-        <p><strong className="text-[#1A312C]">Delivery safeguard:</strong> public product pages show only file names and formats. The stored delivery links remain owner-controlled until you confirm real payment and fulfilment.</p>
-      </aside>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <label className="grid content-start gap-2 rounded-xl border border-[#1A312C]/10 bg-white/70 p-4 text-sm font-bold text-[#1A312C]">
+          <span>Gumroad Link <span className="font-normal text-[#1A312C]/50">(optional)</span></span>
+          <input type="url" name="gumroadUrl" defaultValue={product?.gumroadUrl ?? ""} className="form-field text-sm" placeholder="https://gumroad.com/l/..." />
+          <span className="text-xs font-normal leading-5 text-[#1A312C]/55">Paste the specific Gumroad product URL.</span>
+        </label>
+        <label className="grid content-start gap-2 rounded-xl border border-[#1A312C]/10 bg-white/70 p-4 text-sm font-bold text-[#1A312C]">
+          <span>Payhip Link <span className="font-normal text-[#1A312C]/50">(optional)</span></span>
+          <input type="url" name="payhipUrl" defaultValue={product?.payhipUrl ?? ""} className="form-field text-sm" placeholder="https://payhip.com/b/..." />
+          <span className="text-xs font-normal leading-5 text-[#1A312C]/55">Paste the specific Payhip product URL. It opens in a new tab.</span>
+        </label>
+      </div>
     </section>
   );
 }
@@ -244,8 +164,6 @@ export default function OwnerProducts() {
   const saveProduct = trpc.portal.admin.products.save.useMutation();
   const uploadCover = trpc.portal.admin.productCovers.upload.useMutation();
   const removeCover = trpc.portal.admin.productCovers.remove.useMutation();
-  const uploadBuyerFile = trpc.portal.admin.productFiles.upload.useMutation();
-  const removeBuyerFile = trpc.portal.admin.productFiles.remove.useMutation();
   const deleteProduct = trpc.portal.admin.products.delete.useMutation();
   const [status, setStatus] = useState<InventoryStatus>("all");
   const [category, setCategory] = useState("all");
@@ -254,11 +172,8 @@ export default function OwnerProducts() {
   const [editor, setEditor] = useState<ProductValues | "new" | null>(null);
   const [notice, setNotice] = useState("");
   const [pendingCover, setPendingCover] = useState<PendingCover | null>(null);
-  const [pendingBuyerFiles, setPendingBuyerFiles] = useState<PendingBuyerFile[]>([]);
-
-  const currentProductId = editor && editor !== "new" ? editor.id : 0;
-  const currentProductFileInput = useMemo(() => ({ productId: currentProductId }), [currentProductId]);
-  const attachedBuyerFiles = trpc.portal.admin.productFiles.list.useQuery(currentProductFileInput, { enabled: isOwner && currentProductId > 0 });
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "product"; id: number; label: string } | null>(null);
+  const [copiedProductId, setCopiedProductId] = useState<number | null>(null);
 
   const realRows = useMemo<InventoryRow[]>(() => (products.data ?? []).map(raw => {
     const item = raw as ProductValues;
@@ -269,14 +184,14 @@ export default function OwnerProducts() {
   const sourceRows = realRows;
   const categories = useMemo(() => Array.from(new Set(sourceRows.map(row => row.category))).sort(), [sourceRows]);
   const filteredRows = useMemo(() => sourceRows.filter(row => {
-    const matchesStatus = status === "all" || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
+    const matchesStatus = (status === "all" && row.status !== "Archived") || (status === "active" && row.status === "Active") || (status === "draft" && row.status === "Draft") || (status === "archived" && row.status === "Archived");
     const matchesCategory = category === "all" || row.category === category;
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || `${row.title} ${row.category} ${row.summary}`.toLowerCase().includes(query);
     return matchesStatus && matchesCategory && matchesSearch;
   }), [category, search, sourceRows, status]);
   const counts = useMemo(() => ({
-    all: realRows.length,
+    all: realRows.filter(row => row.status !== "Archived").length,
     active: realRows.filter(row => row.status === "Active").length,
     draft: realRows.filter(row => row.status === "Draft").length,
     archived: realRows.filter(row => row.status === "Archived").length,
@@ -284,29 +199,35 @@ export default function OwnerProducts() {
 
   const payloadFromForm = (form: FormData, product?: ProductValues) => {
     const title = String(form.get("title") ?? "").trim();
+    const optionalText = (name: string, fallback: string | null) => {
+      const value = form.get(name);
+      return value === null ? fallback : String(value).trim() || null;
+    };
     return {
       ...(product ? { productId: product.id, slug: product.slug, isArchived: product.isArchived } : { slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), isArchived: false }),
       title,
       category: String(form.get("category")),
       summary: String(form.get("summary")),
-      description: String(form.get("description")) || null,
-      deliveryNotes: String(form.get("deliveryNotes")) || null,
-      price: Number(form.get("price")),
+      description: optionalText("description", product?.description ?? null),
+      deliveryNotes: optionalText("deliveryNotes", product?.deliveryNotes ?? null),
+      price: product ? Number(product.price) : 0,
       coverImageUrl: product?.coverImageUrl ?? null,
+      gcashQrCodeUrl: product?.gcashQrCodeUrl ?? null,
+      gcashQrCodeKey: product?.gcashQrCodeKey ?? null,
+      gumroadUrl: String(form.get("gumroadUrl") || "").trim() || null,
+      payhipUrl: String(form.get("payhipUrl") || "").trim() || null,
       isPublished: form.get("isPublished") === "on",
       isFeatured: form.get("isFeatured") === "on",
-      sortOrder: Number(form.get("sortOrder")) || 0,
+      sortOrder: product?.sortOrder ?? 0,
     };
   };
 
   const closeEditor = () => {
     setEditor(null);
     setPendingCover(null);
-    setPendingBuyerFiles([]);
   };
   const openEditor = (value: ProductValues | "new") => {
     setPendingCover(null);
-    setPendingBuyerFiles([]);
     setEditor(value);
   };
   const finishSave = async (message: string) => {
@@ -342,57 +263,6 @@ export default function OwnerProducts() {
     }
   };
 
-  const selectBuyerFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? []);
-    event.currentTarget.value = "";
-    if (!selected.length) return;
-    try {
-      const staged = await Promise.all(selected.map(async file => ({
-        id: `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).slice(2)}`,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        sizeBytes: file.size,
-        base64: await readFileAsBase64(file),
-      })));
-      if (editor && editor !== "new") {
-        const failedFiles: PendingBuyerFile[] = [];
-        let failureDetail = "";
-        let uploadedCount = 0;
-        for (const file of staged) {
-          try {
-            await uploadBuyerFile.mutateAsync({ productId: editor.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
-            uploadedCount += 1;
-          } catch (error) {
-            failedFiles.push(file);
-            failureDetail ||= error instanceof Error ? error.message : "The server did not accept the file.";
-          }
-        }
-        await attachedBuyerFiles.refetch();
-        if (failedFiles.length) {
-          setPendingBuyerFiles(current => [...current, ...failedFiles]);
-          setNotice(uploadedCount ? `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} uploaded. Retry the remaining file${failedFiles.length === 1 ? "" : "s"} below. ${failureDetail}` : `We could not upload those files. ${failureDetail}`);
-          return;
-        }
-        setNotice(`${uploadedCount} buyer file${uploadedCount === 1 ? "" : "s"} uploaded.`);
-        return;
-      }
-      setPendingBuyerFiles(current => [...current, ...staged]);
-      setNotice(`${staged.length} file${staged.length === 1 ? "" : "s"} queued. Save the new product to upload ${staged.length === 1 ? "it" : "them"}.`);
-    } catch {
-      setNotice("We could not read one of those files. Please try again.");
-    }
-  };
-  const removeStoredBuyerFile = (fileId: number, fileName: string) => {
-    if (!window.confirm(`Remove “${fileName}” from this product?`)) return;
-    removeBuyerFile.mutate({ productFileId: fileId }, {
-      onSuccess: async () => {
-        setNotice(`${fileName} removed.`);
-        await attachedBuyerFiles.refetch();
-      },
-      onError: () => setNotice("We could not remove that buyer file. Please try again."),
-    });
-  };
-
   const submitProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cover = pendingCover;
@@ -403,11 +273,7 @@ export default function OwnerProducts() {
         savedProduct = await uploadCover.mutateAsync({ productId: savedProduct.id, fileName: cover.fileName, mimeType: cover.mimeType, sizeBytes: cover.sizeBytes, base64: cover.base64 }) as ProductValues;
         setPendingCover(null);
       }
-      for (const file of pendingBuyerFiles) {
-        await uploadBuyerFile.mutateAsync({ productId: savedProduct.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes, base64: file.base64 });
-        setPendingBuyerFiles(current => current.filter(item => item.id !== file.id));
-      }
-      await finishSave(cover || pendingBuyerFiles.length ? "Product listing and buyer files saved." : "Product listing saved.");
+      await finishSave(cover ? "Product listing and purchase methods saved." : "Product listing saved.");
     } catch {
       if (savedProduct) {
         setEditor(savedProduct);
@@ -430,34 +296,61 @@ export default function OwnerProducts() {
       deliveryNotes: product.deliveryNotes,
       price: Number(product.price),
       coverImageUrl: product.coverImageUrl,
+      gcashQrCodeUrl: product.gcashQrCodeUrl,
+      gcashQrCodeKey: product.gcashQrCodeKey,
+      gumroadUrl: product.gumroadUrl,
+      payhipUrl: product.payhipUrl,
       isPublished: changes.isPublished ?? product.isPublished,
       isFeatured: changes.isFeatured ?? product.isFeatured,
       isArchived: changes.isArchived ?? product.isArchived,
       sortOrder: product.sortOrder,
     });
   };
-  const removeProduct = (product: ProductValues) => {
-    if (!window.confirm(`Delete “${product.title}”? This cannot be undone. Products with buyer records cannot be deleted and must be archived instead.`)) return;
-    deleteProduct.mutate({ productId: product.id }, {
-      onSuccess: async () => {
-        setNotice("Product deleted.");
+  const copyPublishedProductLink = async (product: ProductValues) => {
+    const url = `${window.location.origin}/shop/${product.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedProductId(product.id);
+      setNotice("Published product link copied.");
+      window.setTimeout(() => setCopiedProductId(current => current === product.id ? null : current), 2200);
+    } catch {
+      setNotice(`Copy this published product link: ${url}`);
+    }
+  };
+  const removeProduct = (product: ProductValues) => setPendingDelete({ kind: "product", id: product.id, label: product.title });
+  const confirmDelete = () => {
+    const pending = pendingDelete;
+    if (!pending) return;
+    setPendingDelete(null);
+    deleteProduct.mutate({ productId: pending.id }, {
+      onSuccess: async result => {
+        setNotice(result.preservedHistory ? "Product removed from the public catalogue. Existing buyer history and delivery records were kept." : "Product permanently deleted.");
         await products.refetch();
       },
-      onError: error => setNotice(error.message || "This product could not be deleted. Archive it instead."),
+      onError: error => setNotice(error.message || "This product could not be removed right now. Please try again."),
     });
   };
 
   const statusTabs: Array<{ id: InventoryStatus; label: string; count: number }> = [
-    { id: "all", label: "All products", count: counts.all },
+    { id: "all", label: "Current listings", count: counts.all },
     { id: "active", label: "Active", count: counts.active },
     { id: "draft", label: "Drafts", count: counts.draft },
     { id: "archived", label: "Archived", count: counts.archived },
   ];
-  const isSaving = saveProduct.isPending || uploadCover.isPending || uploadBuyerFile.isPending || removeCover.isPending;
+  const isSaving = saveProduct.isPending || uploadCover.isPending || removeCover.isPending;
 
   return (
     <DashboardLayout navigation={ownerNavigation} title="DJDC Owner">
       <div className="mx-auto max-w-7xl space-y-6 py-2">
+        <ConfirmDialog
+          open={Boolean(pendingDelete)}
+          onOpenChange={open => { if (!open) setPendingDelete(null); }}
+          title={`Delete “${pendingDelete?.label ?? "this listing"}”?`}
+          description="The listing will be removed from the public catalogue immediately. If it has existing buyer records, its historical order and delivery information will be retained privately in Owner Sales."
+          confirmLabel="Remove listing"
+          destructive
+          onConfirm={confirmDelete}
+        />
         {!isOwner ? (
           <section className="grid min-h-[60vh] place-items-center"><div className="max-w-md rounded-[1.35rem] border border-[#1A312C]/12 bg-white/70 p-8 text-center"><ShieldAlert className="mx-auto size-8 text-[#428475]" /><h1 className="display mt-5 text-3xl text-[#1A312C]">Owner access required.</h1><p className="mt-3 text-sm leading-6 text-[#1A312C]/65">Only the Digital Junction owner can manage the inventory.</p></div></section>
         ) : (
@@ -472,12 +365,12 @@ export default function OwnerProducts() {
             {editor ? (
               <section className="rounded-[1.4rem] border border-[#428475]/25 bg-white p-5 shadow-[0_18px_45px_rgba(26,49,44,.08)] sm:p-7">
                 <div className="flex items-start justify-between gap-5">
-                  <div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add a local cover, write text-only inclusions, and attach the actual buyer delivery files in this form.</p></div>
+                  <div><p className="eyebrow">{editor === "new" ? "New listing" : "Edit listing"}</p><h2 className="display mt-2 text-3xl text-[#1A312C]">{editor === "new" ? "Add a digital product" : editor.title}</h2><p className="mt-2 text-sm leading-6 text-[#1A312C]/62">Add the public product basics and the Gumroad or Payhip purchase links.</p></div>
                   <button type="button" onClick={closeEditor} className="button-quiet !min-h-9 !px-3"><X className="size-4" />Close</button>
                 </div>
                 <form key={editor === "new" ? "new" : editor.id} onSubmit={submitProduct} className="mt-6">
                   <ProductFields product={editor === "new" ? undefined : editor} pendingCover={pendingCover} onCoverChange={selectCover} onCoverRemove={clearCover} />
-                  <BuyerFilesPanel product={editor === "new" ? undefined : editor} pendingFiles={pendingBuyerFiles} storedFiles={attachedBuyerFiles.data as StoredBuyerFile[] | undefined} filesLoading={attachedBuyerFiles.isLoading} isUploading={isSaving} isRemoving={removeBuyerFile.isPending} onSelectFiles={selectBuyerFiles} onRemovePending={fileId => setPendingBuyerFiles(current => current.filter(file => file.id !== fileId))} onRemoveStored={removeStoredBuyerFile} />
+                  <PurchaseMethodPanel product={editor === "new" ? undefined : editor} />
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button className="button-primary disabled:opacity-60" disabled={isSaving}>{isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}{editor === "new" ? "Save product" : "Save changes"}</button>
                     <button type="button" className="button-quiet" onClick={closeEditor}>Cancel</button>
@@ -493,7 +386,7 @@ export default function OwnerProducts() {
               </div>
               {showFilters ? <div className="flex flex-wrap items-center gap-2 border-b border-[#1A312C]/10 bg-[#FFF4E1]/38 p-4"><span className="mr-1 font-mono text-[.58rem] uppercase tracking-[.11em] text-[#1A312C]/46">Category</span><button onClick={() => setCategory("all")} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === "all" ? "bg-[#1A312C] text-[#FFF4E1]" : "bg-white text-[#1A312C]/65"}`}>All categories</button>{categories.map(item => <button key={item} onClick={() => setCategory(item)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === item ? "bg-[#1A312C] text-[#FFF4E1]" : "bg-white text-[#1A312C]/65"}`}>{item}</button>)}</div> : null}
               {usingSamples ? <div className="mx-4 mt-4 rounded-xl border border-dashed border-[#428475]/28 bg-[#89D7B7]/13 px-4 py-3 text-xs leading-5 text-[#1A312C]/70"><strong className="text-[#1A312C]">Sample inventory preview:</strong> these products and prices are design-only placeholders. They are not saved, active, purchasable, editable, or archived listings.</div> : null}
-              <div className="overflow-x-auto"><table className="w-full min-w-[860px] border-collapse text-left"><thead><tr className="border-b border-[#1A312C]/10 bg-[#FFF4E1]/43 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/48"><th className="px-5 py-4 font-medium">Product name</th><th className="px-4 py-4 font-medium">Category</th><th className="px-4 py-4 font-medium">Product details</th><th className="px-4 py-4 font-medium">Price</th><th className="px-4 py-4 font-medium">Status</th><th className="px-5 py-4 text-right font-medium">Actions</th></tr></thead><tbody>{products.isLoading ? <tr><td colSpan={6} className="py-16 text-center"><Loader2 className="mx-auto size-6 animate-spin text-[#428475]" /></td></tr> : filteredRows.length ? filteredRows.map(row => <tr key={row.id} className="border-b border-[#1A312C]/8 last:border-0 hover:bg-[#FFF4E1]/32"><td className="px-5 py-4"><div className="flex items-center gap-3">{row.source?.coverImageUrl ? <img src={row.source.coverImageUrl} alt="" className="size-10 shrink-0 rounded-xl border border-[#1A312C]/10 object-cover" /> : <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${row.isSample ? "bg-[#89D7B7]/26 text-[#428475]" : "bg-[#1A312C] text-[#89D7B7]"}`}>{row.title.slice(0, 1).toUpperCase()}</span>}<div><p className="text-sm font-bold text-[#1A312C]">{row.title}</p><p className="mt-1 max-w-64 truncate text-xs text-[#1A312C]/52">{row.summary}</p></div></div></td><td className="px-4 py-4"><span className="rounded-full bg-[#1A312C]/6 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/65">{row.category}</span></td><td className="max-w-52 px-4 py-4 text-xs leading-5 text-[#1A312C]/57">{row.detail}</td><td className="px-4 py-4"><p className="text-sm font-bold text-[#1A312C]">{money(row.price)}</p>{row.isSample ? <p className="mt-1 font-mono text-[.5rem] uppercase text-[#1A312C]/42">Preview price</p> : null}</td><td className="px-4 py-4"><StatusPill status={row.status} /></td><td className="px-5 py-4"><div className="flex justify-end gap-1.5">{row.isSample ? <><button disabled title="Sample previews cannot be edited" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Pencil className="size-3.5" /></button><button disabled title="Sample previews cannot be deleted" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Trash2 className="size-3.5" /></button></> : <><button title={`Edit ${row.title}`} onClick={() => row.source && openEditor(row.source)} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25"><Pencil className="size-3.5" /></button><button title={row.source?.isPublished ? "Unpublish listing" : "Publish listing"} onClick={() => row.source && updateProduct(row.source, { isPublished: !row.source.isPublished })} disabled={row.source?.isArchived} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25 disabled:opacity-35"><Eye className="size-3.5" /></button><button title={row.source?.isArchived ? "Restore listing" : "Archive listing"} onClick={() => row.source && updateProduct(row.source, { isArchived: !row.source.isArchived, isPublished: row.source.isArchived ? row.source.isPublished : false })} className="grid size-8 place-items-center rounded-lg text-[#1A312C]/58 transition hover:bg-[#89D7B7]/25"><Archive className="size-3.5" /></button><button title={`Delete ${row.title}`} onClick={() => row.source && removeProduct(row.source)} disabled={deleteProduct.isPending} className="grid size-8 place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50 disabled:opacity-40"><Trash2 className="size-3.5" /></button></>}</div></td></tr>) : <tr><td colSpan={6} className="px-5 py-16 text-center"><PackageOpen className="mx-auto size-6 text-[#428475]" /><p className="mt-3 text-sm font-bold text-[#1A312C]">No inventory matches these filters.</p><button className="mt-3 text-xs font-bold text-[#428475]" onClick={() => { setSearch(""); setCategory("all"); setStatus("all"); }}>Clear filters</button></td></tr>}</tbody></table></div>
+              <div className="overflow-x-auto"><table className="w-full min-w-[860px] border-collapse text-left"><thead><tr className="border-b border-[#1A312C]/10 bg-[#FFF4E1]/43 font-mono text-[.57rem] uppercase tracking-[.1em] text-[#1A312C]/48"><th className="px-5 py-4 font-medium">Product name</th><th className="px-4 py-4 font-medium">Category</th><th className="px-4 py-4 font-medium">Product details</th><th className="px-4 py-4 font-medium">Price</th><th className="px-4 py-4 font-medium">Status</th><th className="px-5 py-4 text-right font-medium">Actions</th></tr></thead><tbody>{products.isLoading ? <tr><td colSpan={6} className="py-16 text-center"><Loader2 className="mx-auto size-6 animate-spin text-[#428475]" /></td></tr> : filteredRows.length ? filteredRows.map(row => <tr key={row.id} className="border-b border-[#1A312C]/8 last:border-0 hover:bg-[#FFF4E1]/32"><td className="px-5 py-4"><div className="flex items-center gap-3">{row.source?.coverImageUrl ? <img src={row.source.coverImageUrl} alt="" className="size-10 shrink-0 rounded-xl border border-[#1A312C]/10 object-cover" /> : <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${row.isSample ? "bg-[#89D7B7]/26 text-[#428475]" : "bg-[#1A312C] text-[#89D7B7]"}`}>{row.title.slice(0, 1).toUpperCase()}</span>}<div><p className="text-sm font-bold text-[#1A312C]">{row.title}</p><p className="mt-1 max-w-64 truncate text-xs text-[#1A312C]/52">{row.summary}</p></div></div></td><td className="px-4 py-4"><span className="rounded-full bg-[#1A312C]/6 px-2.5 py-1 font-mono text-[.55rem] uppercase tracking-[.08em] text-[#1A312C]/65">{row.category}</span></td><td className="max-w-52 px-4 py-4 text-xs leading-5 text-[#1A312C]/57">{row.detail}</td><td className="px-4 py-4"><p className="text-sm font-bold text-[#1A312C]">{money(row.price)}</p>{row.isSample ? <p className="mt-1 font-mono text-[.5rem] uppercase text-[#1A312C]/42">Preview price</p> : null}</td><td className="px-4 py-4"><StatusPill status={row.status} /></td><td className="px-5 py-4"><div className="flex justify-end gap-1.5">{row.isSample ? <><button disabled title="Sample previews cannot be edited" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Pencil className="size-3.5" /></button><button disabled title="Sample previews cannot be deleted" className="grid size-8 place-items-center rounded-lg text-[#1A312C]/28"><Trash2 className="size-3.5" /></button></> : <><button title={`Edit ${row.title}`} onClick={() => row.source && openEditor(row.source)} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25"><Pencil className="size-3.5" /></button>{row.source?.isPublished && !row.source.isArchived ? <button title="Copy published product link" onClick={() => copyPublishedProductLink(row.source!)} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25">{copiedProductId === row.source.id ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}</button> : null}<button title={row.source?.isPublished ? "Unpublish listing" : "Publish listing"} onClick={() => row.source && updateProduct(row.source, { isPublished: !row.source.isPublished })} disabled={row.source?.isArchived} className="grid size-8 place-items-center rounded-lg text-[#428475] transition hover:bg-[#89D7B7]/25 disabled:opacity-35"><Eye className="size-3.5" /></button><button title={row.source?.isArchived ? "Restore listing" : "Archive listing"} onClick={() => row.source && updateProduct(row.source, { isArchived: !row.source.isArchived, isPublished: row.source.isArchived ? row.source.isPublished : false })} className="grid size-8 place-items-center rounded-lg text-[#1A312C]/58 transition hover:bg-[#89D7B7]/25"><Archive className="size-3.5" /></button><button title={`Delete ${row.title}`} onClick={() => row.source && removeProduct(row.source)} disabled={deleteProduct.isPending} className="grid size-8 place-items-center rounded-lg text-rose-700 transition hover:bg-rose-50 disabled:opacity-40"><Trash2 className="size-3.5" /></button></>}</div></td></tr>) : <tr><td colSpan={6} className="px-5 py-16 text-center"><PackageOpen className="mx-auto size-6 text-[#428475]" /><p className="mt-3 text-sm font-bold text-[#1A312C]">No inventory matches these filters.</p><button className="mt-3 text-xs font-bold text-[#428475]" onClick={() => { setSearch(""); setCategory("all"); setStatus("all"); }}>Clear filters</button></td></tr>}</tbody></table></div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#1A312C]/10 px-5 py-4 text-xs text-[#1A312C]/55"><span>Showing {filteredRows.length} of {sourceRows.length} {usingSamples ? "sample preview" : "inventory"} products</span><span className="rounded-lg border border-[#1A312C]/10 bg-[#FFF4E1]/45 px-3 py-1.5 font-mono text-[.58rem] uppercase tracking-[.08em] text-[#1A312C]/55">Page 1 of 1</span></div>
             </section>
 

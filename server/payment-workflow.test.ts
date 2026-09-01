@@ -4,39 +4,156 @@ import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
 
-describe("manual payment workflow safeguards", () => {
-  it("stores a selected payment method as an immutable order snapshot", () => {
+describe("provider-backed payment workflow safeguards", () => {
+  it("records separate D1 order, payment transaction, and idempotent webhook records", () => {
     const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
-    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
-    expect(schema).toContain('paymentMethodName: varchar("paymentMethodName"');
-    expect(schema).toContain('paymentInstructionsSnapshot: text("paymentInstructionsSnapshot")');
-    expect(schema).toContain('paymentQrCodeUrlSnapshot: text("paymentQrCodeUrlSnapshot")');
-    expect(router).toContain("paymentMethodName: paymentMethod.displayName");
-    expect(router).toContain("paymentQrCodeUrlSnapshot: paymentMethod.qrCodeUrl");
-    expect(router).toContain("!paymentMethod || !paymentMethod.isActive");
+    const migration = readFileSync(resolve(root, "cloudflare/migrations/0002_payrex_payment_transactions.sql"), "utf8");
+    expect(schema).toContain("export const paymentTransactions");
+    expect(schema).toContain("export const paymentWebhookEvents");
+    expect(schema).toContain('commerceStatus: text({ enum: ["pending_payment", "paid", "processing", "shipped", "completed", "cancelled"] })');
+    expect(migration).toContain("CREATE UNIQUE INDEX IF NOT EXISTS payment_webhook_events_provider_event_unique");
+    expect(migration).toContain("CREATE UNIQUE INDEX IF NOT EXISTS payment_transactions_checkout_session_unique");
   });
 
-  it("does not place seller account fields in the public checkout source", () => {
+  it("creates PayRex GCash and PayPal orders from a server-side D1 product price and quantity", () => {
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const payrex = readFileSync(resolve(root, "server/payrex.ts"), "utf8");
+    const paypal = readFileSync(resolve(root, "server/paypal.ts"), "utf8");
+    expect(router).toContain("createPayrexCheckout: publicProcedure");
+    expect(router).toContain("createManualCheckout");
+    expect(router).toContain("paymentProofBase64");
+    expect(router).toContain("Payment receipt must be an image");
+    expect(router).toContain("resolveCheckoutTotal");
+    expect(router).toContain("subtotalCents = priceToCents(product.price) * input.quantity");
+    expect(router).toContain("amountCents: total.totalCents");
+    expect(router).toContain("createPaypalOrder({ orderReference");
+    expect(payrex).toContain('"payment_methods[]": "gcash"');
+    expect(payrex).toContain("payment_methods");
+    expect(payrex).not.toContain('"payment_methods[]": "maya"');
+    expect(paypal).toContain('currency_code: "PHP"');
+    expect(paypal).toContain('category: "DIGITAL_GOODS"');
+  });
+
+  it("keeps provider checkout separate from an owner-reviewed manual QR alternative", () => {
     const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
-    expect(checkout).toContain("listActive.useQuery");
+    expect(checkout).toContain("createPayrexCheckout.useMutation");
+    expect(checkout).toContain("createPaypalCheckout.useMutation");
+    expect(checkout).toContain("createManualCheckout.useMutation");
+    expect(checkout).toContain("capturePaypalCheckout.useMutation");
+    expect(checkout).toContain("window.location.assign(result.checkoutUrl)");
+    expect(checkout).toContain("manual QR payment needs owner review");
+    expect(checkout).toContain("product.gcashQrCodeUrl");
+    expect(checkout).toContain("GCash QR code");
     expect(checkout).toContain("paymentReference");
-    expect(checkout).toContain('accept="image/*"');
+    expect(checkout).toContain("paymentProof");
+    expect(checkout).toContain("Payment receipt screenshot");
+    expect(checkout).not.toContain('name="company"');
+    expect(checkout).not.toContain(">Quantity</span>");
+    expect(checkout).not.toContain("Choose payment method.");
+    expect(checkout).not.toContain("Selected payment method");
+    expect(checkout).toContain("Files are not released until the payment is manually verified");
+    expect(checkout).toContain("Your files will be sent by email.");
+    expect(checkout).toContain("Thank you for waiting and purchasing from Digital Junction Development Co.");
     expect(checkout).not.toMatch(/accountNumber|account_name|bankAccount|gcashNumber/i);
   });
 
-  it("keeps proof links inside the owner-only sales route", () => {
-    const publicRouter = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
-    const ownerSales = readFileSync(resolve(root, "client/src/pages/OwnerWorkspaceViews.tsx"), "utf8");
-    expect(publicRouter).toContain("adminProcedure.query(async () => {");
-    expect(ownerSales).toContain("View proof");
-    expect(ownerSales).toContain("reviewPayment");
+  it("accepts a payment as paid only through a verified PayRex webhook", () => {
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const payrex = readFileSync(resolve(root, "server/payrex.ts"), "utf8");
+    expect(worker).toContain('pathname === "/api/payrex/webhook"');
+    expect(worker).toContain('verifyPayrexWebhook(rawBody, request.headers.get("PayRex-Signature"))');
+    expect(worker).toContain('event.type === "payment_intent.succeeded"');
+    expect(worker).toContain("markPayrexPaymentPaid");
+    expect(payrex).toContain('crypto.subtle.sign("HMAC"');
+    expect(payrex).toContain("constantTimeEquals");
   });
 
-  it("limits owner payment-method selection to the requested configured providers", () => {
+  it("does not trust PayPal browser return and marks a PayPal payment paid only after remote webhook verification", () => {
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const paypal = readFileSync(resolve(root, "server/paypal.ts"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    expect(worker).toContain('pathname === "/api/paypal/webhook"');
+    expect(worker).toContain("verifyPaypalWebhook(rawBody, request.headers)");
+    expect(worker).toContain('event.event_type === "PAYMENT.CAPTURE.COMPLETED"');
+    expect(worker).toContain("registerPaypalWebhookEvent");
+    expect(worker).toContain("markPaypalPaymentPaid");
+    expect(paypal).toContain('"/v1/notifications/verify-webhook-signature"');
+    expect(paypal).toContain('verification_status !== "SUCCESS"');
+    expect(router).toContain("capturePaypalCheckout: publicProcedure");
+    expect(router).not.toMatch(/capturePaypalCheckout[\s\S]{0,1000}markPaypalPaymentPaid/);
+    expect(database).toContain('provider: "paypal"');
+  });
+
+  it("releases only private buyer files through a one-time D1 entitlement after any verified provider payment", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    const checkout = readFileSync(resolve(root, "client/src/pages/GuestCheckout.tsx"), "utf8");
+    expect(schema).toContain("paymentDeliveryEntitlements");
+    expect(router).toContain("paidDeliveryFiles: publicProcedure");
+    expect(router).toContain("createOneTimeDeliveryLink: publicProcedure");
+    expect(worker).toContain('pathname.startsWith("/api/delivery/")');
+    expect(worker).toContain("consumeOneTimeDeliveryEntitlement");
+    expect(worker).toContain("storageGetPrivateDeliveryUrl");
+    expect(database).toContain('file.fileUrl.includes("/raw/private/")');
+    expect(checkout).toContain("Download once");
+    expect(checkout).toContain("single-use download link");
+  });
+
+  it("prepares a D1-audited API-key delivery only after a verified provider webhook or manual owner approval", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const migration = readFileSync(resolve(root, "cloudflare/migrations/0005_transactional_delivery_email.sql"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const worker = readFileSync(resolve(root, "cloudflare/worker.ts"), "utf8");
+    const relay = readFileSync(resolve(root, "server/appsScriptRelay.ts"), "utf8");
+    expect(schema).toContain("export const paymentDeliveryEmails");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentDeliveryEmails");
+    expect(migration).toContain("paymentDeliveryEmails (orderId)");
+    expect(database).toContain("claimPaymentDeliveryEmail");
+    expect(database).toContain('audit.status !== "failed" && audit.status !== "skipped"');
+    expect(database).toContain('provider: "manual"');
+    expect(database).toContain("createManualApprovedPaymentTransaction");
+    expect(worker).toContain("ctx.waitUntil(sendPaymentDeliveryEmail(transaction.orderId))");
+    expect(worker).toContain('event.type === "payment_intent.succeeded"');
+    expect(worker).toContain('event.event_type === "PAYMENT.CAPTURE.COMPLETED"');
+    expect(router).toContain('if (input.paymentStatus === "verified" && reviewed) await sendPaymentDeliveryEmail(reviewed.id)');
+    expect(router).toContain("retryDeliveryEmail: adminProcedure");
+    expect(router).not.toMatch(/capturePaypalCheckout[\s\S]{0,1000}sendPaymentDeliveryEmail/);
+    expect(relay).toContain("createOwnerOneTimeDeliveryEntitlement");
+    expect(relay).toContain("tokenHash: await hashDeliveryToken(token)");
+    expect(relay).toContain('status: "failed"');
+    expect(relay).toContain("markPaymentDeliveryEmailFailed");
+    expect(relay).toContain("APPS_SCRIPT_RELAY_SECRET");
+  });
+
+  it("sends an audited rejection notice only after an owner rejects a manual payment and never releases buyer files", () => {
+    const schema = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
+    const migration = readFileSync(resolve(root, "cloudflare/migrations/0007_manual_payment_rejection_email.sql"), "utf8");
+    const database = readFileSync(resolve(root, "server/db.ts"), "utf8");
+    const router = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
+    const relay = readFileSync(resolve(root, "server/appsScriptRelay.ts"), "utf8");
+    expect(schema).toContain("export const paymentRejectionEmails");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS paymentRejectionEmails");
+    expect(database).toContain("claimManualPaymentRejectionEmail");
+    expect(database).toContain('delivery.order.paymentStatus !== "rejected"');
+    expect(database).toContain("if (transaction[0]) return null");
+    expect(router).toContain('if (input.paymentStatus === "rejected" && reviewed) await sendManualPaymentRejectedEmail(reviewed.id)');
+    expect(router).toContain("retryRejectionEmail: adminProcedure");
+    expect(relay).toContain("buildManualPaymentRejectedEmail");
+    expect(relay).toContain("markManualPaymentRejectionEmailSent");
+    expect(relay).not.toMatch(/buildManualPaymentRejectedEmail[\s\S]{0,2500}createOwnerOneTimeDeliveryEntitlement/);
+  });
+
+  it("gives the owner payment toggles and manual QR method controls", () => {
     const paymentMethods = readFileSync(resolve(root, "client/src/pages/OwnerPaymentMethods.tsx"), "utf8");
-    const portalRouter = readFileSync(resolve(root, "server/routers/portal.ts"), "utf8");
-    expect(paymentMethods).toContain('const paymentMethodTypes = ["GoTyme", "PayPal", "GCash", "MariBank"] as const;');
-    expect(paymentMethods).toContain("<select required");
-    expect(portalRouter).toContain('const paymentMethodType = z.enum(["GoTyme", "PayPal", "GCash", "MariBank"]);');
+    expect(paymentMethods).toContain("Payment methods");
+    expect(paymentMethods).toContain("GCash via PayRex");
+    expect(paymentMethods).toContain("PayPal Sandbox");
+    expect(paymentMethods).toContain("Disable for buyers");
+    expect(paymentMethods).toContain("Manual QR payment");
+    expect(paymentMethods).toContain("uploadQrCode.useMutation");
   });
 });

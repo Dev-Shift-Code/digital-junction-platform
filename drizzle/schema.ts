@@ -1,295 +1,101 @@
-import { boolean, decimal, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
+import { index, integer, numeric, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  passwordHash: varchar("passwordHash", { length: 255 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-}, table => [uniqueIndex("users_email_unique").on(table.email)]);
+const createdAt = () => integer({ mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`);
+const updatedAt = () => integer({ mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`).$onUpdate(() => new Date());
 
+export const users = sqliteTable("users", {
+  id: integer().primaryKey({ autoIncrement: true }), openId: text().notNull(), name: text(), email: text(), passwordHash: text(), loginMethod: text(),
+  role: text({ enum: ["user", "admin"] }).notNull().default("user"), createdAt: createdAt(), updatedAt: updatedAt(), lastSignedIn: integer({ mode: "timestamp_ms" }).notNull().default(sql`(unixepoch() * 1000)`),
+}, table => [uniqueIndex("users_open_id_unique").on(table.openId), uniqueIndex("users_email_unique").on(table.email)]);
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-export const projects = mysqlTable(
-  "projects",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    title: varchar("title", { length: 180 }).notNull(),
-    slug: varchar("slug", { length: 180 }).notNull().unique(),
-    serviceCategory: varchar("serviceCategory", { length: 100 }).notNull(),
-    description: text("description"),
-    status: mysqlEnum("status", ["discovery", "in_progress", "review", "complete", "on_hold"])
-      .default("discovery")
-      .notNull(),
-    progress: int("progress").default(0).notNull(),
-    startDate: timestamp("startDate"),
-    targetDate: timestamp("targetDate"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("projects_status_idx").on(table.status)],
-);
+export const projects = sqliteTable("projects", {
+  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), slug: text().notNull(), serviceCategory: text().notNull(), description: text(),
+  status: text({ enum: ["discovery", "in_progress", "review", "complete", "on_hold"] }).notNull().default("discovery"), progress: integer().notNull().default(0), startDate: integer({ mode: "timestamp_ms" }), targetDate: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("projects_slug_unique").on(table.slug), index("projects_status_idx").on(table.status)]);
 
-export const projectClients = mysqlTable(
-  "projectClients",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    projectId: int("projectId").notNull(),
-    userId: int("userId").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [
-    uniqueIndex("project_client_unique").on(table.projectId, table.userId),
-    index("project_clients_user_idx").on(table.userId),
-  ],
-);
+export const projectClients = sqliteTable("projectClients", {
+  id: integer().primaryKey({ autoIncrement: true }), projectId: integer().notNull(), userId: integer().notNull(), createdAt: createdAt(),
+}, table => [uniqueIndex("project_client_unique").on(table.projectId, table.userId), index("project_clients_user_idx").on(table.userId)]);
 
-export const milestones = mysqlTable(
-  "milestones",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    projectId: int("projectId").notNull(),
-    title: varchar("title", { length: 180 }).notNull(),
-    description: text("description"),
-    status: mysqlEnum("status", ["upcoming", "in_progress", "completed"]).default("upcoming").notNull(),
-    dueDate: timestamp("dueDate"),
-    completedAt: timestamp("completedAt"),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("milestones_project_idx").on(table.projectId)],
-);
+export const milestones = sqliteTable("milestones", {
+  id: integer().primaryKey({ autoIncrement: true }), projectId: integer().notNull(), title: text().notNull(), description: text(), status: text({ enum: ["upcoming", "in_progress", "completed"] }).notNull().default("upcoming"), dueDate: integer({ mode: "timestamp_ms" }), completedAt: integer({ mode: "timestamp_ms" }), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("milestones_project_idx").on(table.projectId)]);
 
-export const deliverables = mysqlTable(
-  "deliverables",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    projectId: int("projectId").notNull(),
-    title: varchar("title", { length: 180 }).notNull(),
-    description: text("description"),
-    fileName: varchar("fileName", { length: 255 }).notNull(),
-    fileUrl: text("fileUrl").notNull(),
-    fileKey: varchar("fileKey", { length: 512 }),
-    isClientVisible: boolean("isClientVisible").default(true).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("deliverables_project_idx").on(table.projectId)],
-);
+export const deliverables = sqliteTable("deliverables", {
+  id: integer().primaryKey({ autoIncrement: true }), projectId: integer().notNull(), title: text().notNull(), description: text(), fileName: text().notNull(), fileUrl: text().notNull(), fileKey: text(), isClientVisible: integer({ mode: "boolean" }).notNull().default(true), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("deliverables_project_idx").on(table.projectId)]);
 
-export const portalContents = mysqlTable(
-  "portalContents",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    title: varchar("title", { length: 180 }).notNull(),
-    body: text("body").notNull(),
-    placement: mysqlEnum("placement", ["welcome", "announcement", "resource"]).default("announcement").notNull(),
-    isPublished: boolean("isPublished").default(false).notNull(),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("portal_content_placement_idx").on(table.placement, table.isPublished)],
-);
+export const portalContents = sqliteTable("portalContents", {
+  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), body: text().notNull(), placement: text({ enum: ["welcome", "announcement", "resource"] }).notNull().default("announcement"), isPublished: integer({ mode: "boolean" }).notNull().default(false), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("portal_content_placement_idx").on(table.placement, table.isPublished)]);
 
-export const inquiries = mysqlTable(
-  "inquiries",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    name: varchar("name", { length: 120 }).notNull(),
-    email: varchar("email", { length: 320 }).notNull(),
-    company: varchar("company", { length: 180 }),
-    serviceInterest: varchar("serviceInterest", { length: 120 }),
-    message: text("message").notNull(),
-    status: mysqlEnum("status", ["new", "contacted", "closed"]).default("new").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [index("inquiries_status_idx").on(table.status)],
-);
+export const inquiries = sqliteTable("inquiries", {
+  id: integer().primaryKey({ autoIncrement: true }), name: text().notNull(), email: text().notNull(), company: text(), serviceInterest: text(), message: text().notNull(), status: text({ enum: ["new", "contacted", "closed"] }).notNull().default("new"), createdAt: createdAt(),
+}, table => [index("inquiries_status_idx").on(table.status)]);
 
-export const caseStudies = mysqlTable(
-  "caseStudies",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    title: varchar("title", { length: 180 }).notNull(),
-    slug: varchar("slug", { length: 180 }).notNull().unique(),
-    category: varchar("category", { length: 100 }).notNull(),
-    clientName: varchar("clientName", { length: 180 }),
-    summary: text("summary").notNull(),
-    problem: text("problem"),
-    solution: text("solution"),
-    results: text("results"),
-    technologies: text("technologies"),
-    coverImageUrl: text("coverImageUrl"),
-    isPublished: boolean("isPublished").default(false).notNull(),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("case_studies_public_idx").on(table.isPublished, table.category)],
-);
+export const caseStudies = sqliteTable("caseStudies", {
+  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), slug: text().notNull(), category: text().notNull(), clientName: text(), summary: text().notNull(), problem: text(), solution: text(), results: text(), technologies: text(), coverImageUrl: text(), isPublished: integer({ mode: "boolean" }).notNull().default(false), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("case_studies_slug_unique").on(table.slug), index("case_studies_public_idx").on(table.isPublished, table.category)]);
 
-export const digitalProducts = mysqlTable(
-  "digitalProducts",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    title: varchar("title", { length: 180 }).notNull(),
-    slug: varchar("slug", { length: 180 }).notNull().unique(),
-    category: varchar("category", { length: 100 }).notNull(),
-    summary: text("summary").notNull(),
-    description: text("description"),
-    deliveryNotes: text("deliveryNotes"),
-    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-    coverImageUrl: text("coverImageUrl"),
-    isPublished: boolean("isPublished").default(false).notNull(),
-    isFeatured: boolean("isFeatured").default(false).notNull(),
-    isArchived: boolean("isArchived").default(false).notNull(),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("digital_products_public_idx").on(table.isPublished, table.isArchived, table.isFeatured, table.category)],
-);
+export const digitalProducts = sqliteTable("digitalProducts", {
+  id: integer().primaryKey({ autoIncrement: true }), title: text().notNull(), slug: text().notNull(), category: text().notNull(), summary: text().notNull(), description: text(), deliveryNotes: text(), price: numeric().notNull(), coverImageUrl: text(), gcashQrCodeUrl: text(), gcashQrCodeKey: text(), gumroadUrl: text(), payhipUrl: text(), isPublished: integer({ mode: "boolean" }).notNull().default(false), isFeatured: integer({ mode: "boolean" }).notNull().default(false), isArchived: integer({ mode: "boolean" }).notNull().default(false), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("digital_products_slug_unique").on(table.slug), index("digital_products_public_idx").on(table.isPublished, table.isArchived, table.isFeatured, table.category)]);
 
-export const productAccess = mysqlTable(
-  "productAccess",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    productId: int("productId").notNull(),
-    userId: int("userId").notNull(),
-    deliveryUrl: text("deliveryUrl").notNull(),
-    deliveryFileName: varchar("deliveryFileName", { length: 255 }).notNull(),
-    grantedByUserId: int("grantedByUserId").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [
-    uniqueIndex("product_access_user_product_unique").on(table.productId, table.userId),
-    index("product_access_user_idx").on(table.userId),
-    index("product_access_product_idx").on(table.productId),
-  ],
-);
+export const productAccess = sqliteTable("productAccess", {
+  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), userId: integer().notNull(), deliveryUrl: text().notNull(), deliveryFileName: text().notNull(), grantedByUserId: integer().notNull(), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("product_access_user_product_unique").on(table.productId, table.userId), index("product_access_user_idx").on(table.userId), index("product_access_product_idx").on(table.productId)]);
 
-export const productInquiries = mysqlTable(
-  "productInquiries",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    productId: int("productId").notNull(),
-    name: varchar("name", { length: 120 }).notNull(),
-    email: varchar("email", { length: 320 }).notNull(),
-    message: text("message").notNull(),
-    status: mysqlEnum("status", ["new", "contacted", "closed"]).default("new").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [index("product_inquiries_product_idx").on(table.productId), index("product_inquiries_status_idx").on(table.status)],
-);
+export const productInquiries = sqliteTable("productInquiries", {
+  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), name: text().notNull(), email: text().notNull(), message: text().notNull(), status: text({ enum: ["new", "contacted", "closed"] }).notNull().default("new"), createdAt: createdAt(),
+}, table => [index("product_inquiries_product_idx").on(table.productId), index("product_inquiries_status_idx").on(table.status)]);
 
-/** Owner-configured manual payment methods. QR and logo bytes live in storage. */
-export const paymentMethods = mysqlTable(
-  "paymentMethods",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    methodType: varchar("methodType", { length: 64 }).notNull(),
-    displayName: varchar("displayName", { length: 120 }).notNull(),
-    logoUrl: text("logoUrl"),
-    logoKey: varchar("logoKey", { length: 512 }),
-    qrCodeUrl: text("qrCodeUrl"),
-    qrCodeKey: varchar("qrCodeKey", { length: 512 }),
-    instructions: text("instructions").notNull(),
-    isActive: boolean("isActive").default(true).notNull(),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("payment_methods_active_idx").on(table.isActive, table.sortOrder)],
-);
+export const paymentMethods = sqliteTable("paymentMethods", {
+  id: integer().primaryKey({ autoIncrement: true }), methodType: text().notNull(), displayName: text().notNull(), logoUrl: text(), logoKey: text(), qrCodeUrl: text(), qrCodeKey: text(), instructions: text().notNull(), isActive: integer({ mode: "boolean" }).notNull().default(true), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("payment_methods_active_idx").on(table.isActive, table.sortOrder)]);
 
-/**
- * A customer-submitted guest checkout request. Payment methods are copied into
- * owner-only snapshot fields so later edits or deactivation do not rewrite the
- * selected method on an existing order.
- */
-export const guestCheckoutRequests = mysqlTable(
-  "guestCheckoutRequests",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    productId: int("productId").notNull(),
-    name: varchar("name", { length: 120 }).notNull(),
-    email: varchar("email", { length: 320 }).notNull(),
-    company: varchar("company", { length: 180 }),
-    message: text("message"),
-    status: mysqlEnum("status", ["submitted", "contacted", "fulfilled", "cancelled"]).default("submitted").notNull(),
-    paymentMethodId: int("paymentMethodId"),
-    paymentMethodName: varchar("paymentMethodName", { length: 120 }),
-    paymentMethodType: varchar("paymentMethodType", { length: 64 }),
-    paymentInstructionsSnapshot: text("paymentInstructionsSnapshot"),
-    paymentLogoUrlSnapshot: text("paymentLogoUrlSnapshot"),
-    paymentQrCodeUrlSnapshot: text("paymentQrCodeUrlSnapshot"),
-    paymentReference: varchar("paymentReference", { length: 180 }),
-    paymentProofUrl: text("paymentProofUrl"),
-    paymentProofKey: varchar("paymentProofKey", { length: 512 }),
-    paymentProofFileName: varchar("paymentProofFileName", { length: 255 }),
-    paymentProofMimeType: varchar("paymentProofMimeType", { length: 160 }),
-    paymentProofSizeBytes: int("paymentProofSizeBytes"),
-    paymentStatus: mysqlEnum("paymentStatus", ["awaiting_payment", "submitted", "verified", "rejected"]).default("awaiting_payment").notNull(),
-    paymentReviewedAt: timestamp("paymentReviewedAt"),
-    paymentReviewNote: text("paymentReviewNote"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status), index("guest_checkout_payment_status_idx").on(table.paymentStatus)],
-);
+export const paymentProviderSettings = sqliteTable("paymentProviderSettings", {
+  id: integer().primaryKey({ autoIncrement: true }), provider: text({ enum: ["payrex", "paypal"] }).notNull(), isActive: integer({ mode: "boolean" }).notNull().default(true), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("payment_provider_settings_provider_unique").on(table.provider)]);
 
-/** Owner-managed file metadata for a digital product. File bytes live in storage. */
-export const productFiles = mysqlTable(
-  "productFiles",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    productId: int("productId").notNull(),
-    fileName: varchar("fileName", { length: 255 }).notNull(),
-    fileUrl: text("fileUrl").notNull(),
-    fileKey: varchar("fileKey", { length: 512 }),
-    mimeType: varchar("mimeType", { length: 160 }),
-    sizeBytes: int("sizeBytes"),
-    sortOrder: int("sortOrder").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [index("product_files_product_idx").on(table.productId)],
-);
+export const vouchers = sqliteTable("vouchers", {
+  id: integer().primaryKey({ autoIncrement: true }), code: text().notNull(), label: text().notNull(), scope: text({ enum: ["general", "selected_products"] }).notNull().default("general"), discountKind: text({ enum: ["percent", "fixed"] }).notNull(), discountValue: integer().notNull(), maxRedemptions: integer(), redemptionCount: integer().notNull().default(0), startsAt: integer({ mode: "timestamp_ms" }), endsAt: integer({ mode: "timestamp_ms" }), isActive: integer({ mode: "boolean" }).notNull().default(true), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("vouchers_code_unique").on(table.code), index("vouchers_active_idx").on(table.isActive, table.startsAt, table.endsAt)]);
 
-/** Editable copy, media, and calls-to-action used by public website sections. */
-export const publicSiteContent = mysqlTable(
-  "publicSiteContent",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    page: varchar("page", { length: 64 }).notNull(),
-    section: varchar("section", { length: 64 }).notNull(),
-    eyebrow: varchar("eyebrow", { length: 160 }),
-    title: varchar("title", { length: 300 }),
-    body: text("body"),
-    imageUrl: text("imageUrl"),
-    ctaLabel: varchar("ctaLabel", { length: 120 }),
-    ctaHref: varchar("ctaHref", { length: 500 }),
-    isPublished: boolean("isPublished").default(true).notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-  table => [uniqueIndex("public_site_content_page_section_unique").on(table.page, table.section), index("public_site_content_page_idx").on(table.page, table.isPublished)],
-);
+export const voucherProducts = sqliteTable("voucherProducts", {
+  id: integer().primaryKey({ autoIncrement: true }), voucherId: integer().notNull(), productId: integer().notNull(), createdAt: createdAt(),
+}, table => [uniqueIndex("voucher_product_scope_unique").on(table.voucherId, table.productId), index("voucher_products_voucher_idx").on(table.voucherId), index("voucher_products_product_idx").on(table.productId)]);
+
+export const guestCheckoutRequests = sqliteTable("guestCheckoutRequests", {
+  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), name: text().notNull(), email: text().notNull(), company: text(), message: text(), status: text({ enum: ["submitted", "contacted", "fulfilled", "cancelled"] }).notNull().default("submitted"), commerceStatus: text({ enum: ["pending_payment", "paid", "processing", "shipped", "completed", "cancelled"] }).notNull().default("pending_payment"), paidAt: integer({ mode: "timestamp_ms" }), paymentPublicToken: text(), paymentMethodId: integer(), paymentMethodName: text(), paymentMethodType: text(), paymentInstructionsSnapshot: text(), paymentLogoUrlSnapshot: text(), paymentQrCodeUrlSnapshot: text(), paymentReference: text(), paymentProofUrl: text(), paymentProofKey: text(), paymentProofFileName: text(), paymentProofMimeType: text(), paymentProofSizeBytes: integer(), paymentStatus: text({ enum: ["awaiting_payment", "submitted", "verified", "rejected"] }).notNull().default("awaiting_payment"), paymentReviewedAt: integer({ mode: "timestamp_ms" }), paymentReviewNote: text(), voucherId: integer(), voucherCodeSnapshot: text(), subtotalCents: integer(), discountCents: integer().notNull().default(0), totalCents: integer(), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("guest_checkout_product_idx").on(table.productId), index("guest_checkout_status_idx").on(table.status), index("guest_checkout_payment_status_idx").on(table.paymentStatus)]);
+
+export const paymentTransactions = sqliteTable("paymentTransactions", {
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), publicToken: text().notNull(), provider: text().notNull(), paymentMethod: text().notNull().default("gcash"), amountCents: integer().notNull(), currency: text().notNull().default("PHP"), status: text({ enum: ["pending", "processing", "paid", "failed", "expired", "cancelled"] }).notNull().default("pending"), providerCheckoutSessionId: text().notNull(), providerPaymentIntentId: text(), providerPaymentId: text(), checkoutUrl: text().notNull(), expiresAt: integer({ mode: "timestamp_ms" }), paidAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("payment_transactions_public_token_unique").on(table.publicToken), uniqueIndex("payment_transactions_checkout_session_unique").on(table.providerCheckoutSessionId), index("payment_transactions_order_idx").on(table.orderId), index("payment_transactions_payment_intent_idx").on(table.providerPaymentIntentId), index("payment_transactions_status_idx").on(table.status)]);
+
+export const paymentWebhookEvents = sqliteTable("paymentWebhookEvents", {
+  id: integer().primaryKey({ autoIncrement: true }), provider: text().notNull(), providerEventId: text().notNull(), eventType: text().notNull(), providerPaymentIntentId: text(), receivedAt: createdAt(), processedAt: integer({ mode: "timestamp_ms" }), payloadHash: text().notNull(),
+}, table => [uniqueIndex("payment_webhook_events_provider_event_unique").on(table.provider, table.providerEventId), index("payment_webhook_events_intent_idx").on(table.providerPaymentIntentId)]);
+
+export const paymentDeliveryEntitlements = sqliteTable("paymentDeliveryEntitlements", {
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), paymentTransactionId: integer().notNull(), productFileId: integer().notNull(), fileName: text().notNull(), fileKey: text().notNull(), fileMimeType: text(), tokenHash: text().notNull(), status: text({ enum: ["active", "used", "revoked", "expired"] }).notNull().default("active"), expiresAt: integer({ mode: "timestamp_ms" }).notNull(), usedAt: integer({ mode: "timestamp_ms" }), revokedAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(),
+}, table => [uniqueIndex("payment_delivery_entitlement_token_unique").on(table.tokenHash), index("payment_delivery_entitlement_order_idx").on(table.orderId), index("payment_delivery_entitlement_transaction_idx").on(table.paymentTransactionId), index("payment_delivery_entitlement_status_idx").on(table.status, table.expiresAt)]);
+
+export const paymentDeliveryEmails = sqliteTable("paymentDeliveryEmails", {
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), paymentTransactionId: integer().notNull(), recipientEmail: text().notNull(), status: text({ enum: ["sending", "sent", "failed", "skipped"] }).notNull().default("sending"), providerMessageId: text(), attempts: integer().notNull().default(0), lastError: text(), sentAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("payment_delivery_emails_order_unique").on(table.orderId), index("payment_delivery_emails_transaction_idx").on(table.paymentTransactionId), index("payment_delivery_emails_status_idx").on(table.status)]);
+
+export const paymentRejectionEmails = sqliteTable("paymentRejectionEmails", {
+  id: integer().primaryKey({ autoIncrement: true }), orderId: integer().notNull(), recipientEmail: text().notNull(), status: text({ enum: ["sending", "sent", "failed"] }).notNull().default("sending"), providerMessageId: text(), attempts: integer().notNull().default(0), lastError: text(), sentAt: integer({ mode: "timestamp_ms" }), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [uniqueIndex("payment_rejection_emails_order_unique").on(table.orderId), index("payment_rejection_emails_status_idx").on(table.status)]);
+
+export const productFiles = sqliteTable("productFiles", {
+  id: integer().primaryKey({ autoIncrement: true }), productId: integer().notNull(), fileName: text().notNull(), fileUrl: text().notNull(), fileKey: text(), mimeType: text(), sizeBytes: integer(), sortOrder: integer().notNull().default(0), createdAt: createdAt(), updatedAt: updatedAt(),
+}, table => [index("product_files_product_idx").on(table.productId)]);
+
+export const publicSiteContent = sqliteTable("publicSiteContent", {
+  id: integer().primaryKey({ autoIncrement: true }), page: text().notNull(), section: text().notNull(), eyebrow: text(), title: text(), body: text(), imageUrl: text(), ctaLabel: text(), ctaHref: text(), isPublished: integer({ mode: "boolean" }).notNull().default(true), updatedAt: updatedAt(),
+}, table => [uniqueIndex("public_site_content_page_section_unique").on(table.page, table.section), index("public_site_content_page_idx").on(table.page, table.isPublished)]);

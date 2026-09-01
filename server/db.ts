@@ -1,20 +1,18 @@
-import { and, asc, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentMethods, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users } from "../drizzle/schema";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+import * as schema from "../drizzle/schema";
+import { caseStudies, deliverables, digitalProducts, guestCheckoutRequests, InsertUser, inquiries, milestones, paymentDeliveryEmails, paymentDeliveryEntitlements, paymentMethods, paymentProviderSettings, paymentRejectionEmails, paymentTransactions, paymentWebhookEvents, portalContents, productAccess, productFiles, productInquiries, projectClients, projects, publicSiteContent, users, voucherProducts, vouchers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/** Configure the primary application database from the Cloudflare Workers D1 binding. */
+export function configureD1(database: unknown) {
+  _db = drizzle(database as any, { schema });
+}
+
+// The Worker entry point configures D1 once per isolate. Tests may replace this module.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
   return _db;
 }
 
@@ -68,8 +66,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet as any,
     });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
@@ -96,20 +95,26 @@ export async function getUserByEmail(email: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function createLocalUser(input: { openId: string; email: string; passwordHash: string }) {
+export async function createLocalUser(input: { openId: string; email: string; passwordHash: string; role?: "user" | "admin"; name?: string | null }) {
   const db = requireDatabase(await getDb());
   await db.insert(users).values({
     openId: input.openId,
     email: input.email,
-    name: input.email.split("@")[0] ?? "Digital Junction customer",
+    name: input.name ?? input.email.split("@")[0] ?? "Digital Junction customer",
     passwordHash: input.passwordHash,
     loginMethod: "digital-junction",
-    role: "user",
+    role: input.role ?? "user",
     lastSignedIn: new Date(),
   });
   const user = await getUserByOpenId(input.openId);
   if (!user) throw new Error("Unable to create account");
   return user;
+}
+
+export async function hasAdminUser() {
+  const db = requireDatabase(await getDb());
+  const result = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+  return Boolean(result[0]);
 }
 
 export async function recordUserSignIn(openId: string) {
@@ -120,6 +125,12 @@ export async function recordUserSignIn(openId: string) {
 export async function setUserPassword(userId: number, passwordHash: string) {
   const db = requireDatabase(await getDb());
   await db.update(users).set({ passwordHash, loginMethod: "digital-junction" }).where(eq(users.id, userId));
+}
+
+/** Promotes a token-verified recovery account to the owner role without touching unrelated users. */
+export async function promoteUserToAdmin(userId: number) {
+  const db = requireDatabase(await getDb());
+  await db.update(users).set({ role: "admin" }).where(eq(users.id, userId));
 }
 
 function requireDatabase<T>(database: T | null): T {
@@ -185,7 +196,7 @@ export async function getClientUsers() {
 export async function createProject(values: typeof projects.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(projects).values(values);
-  const created = await db.select().from(projects).where(eq(projects.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(projects).where(eq(projects.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -198,13 +209,13 @@ export async function updateProject(projectId: number, values: Partial<typeof pr
 
 export async function assignClientToProject(projectId: number, userId: number) {
   const db = requireDatabase(await getDb());
-  await db.insert(projectClients).values({ projectId, userId }).onDuplicateKeyUpdate({ set: { userId } });
+  await db.insert(projectClients).values({ projectId, userId }).onConflictDoUpdate({ target: [projectClients.projectId, projectClients.userId], set: { userId } });
 }
 
 export async function createMilestone(values: typeof milestones.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(milestones).values(values);
-  const created = await db.select().from(milestones).where(eq(milestones.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(milestones).where(eq(milestones.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -218,7 +229,7 @@ export async function updateMilestone(milestoneId: number, values: Partial<typeo
 export async function createDeliverable(values: typeof deliverables.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(deliverables).values(values);
-  const created = await db.select().from(deliverables).where(eq(deliverables.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(deliverables).where(eq(deliverables.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -230,15 +241,27 @@ export async function savePortalContent(values: typeof portalContents.$inferInse
     return updated[0];
   }
   const result = await db.insert(portalContents).values(values);
-  const created = await db.select().from(portalContents).where(eq(portalContents.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(portalContents).where(eq(portalContents.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
 export async function createInquiry(values: typeof inquiries.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(inquiries).values(values);
-  const created = await db.select().from(inquiries).where(eq(inquiries.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(inquiries).where(eq(inquiries.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
+}
+
+export async function getAllInquiries() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(inquiries).orderBy(desc(inquiries.createdAt));
+}
+
+export async function updateInquiryStatus(inquiryId: number, status: "new" | "contacted" | "closed") {
+  const db = requireDatabase(await getDb());
+  await db.update(inquiries).set({ status }).where(eq(inquiries.id, inquiryId));
+  const updated = await db.select().from(inquiries).where(eq(inquiries.id, inquiryId)).limit(1);
+  return updated[0] || null;
 }
 
 export async function getAdminProjectDetail(projectId: number) {
@@ -283,7 +306,7 @@ export async function saveCaseStudy(values: typeof caseStudies.$inferInsert, cas
     return updated[0];
   }
   const result = await db.insert(caseStudies).values(values);
-  const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(caseStudies).where(eq(caseStudies.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -336,13 +359,20 @@ export async function saveDigitalProduct(values: typeof digitalProducts.$inferIn
     return updated[0];
   }
   const result = await db.insert(digitalProducts).values(values);
-  const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(digitalProducts).where(eq(digitalProducts.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
 export async function updateDigitalProductCover(productId: number, coverImageUrl: string | null) {
   const db = requireDatabase(await getDb());
   await db.update(digitalProducts).set({ coverImageUrl }).where(eq(digitalProducts.id, productId));
+  const updated = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+  return updated[0];
+}
+
+export async function updateDigitalProductPurchaseMethods(productId: number, values: Pick<typeof digitalProducts.$inferInsert, "gcashQrCodeUrl" | "gcashQrCodeKey" | "gumroadUrl" | "payhipUrl">) {
+  const db = requireDatabase(await getDb());
+  await db.update(digitalProducts).set(values).where(eq(digitalProducts.id, productId));
   const updated = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
   return updated[0];
 }
@@ -355,11 +385,12 @@ export async function deleteDigitalProduct(productId: number) {
     db.select({ id: productInquiries.id }).from(productInquiries).where(eq(productInquiries.productId, productId)).limit(1),
   ]);
   if (order[0] || access[0] || inquiry[0]) {
-    return { deleted: false as const, reason: "This product has related buyer records and cannot be deleted. Archive it instead." };
+    await db.update(digitalProducts).set({ isPublished: false, isFeatured: false, isArchived: true }).where(eq(digitalProducts.id, productId));
+    return { deleted: true as const, preservedHistory: true as const };
   }
   await db.delete(productFiles).where(eq(productFiles.productId, productId));
   await db.delete(digitalProducts).where(eq(digitalProducts.id, productId));
-  return { deleted: true as const };
+  return { deleted: true as const, preservedHistory: false as const };
 }
 
 export async function getUserProductAccess(userId: number) {
@@ -395,7 +426,8 @@ export async function getAllProductAccess() {
 
 export async function grantProductAccess(input: { productId: number; userId: number; deliveryUrl: string; deliveryFileName: string; grantedByUserId: number }) {
   const db = requireDatabase(await getDb());
-  await db.insert(productAccess).values(input).onDuplicateKeyUpdate({
+  await db.insert(productAccess).values(input).onConflictDoUpdate({
+    target: [productAccess.productId, productAccess.userId],
     set: {
       deliveryUrl: input.deliveryUrl,
       deliveryFileName: input.deliveryFileName,
@@ -410,15 +442,237 @@ export async function grantProductAccess(input: { productId: number; userId: num
 export async function createProductInquiry(values: typeof productInquiries.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(productInquiries).values(values);
-  const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(productInquiries).where(eq(productInquiries.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
 export async function createGuestCheckoutRequest(values: typeof guestCheckoutRequests.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(guestCheckoutRequests).values(values);
-  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
+}
+
+type PaymentProvider = "payrex" | "paypal" | "manual";
+type ProviderCheckoutOrderInput = { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken?: string | null; paymentReference?: string | null; paymentProofUrl?: string | null; paymentProofKey?: string | null; paymentProofFileName?: string | null; paymentProofMimeType?: string | null; paymentProofSizeBytes?: number | null; paymentMethodId?: number | null; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot?: string | null; paymentQrCodeUrlSnapshot?: string | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number };
+
+async function createProviderCheckoutOrder(input: ProviderCheckoutOrderInput) {
+  const db = requireDatabase(await getDb());
+  const result = await db.insert(guestCheckoutRequests).values({
+    productId: input.productId, name: input.name, email: input.email, company: input.company || null, message: input.message || null,
+    status: "submitted", commerceStatus: "pending_payment", paymentPublicToken: input.publicToken || null,
+    paymentMethodId: input.paymentMethodId || null, paymentMethodName: input.paymentMethodName, paymentMethodType: input.paymentMethodType, paymentInstructionsSnapshot: input.paymentInstructionsSnapshot || null, paymentQrCodeUrlSnapshot: input.paymentQrCodeUrlSnapshot || null, paymentReference: input.paymentReference || null, paymentProofUrl: input.paymentProofUrl || null, paymentProofKey: input.paymentProofKey || null, paymentProofFileName: input.paymentProofFileName || null, paymentProofMimeType: input.paymentProofMimeType || null, paymentProofSizeBytes: input.paymentProofSizeBytes || null, voucherId: input.voucherId || null, voucherCodeSnapshot: input.voucherCodeSnapshot || null, subtotalCents: input.subtotalCents, discountCents: input.discountCents, totalCents: input.totalCents, paymentStatus: "awaiting_payment",
+  });
+  const created = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, Number(result.meta.last_row_id))).limit(1);
+  if (!created[0]) throw new Error("Unable to create checkout order");
+  return created[0];
+}
+
+export async function createPayrexCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+  return createProviderCheckoutOrder({ ...input, paymentMethodName: "GCash", paymentMethodType: "GCash" });
+}
+
+export async function createPaypalCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentReference: string; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+  return createProviderCheckoutOrder({ ...input, paymentMethodName: "PayPal", paymentMethodType: "PayPal" });
+}
+
+export async function createManualCheckoutOrder(input: { productId: number; name: string; email: string; company?: string | null; message?: string | null; publicToken: string; paymentMethodId: number; paymentMethodName: string; paymentMethodType: string; paymentInstructionsSnapshot: string; paymentQrCodeUrlSnapshot?: string | null; paymentReference?: string | null; paymentProofUrl?: string | null; paymentProofKey?: string | null; paymentProofFileName?: string | null; paymentProofMimeType?: string | null; paymentProofSizeBytes?: number | null; voucherId?: number | null; voucherCodeSnapshot?: string | null; subtotalCents: number; discountCents: number; totalCents: number }) {
+  return createProviderCheckoutOrder(input);
+}
+
+type ProviderTransactionInput = { provider: PaymentProvider; paymentMethod: string; orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null };
+
+async function createProviderPaymentTransaction(input: ProviderTransactionInput) {
+  const db = requireDatabase(await getDb());
+  const result = await db.insert(paymentTransactions).values({
+    orderId: input.orderId, publicToken: input.publicToken, provider: input.provider, paymentMethod: input.paymentMethod, amountCents: input.amountCents, currency: "PHP", status: "pending",
+    providerCheckoutSessionId: input.providerCheckoutSessionId, providerPaymentIntentId: input.providerPaymentIntentId || null, checkoutUrl: input.checkoutUrl, expiresAt: input.expiresAt || null,
+  });
+  const created = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, Number(result.meta.last_row_id))).limit(1);
+  if (!created[0]) throw new Error("Unable to record payment transaction");
+  return created[0];
+}
+
+export async function createPayrexPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerCheckoutSessionId: string; providerPaymentIntentId?: string | null; checkoutUrl: string; expiresAt?: Date | null }) {
+  return createProviderPaymentTransaction({ ...input, provider: "payrex", paymentMethod: "gcash" });
+}
+
+export async function createPaypalPaymentTransaction(input: { orderId: number; publicToken: string; amountCents: number; providerOrderId: string; approvalUrl: string }) {
+  return createProviderPaymentTransaction({ provider: "paypal", paymentMethod: "paypal", orderId: input.orderId, publicToken: input.publicToken, amountCents: input.amountCents, providerCheckoutSessionId: input.providerOrderId, providerPaymentIntentId: input.providerOrderId, checkoutUrl: input.approvalUrl });
+}
+
+async function createManualApprovedPaymentTransaction(order: typeof guestCheckoutRequests.$inferSelect, paidAt: Date) {
+  if (!order.paymentPublicToken || !order.paymentMethodName || !order.totalCents) throw new Error("Manual payment order is missing its secure delivery details.");
+  const transaction = await createProviderPaymentTransaction({
+    provider: "manual", paymentMethod: order.paymentMethodType || "manual", orderId: order.id, publicToken: order.paymentPublicToken,
+    amountCents: order.totalCents, providerCheckoutSessionId: `manual-order-${order.id}`, providerPaymentIntentId: null, checkoutUrl: "manual-review",
+  });
+  const db = requireDatabase(await getDb());
+  await db.update(paymentTransactions).set({ status: "paid", paidAt }).where(eq(paymentTransactions.id, transaction.id));
+  const rows = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, transaction.id)).limit(1);
+  if (!rows[0]) throw new Error("Unable to finalize the approved manual payment transaction.");
+  return rows[0];
+}
+
+export async function getPayrexPaymentStatus(publicToken: string) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select({ transaction: paymentTransactions, order: guestCheckoutRequests, product: digitalProducts })
+    .from(paymentTransactions).innerJoin(guestCheckoutRequests, eq(paymentTransactions.orderId, guestCheckoutRequests.id))
+    .innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).where(eq(paymentTransactions.publicToken, publicToken)).limit(1);
+  return rows[0] ?? null;
+}
+
+async function registerProviderWebhookEvent(input: { provider: PaymentProvider; providerEventId: string; eventType: string; providerPaymentIntentId?: string | null; payloadHash: string }) {
+  const db = requireDatabase(await getDb());
+  const existing = await db.select({ id: paymentWebhookEvents.id }).from(paymentWebhookEvents).where(and(eq(paymentWebhookEvents.provider, input.provider), eq(paymentWebhookEvents.providerEventId, input.providerEventId))).limit(1);
+  if (existing[0]) return false;
+  try {
+    await db.insert(paymentWebhookEvents).values({ provider: input.provider, providerEventId: input.providerEventId, eventType: input.eventType, providerPaymentIntentId: input.providerPaymentIntentId || null, payloadHash: input.payloadHash, processedAt: new Date() });
+    return true;
+  } catch { return false; }
+}
+
+export async function registerPayrexWebhookEvent(input: { providerEventId: string; eventType: string; providerPaymentIntentId?: string | null; payloadHash: string }) {
+  return registerProviderWebhookEvent({ ...input, provider: "payrex" });
+}
+
+export async function registerPaypalWebhookEvent(input: { providerEventId: string; eventType: string; providerOrderId?: string | null; payloadHash: string }) {
+  return registerProviderWebhookEvent({ provider: "paypal", providerEventId: input.providerEventId, eventType: input.eventType, providerPaymentIntentId: input.providerOrderId || null, payloadHash: input.payloadHash });
+}
+
+async function markProviderPaymentPaid(input: { provider: PaymentProvider; match: "providerPaymentIntentId" | "providerCheckoutSessionId"; providerReference: string; providerPaymentId?: string | null }) {
+  const db = requireDatabase(await getDb());
+  const matchColumn = input.match === "providerPaymentIntentId" ? paymentTransactions.providerPaymentIntentId : paymentTransactions.providerCheckoutSessionId;
+  const rows = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.provider, input.provider), eq(matchColumn, input.providerReference))).limit(1);
+  const transaction = rows[0];
+  if (!transaction) return null;
+  if (transaction.status === "paid") return null;
+  const paidAt = new Date();
+  await db.update(paymentTransactions).set({ status: "paid", providerPaymentId: input.providerPaymentId || transaction.providerPaymentId, paidAt }).where(eq(paymentTransactions.id, transaction.id));
+  await db.update(guestCheckoutRequests).set({ paymentStatus: "verified", commerceStatus: "paid", paidAt }).where(eq(guestCheckoutRequests.id, transaction.orderId));
+  const orders = await db.select({ voucherId: guestCheckoutRequests.voucherId }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, transaction.orderId)).limit(1);
+  await incrementVoucherRedemption(orders[0]?.voucherId || null);
+  return transaction;
+}
+
+export async function markPayrexPaymentPaid(providerPaymentIntentId: string, providerPaymentId?: string | null) {
+  return markProviderPaymentPaid({ provider: "payrex", match: "providerPaymentIntentId", providerReference: providerPaymentIntentId, providerPaymentId });
+}
+
+export async function markPaypalPaymentPaid(providerOrderId: string, providerCaptureId?: string | null) {
+  return markProviderPaymentPaid({ provider: "paypal", match: "providerCheckoutSessionId", providerReference: providerOrderId, providerPaymentId: providerCaptureId });
+}
+
+export async function getPaypalTransactionForPublicToken(publicToken: string) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.publicToken, publicToken), eq(paymentTransactions.provider, "paypal"))).limit(1);
+  return rows[0] || null;
+}
+
+export async function listPaidDeliveryFiles(paymentPublicToken: string) {
+  const db = requireDatabase(await getDb());
+  const transaction = await db.select({ transaction: paymentTransactions, order: guestCheckoutRequests }).from(paymentTransactions)
+    .innerJoin(guestCheckoutRequests, eq(paymentTransactions.orderId, guestCheckoutRequests.id))
+    .where(eq(paymentTransactions.publicToken, paymentPublicToken)).limit(1);
+  const record = transaction[0];
+  if (!record || record.transaction.status !== "paid" || record.order.paymentStatus !== "verified") return null;
+  const files = (await db.select({ id: productFiles.id, fileName: productFiles.fileName, fileUrl: productFiles.fileUrl, mimeType: productFiles.mimeType, sizeBytes: productFiles.sizeBytes })
+    .from(productFiles).where(eq(productFiles.productId, record.order.productId)).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt))).filter(file => file.fileUrl.includes("/raw/private/")).map(({ fileUrl: _fileUrl, ...file }) => file);
+  return { transaction: record.transaction, order: record.order, files };
+}
+
+export async function createOneTimeDeliveryEntitlement(input: { paymentPublicToken: string; productFileId: number; tokenHash: string; expiresAt: Date }) {
+  const db = requireDatabase(await getDb());
+  const delivery = await listPaidDeliveryFiles(input.paymentPublicToken);
+  if (!delivery) return null;
+  const file = delivery.files.find(candidate => candidate.id === input.productFileId);
+  if (!file) return null;
+  const fileRows = await db.select().from(productFiles).where(eq(productFiles.id, input.productFileId)).limit(1);
+  const productFile = fileRows[0];
+  if (!productFile?.fileKey) return null;
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.paymentTransactionId, delivery.transaction.id), eq(paymentDeliveryEntitlements.productFileId, productFile.id), eq(paymentDeliveryEntitlements.status, "active")));
+  const result = await db.insert(paymentDeliveryEntitlements).values({ orderId: delivery.order.id, paymentTransactionId: delivery.transaction.id, productFileId: productFile.id, fileName: productFile.fileName, fileKey: productFile.fileKey, fileMimeType: productFile.mimeType || null, tokenHash: input.tokenHash, status: "active", expiresAt: input.expiresAt });
+  const created = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.id, Number(result.meta.last_row_id))).limit(1);
+  return created[0] || null;
+}
+
+export async function claimPaymentDeliveryEmail(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select({ transaction: paymentTransactions, order: guestCheckoutRequests, product: digitalProducts })
+    .from(paymentTransactions).innerJoin(guestCheckoutRequests, eq(paymentTransactions.orderId, guestCheckoutRequests.id))
+    .innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id))
+    .where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const delivery = rows[0];
+  if (!delivery || delivery.transaction.status !== "paid" || delivery.order.paymentStatus !== "verified") return null;
+  const files = (await db.select({ id: productFiles.id, fileName: productFiles.fileName, mimeType: productFiles.mimeType, fileKey: productFiles.fileKey, fileUrl: productFiles.fileUrl })
+    .from(productFiles).where(eq(productFiles.productId, delivery.order.productId)).orderBy(asc(productFiles.sortOrder), asc(productFiles.createdAt)))
+    .filter(file => file.fileUrl.includes("/raw/private/") && Boolean(file.fileKey));
+  const inserted = await db.insert(paymentDeliveryEmails).values({ orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email, status: "sending", attempts: 1 }).onConflictDoNothing();
+  if (Number(inserted.meta.changes || 0) === 1) return { email: { id: Number(inserted.meta.last_row_id), orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
+  const existing = await db.select().from(paymentDeliveryEmails).where(eq(paymentDeliveryEmails.orderId, orderId)).limit(1);
+  const audit = existing[0];
+  if (!audit || (audit.status !== "failed" && audit.status !== "skipped")) return null;
+  const claimed = await db.update(paymentDeliveryEmails).set({ status: "sending", attempts: sql`${paymentDeliveryEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, audit.id), sql`${paymentDeliveryEmails.status} IN ('failed', 'skipped')`));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return { email: { id: audit.id, orderId, paymentTransactionId: delivery.transaction.id, recipientEmail: delivery.order.email }, ...delivery, files };
+}
+
+export async function markPaymentDeliveryEmailSent(emailId: number, providerMessageId: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "sent", providerMessageId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+}
+
+export async function markPaymentDeliveryEmailFailed(emailId: number, error: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "failed", lastError: error.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+}
+
+export async function markPaymentDeliveryEmailSkipped(emailId: number, reason: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEmails).set({ status: "skipped", lastError: reason.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentDeliveryEmails.id, emailId), eq(paymentDeliveryEmails.status, "sending")));
+}
+
+export async function claimManualPaymentRejectionEmail(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const delivery = rows[0];
+  if (!delivery || delivery.order.paymentStatus !== "rejected") return null;
+  const transaction = await db.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.orderId, orderId)).limit(1);
+  if (transaction[0]) return null;
+  const inserted = await db.insert(paymentRejectionEmails).values({ orderId, recipientEmail: delivery.order.email, status: "sending", attempts: 1 }).onConflictDoNothing();
+  if (Number(inserted.meta.changes || 0) === 1) return { email: { id: Number(inserted.meta.last_row_id), recipientEmail: delivery.order.email }, ...delivery };
+  const existing = await db.select().from(paymentRejectionEmails).where(eq(paymentRejectionEmails.orderId, orderId)).limit(1);
+  const audit = existing[0];
+  if (!audit || audit.status !== "failed") return null;
+  const claimed = await db.update(paymentRejectionEmails).set({ status: "sending", attempts: sql`${paymentRejectionEmails.attempts} + 1`, lastError: null, updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, audit.id), eq(paymentRejectionEmails.status, "failed")));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return { email: { id: audit.id, recipientEmail: delivery.order.email }, ...delivery };
+}
+
+export async function markManualPaymentRejectionEmailSent(emailId: number, providerMessageId: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentRejectionEmails).set({ status: "sent", providerMessageId, lastError: null, sentAt: new Date(), updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, emailId), eq(paymentRejectionEmails.status, "sending")));
+}
+
+export async function markManualPaymentRejectionEmailFailed(emailId: number, error: string) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentRejectionEmails).set({ status: "failed", lastError: error.slice(0, 1000), updatedAt: new Date() }).where(and(eq(paymentRejectionEmails.id, emailId), eq(paymentRejectionEmails.status, "sending")));
+}
+
+export async function consumeOneTimeDeliveryEntitlement(tokenHash: string) {
+  const db = requireDatabase(await getDb());
+  const rows = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.tokenHash, tokenHash)).limit(1);
+  const entitlement = rows[0];
+  if (!entitlement || entitlement.status !== "active" || entitlement.expiresAt.getTime() < Date.now()) return null;
+  const claimed = await db.update(paymentDeliveryEntitlements).set({ status: "used", usedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.id, entitlement.id), eq(paymentDeliveryEntitlements.status, "active")));
+  if (Number(claimed.meta.changes || 0) !== 1) return null;
+  return entitlement;
+}
+
+export async function revokeDeliveryEntitlementsForOrder(orderId: number) {
+  const db = requireDatabase(await getDb());
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.orderId, orderId), eq(paymentDeliveryEntitlements.status, "active")));
+  return { revoked: true as const };
 }
 
 export async function getActivePaymentMethods() {
@@ -445,8 +699,79 @@ export async function savePaymentMethod(values: typeof paymentMethods.$inferInse
     return updated[0];
   }
   const result = await db.insert(paymentMethods).values(values);
-  const created = await db.select().from(paymentMethods).where(eq(paymentMethods.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(paymentMethods).where(eq(paymentMethods.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
+}
+
+export async function getPaymentProviderSettings() {
+  const db = requireDatabase(await getDb());
+  return db.select().from(paymentProviderSettings).orderBy(asc(paymentProviderSettings.provider));
+}
+
+export async function getPaymentProviderSetting(provider: "payrex" | "paypal") {
+  const db = requireDatabase(await getDb());
+  const setting = await db.select().from(paymentProviderSettings).where(eq(paymentProviderSettings.provider, provider)).limit(1);
+  return setting[0] || null;
+}
+
+export async function setPaymentProviderActive(provider: "payrex" | "paypal", isActive: boolean) {
+  const db = requireDatabase(await getDb());
+  await db.insert(paymentProviderSettings).values({ provider, isActive }).onConflictDoUpdate({ target: paymentProviderSettings.provider, set: { isActive, updatedAt: new Date() } });
+  return getPaymentProviderSetting(provider);
+}
+
+export async function getAllVouchers() {
+  const db = requireDatabase(await getDb());
+  const [rows, scopes] = await Promise.all([
+    db.select().from(vouchers).orderBy(desc(vouchers.createdAt)),
+    db.select().from(voucherProducts),
+  ]);
+  return rows.map(voucher => ({ ...voucher, productIds: scopes.filter(scope => scope.voucherId === voucher.id).map(scope => scope.productId) }));
+}
+
+export async function saveVoucher(input: { voucherId?: number; code: string; label: string; scope: "general" | "selected_products"; discountKind: "percent" | "fixed"; discountValue: number; maxRedemptions?: number | null; startsAt?: Date | null; endsAt?: Date | null; isActive: boolean; productIds: number[] }) {
+  const db = requireDatabase(await getDb());
+  const values = { code: input.code.trim().toUpperCase(), label: input.label.trim(), scope: input.scope, discountKind: input.discountKind, discountValue: input.discountValue, maxRedemptions: input.maxRedemptions || null, startsAt: input.startsAt || null, endsAt: input.endsAt || null, isActive: input.isActive };
+  let voucherId = input.voucherId;
+  if (voucherId) {
+    await db.update(vouchers).set({ ...values, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
+    await db.delete(voucherProducts).where(eq(voucherProducts.voucherId, voucherId));
+  } else {
+    const result = await db.insert(vouchers).values(values);
+    voucherId = Number(result.meta.last_row_id);
+  }
+  if (!voucherId) throw new Error("Voucher could not be saved.");
+  const productIds = input.scope === "selected_products" ? Array.from(new Set(input.productIds)) : [];
+  for (const productId of productIds) await db.insert(voucherProducts).values({ voucherId, productId });
+  const voucher = await db.select().from(vouchers).where(eq(vouchers.id, voucherId)).limit(1);
+  return { ...voucher[0], productIds };
+}
+
+export async function setVoucherActive(voucherId: number, isActive: boolean) {
+  const db = requireDatabase(await getDb());
+  await db.update(vouchers).set({ isActive, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
+  const voucher = await db.select().from(vouchers).where(eq(vouchers.id, voucherId)).limit(1);
+  return voucher[0] || null;
+}
+
+export async function getVoucherDiscount(input: { code: string; productId: number; subtotalCents: number; now?: Date }) {
+  const db = requireDatabase(await getDb());
+  const now = input.now || new Date();
+  const found = await db.select().from(vouchers).where(eq(vouchers.code, input.code.trim().toUpperCase())).limit(1);
+  const voucher = found[0];
+  if (!voucher || !voucher.isActive || (voucher.startsAt && voucher.startsAt > now) || (voucher.endsAt && voucher.endsAt < now) || (voucher.maxRedemptions !== null && voucher.redemptionCount >= voucher.maxRedemptions)) return null;
+  if (voucher.scope === "selected_products") {
+    const scoped = await db.select({ id: voucherProducts.id }).from(voucherProducts).where(and(eq(voucherProducts.voucherId, voucher.id), eq(voucherProducts.productId, input.productId))).limit(1);
+    if (!scoped[0]) return null;
+  }
+  const discountCents = voucher.discountKind === "percent" ? Math.floor(input.subtotalCents * voucher.discountValue / 100) : Math.min(input.subtotalCents, voucher.discountValue);
+  return { voucher, discountCents: Math.max(0, discountCents), totalCents: Math.max(0, input.subtotalCents - discountCents) };
+}
+
+async function incrementVoucherRedemption(voucherId: number | null) {
+  if (!voucherId) return;
+  const db = requireDatabase(await getDb());
+  await db.update(vouchers).set({ redemptionCount: sql`${vouchers.redemptionCount} + 1`, updatedAt: new Date() }).where(eq(vouchers.id, voucherId));
 }
 
 export async function deletePaymentMethod(paymentMethodId: number) {
@@ -459,7 +784,54 @@ export async function deletePaymentMethod(paymentMethodId: number) {
 
 export async function getGuestCheckoutRequests() {
   const db = requireDatabase(await getDb());
-  return db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).orderBy(desc(guestCheckoutRequests.createdAt));
+  const rows = await db.select({ order: guestCheckoutRequests, product: digitalProducts }).from(guestCheckoutRequests).innerJoin(digitalProducts, eq(guestCheckoutRequests.productId, digitalProducts.id)).orderBy(desc(guestCheckoutRequests.createdAt));
+  const privateFiles = (await db.select().from(productFiles)).filter(file => file.fileUrl.includes("/raw/private/"));
+  const entitlements = await db.select().from(paymentDeliveryEntitlements);
+  const transactions = await db.select().from(paymentTransactions);
+  const deliveryEmails = await db.select().from(paymentDeliveryEmails);
+  const rejectionEmails = await db.select().from(paymentRejectionEmails);
+  return rows.map(row => {
+    const files = privateFiles.filter(file => file.productId === row.order.productId);
+    const entries = entitlements.filter(entry => entry.orderId === row.order.id);
+    const transaction = transactions.find(candidate => candidate.orderId === row.order.id) || null;
+    const deliveryEmail = deliveryEmails.find(candidate => candidate.orderId === row.order.id) || null;
+    const rejectionEmail = rejectionEmails.find(candidate => candidate.orderId === row.order.id) || null;
+    return { ...row, paymentTransaction: transaction ? { id: transaction.id, provider: transaction.provider, status: transaction.status, amountCents: transaction.amountCents, currency: transaction.currency, providerPaymentIntentId: transaction.providerPaymentIntentId, paidAt: transaction.paidAt, expiresAt: transaction.expiresAt } : null, deliveryEmail: deliveryEmail ? { status: deliveryEmail.status, recipientEmail: deliveryEmail.recipientEmail, attempts: deliveryEmail.attempts, lastError: deliveryEmail.lastError, providerMessageId: deliveryEmail.providerMessageId, sentAt: deliveryEmail.sentAt, updatedAt: deliveryEmail.updatedAt } : null, rejectionEmail: rejectionEmail ? { status: rejectionEmail.status, recipientEmail: rejectionEmail.recipientEmail, attempts: rejectionEmail.attempts, lastError: rejectionEmail.lastError, providerMessageId: rejectionEmail.providerMessageId, sentAt: rejectionEmail.sentAt, updatedAt: rejectionEmail.updatedAt } : null, delivery: { eligibleFileCount: files.length, activeLinkCount: entries.filter(entry => entry.status === "active" && entry.expiresAt.getTime() >= Date.now()).length, usedLinkCount: entries.filter(entry => entry.status === "used").length, revokedLinkCount: entries.filter(entry => entry.status === "revoked").length, latestExpiresAt: entries.filter(entry => entry.status === "active").sort((left, right) => right.expiresAt.getTime() - left.expiresAt.getTime())[0]?.expiresAt || null, files: files.map(file => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes })) } };
+  });
+}
+
+export async function deleteGuestCheckoutRequest(orderId: number) {
+  const db = requireDatabase(await getDb());
+  const existing = await db.select({ id: guestCheckoutRequests.id }).from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  if (!existing[0]) return { deleted: false };
+
+  const revokedAt = new Date();
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt }).where(and(eq(paymentDeliveryEntitlements.orderId, orderId), eq(paymentDeliveryEntitlements.status, "active")));
+  await db.delete(paymentDeliveryEmails).where(eq(paymentDeliveryEmails.orderId, orderId));
+  await db.delete(paymentRejectionEmails).where(eq(paymentRejectionEmails.orderId, orderId));
+  await db.delete(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.orderId, orderId));
+  await db.delete(paymentTransactions).where(eq(paymentTransactions.orderId, orderId));
+  await db.delete(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId));
+
+  // Webhook events intentionally remain for provider idempotency and audit history.
+  return { deleted: true, orderId };
+}
+
+export async function createOwnerOneTimeDeliveryEntitlement(input: { orderId: number; productFileId: number; tokenHash: string; expiresAt: Date }) {
+  const db = requireDatabase(await getDb());
+  const orderRows = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, input.orderId)).limit(1);
+  const order = orderRows[0];
+  if (!order || order.paymentStatus !== "verified") return null;
+  const transactionRows = await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId, order.id)).limit(1);
+  const transaction = transactionRows[0];
+  if (!transaction || transaction.status !== "paid") return null;
+  const files = (await db.select().from(productFiles).where(and(eq(productFiles.id, input.productFileId), eq(productFiles.productId, order.productId))).limit(1)).filter(file => file.fileUrl.includes("/raw/private/"));
+  const file = files[0];
+  if (!file?.fileKey) return null;
+  await db.update(paymentDeliveryEntitlements).set({ status: "revoked", revokedAt: new Date() }).where(and(eq(paymentDeliveryEntitlements.paymentTransactionId, transaction.id), eq(paymentDeliveryEntitlements.productFileId, file.id), eq(paymentDeliveryEntitlements.status, "active")));
+  const result = await db.insert(paymentDeliveryEntitlements).values({ orderId: order.id, paymentTransactionId: transaction.id, productFileId: file.id, fileName: file.fileName, fileKey: file.fileKey, fileMimeType: file.mimeType || null, tokenHash: input.tokenHash, status: "active", expiresAt: input.expiresAt });
+  const created = await db.select().from(paymentDeliveryEntitlements).where(eq(paymentDeliveryEntitlements.id, Number(result.meta.last_row_id))).limit(1);
+  return created[0] || null;
 }
 
 export async function updateGuestCheckoutRequestStatus(orderId: number, status: "submitted" | "contacted" | "fulfilled" | "cancelled") {
@@ -471,7 +843,14 @@ export async function updateGuestCheckoutRequestStatus(orderId: number, status: 
 
 export async function updateGuestCheckoutPaymentReview(orderId: number, paymentStatus: "verified" | "rejected", paymentReviewNote?: string | null) {
   const db = requireDatabase(await getDb());
-  await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: new Date(), paymentReviewNote: paymentReviewNote || null }).where(eq(guestCheckoutRequests.id, orderId));
+  const existing = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
+  const transaction = await db.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.orderId, orderId)).limit(1);
+  if (transaction[0]) throw new Error("Provider payments can be marked paid only by verified provider webhook processing.");
+  if (!existing[0]) throw new Error("Payment order was not found.");
+  const reviewedAt = new Date();
+  if (paymentStatus === "verified") await createManualApprovedPaymentTransaction(existing[0], reviewedAt);
+  await db.update(guestCheckoutRequests).set({ paymentStatus, paymentReviewedAt: reviewedAt, paymentReviewNote: paymentReviewNote || null, commerceStatus: paymentStatus === "verified" ? "paid" : "pending_payment", paidAt: paymentStatus === "verified" ? reviewedAt : null }).where(eq(guestCheckoutRequests.id, orderId));
+  if (paymentStatus === "verified" && existing[0]?.paymentStatus !== "verified") await incrementVoucherRedemption(existing[0]?.voucherId || null);
   const updated = await db.select().from(guestCheckoutRequests).where(eq(guestCheckoutRequests.id, orderId)).limit(1);
   return updated[0];
 }
@@ -484,7 +863,7 @@ export async function getProductFiles(productId: number) {
 export async function saveProductFile(values: typeof productFiles.$inferInsert) {
   const db = requireDatabase(await getDb());
   const result = await db.insert(productFiles).values(values);
-  const created = await db.select().from(productFiles).where(eq(productFiles.id, Number(result[0].insertId))).limit(1);
+  const created = await db.select().from(productFiles).where(eq(productFiles.id, Number(result.meta.last_row_id))).limit(1);
   return created[0];
 }
 
@@ -519,7 +898,7 @@ export async function savePublicSiteContent(values: typeof publicSiteContent.$in
     const updated = await db.select().from(publicSiteContent).where(eq(publicSiteContent.id, contentId)).limit(1);
     return updated[0];
   }
-  await db.insert(publicSiteContent).values(values).onDuplicateKeyUpdate({ set: values });
+  await db.insert(publicSiteContent).values(values).onConflictDoUpdate({ target: [publicSiteContent.page, publicSiteContent.section], set: values });
   const saved = await db.select().from(publicSiteContent).where(and(eq(publicSiteContent.page, values.page), eq(publicSiteContent.section, values.section))).limit(1);
   return saved[0];
 }

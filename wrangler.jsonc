@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "digital-junction-platform",
+  "main": "./cloudflare/worker.ts",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/manus-storage/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "digital_junction_db",
+      "database_name": "digital-junction-db",
+      "database_id": "2a8ea3df-979e-4abb-be56-b8a3a736e70f",
+      "migrations_dir": "./cloudflare/migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
+}

@@ -197,7 +197,7 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex min-w-0 items-center gap-2">
-                  <img src="/manus-storage/djdc-logo_bb40eabf.png" alt="DJDC logo" className="size-7 rounded-md object-contain" />
+                  <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663920827301/UriSGgVGQZmuEDZB.png" alt="DJDC logo" className="size-7 rounded-md object-contain" />
                   <span className="truncate font-semibold tracking-tight">{title}</span>
                 </div>
               ) : null}

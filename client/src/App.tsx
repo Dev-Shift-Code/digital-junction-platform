@@ -4,7 +4,6 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
-import GuestCheckout from "@/pages/GuestCheckout";
 import OwnerDashboard from "@/pages/OwnerDashboard";
 import OwnerPublicContent from "@/pages/OwnerPublicContent";
 import OwnerProducts from "@/pages/OwnerProducts";
@@ -13,7 +12,10 @@ import OwnerShopPreview from "@/pages/OwnerShopPreview";
 import OwnerProductAccess from "@/pages/OwnerProductAccess";
 import OwnerPasswordSetup from "@/pages/OwnerPasswordSetup";
 import OwnerPaymentMethods from "@/pages/OwnerPaymentMethods";
-import { OwnerCustomers, OwnerSales, OwnerSettings, OwnerSupport, OwnerVouchers } from "@/pages/OwnerWorkspaceViews";
+import OwnerSalesManagement from "@/pages/OwnerSalesManagement";
+import OwnerInquiries from "@/pages/OwnerInquiries";
+import OwnerVouchers from "@/pages/OwnerVouchers";
+import { OwnerCustomers, OwnerSettings } from "@/pages/OwnerWorkspaceViews";
 import { PrivacyPage, RefundsPage, TermsPage } from "@/pages/LegalPages";
 import { OwnerLoginEntry } from "@/pages/AuthEntry";
 import Services from "@/pages/Services";
@@ -33,20 +35,19 @@ function Router() {
       <Route path={"/work"} component={Work} />
       <Route path={"/shop/:handle"} component={ProductDetail} />
       <Route path={"/shop"} component={Shop} />
-      <Route path={"/checkout/:handle"} component={GuestCheckout} />
       <Route path={"/about"} component={About} />
       <Route path={"/contact"} component={Contact} />
       <Route path={"/owner/login"} component={OwnerLoginEntry} />
       <Route path={"/owner/setup"} component={OwnerPasswordSetup} />
       <Route path={"/owner/inventory"} component={OwnerProducts} />
       <Route path={"/owner/projects"} component={OwnerProjects} />
-      <Route path={"/owner/sales"} component={OwnerSales} />
+      <Route path={"/owner/sales"} component={OwnerSalesManagement} />
       <Route path={"/owner/customers"} component={OwnerCustomers} />
       <Route path={"/owner/content"} component={OwnerPublicContent} />
       <Route path={"/owner/vouchers"} component={OwnerVouchers} />
       <Route path={"/owner/settings"} component={OwnerSettings} />
       <Route path={"/owner/payment-methods"} component={OwnerPaymentMethods} />
-      <Route path={"/owner/support"} component={OwnerSupport} />
+      <Route path={"/owner/support"} component={OwnerInquiries} />
       <Route path={"/owner"} component={OwnerDashboard} />
       <Route path={"/owner/products"} component={OwnerProducts} />
       <Route path={"/owner/product-access"} component={OwnerProductAccess} />
